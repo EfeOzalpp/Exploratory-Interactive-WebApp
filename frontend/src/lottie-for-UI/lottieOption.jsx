@@ -7,7 +7,7 @@ const LottieOption = ({ onClick, selected }) => {
 
   useEffect(() => {
     if (lottieRef.current) {
-      lottieRef.current.setSpeed(2); // 🔥 Set playback speed to 2x
+      lottieRef.current.setSpeed(2); // Set playback speed to 2x
 
       if (selected) {
         lottieRef.current.setDirection(1); // Forward direction

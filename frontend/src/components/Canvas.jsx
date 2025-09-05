@@ -3,7 +3,7 @@ import q5 from 'q5';
 
 // Canvas Background style extracted
 const drawBackground = (p) => {
-  p.background('#a3d2ea');
+  p.background('#b4e4fdff');
   let innerRadius, outerRadius;
   
   if (p.width < 768) {
@@ -21,9 +21,9 @@ const drawBackground = (p) => {
     p.width / 2, p.height / 2, innerRadius,
     p.width / 2, p.height / 2, outerRadius
   );
-  gradient.addColorStop(0.1, 'rgba(215, 215, 215, 0.82)');
-  gradient.addColorStop(0.3, 'rgba(205,205,205,0.6)');
-  gradient.addColorStop(0.5, 'rgba(197,197,197,0.3)');
+  gradient.addColorStop(0.1, 'rgba(230, 230, 230, 0.82)');
+  gradient.addColorStop(0.35, 'rgba(211, 211, 211, 0.6)');
+  gradient.addColorStop(0.7, 'rgba(197,197,197,0.3)');
   gradient.addColorStop(1, 'transparent');
   
   p.drawingContext.fillStyle = gradient;

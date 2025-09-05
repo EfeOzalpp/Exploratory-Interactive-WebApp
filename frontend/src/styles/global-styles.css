@@ -1,7 +1,5 @@
 /* Global */
 canvas { touch-action: none !important;}
-.logo-divider, .feedback {position: absolute;}
-
 a { text-decoration: none; }
 html, body {
   height: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden;
@@ -11,8 +9,7 @@ html, body {
   touch-action: none;
 }
 button { padding-inline: 0; padding-block: 0; }
-.feedback a { text-decoration: underline !important;  color: rgb(6, 21, 1) !important; padding: 12px 6px 6px 12px; border: 1px solid black; border-radius: 6px;}
-.feedback a:hover {background-color: rgba(255, 255, 255, 0.171); transition: background-color 25ms ease-in;}
+
 /* Mobile */
 @media screen and (max-width: 767px) {
   h1, h2, h3, h4, p { font-family: Heebo, sans-serif; padding: 0; margin: 0; }
@@ -27,14 +24,6 @@ button { padding-inline: 0; padding-block: 0; }
 
   .radial-background, .radial-gradient { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .radial-gradient { background: radial-gradient(circle at center bottom, rgb(238,239,240) 0%, rgba(243,243,243,0.75) 40%, rgba(0,0,0,0) 60%); }
-
-  .logo-container {
-    position: absolute; width: auto; height: 3.1em; margin: 16px 0 0 4%;
-    display: flex; justify-content: center; align-items: center; z-index: 15;
-  }
-  .logo-divider {width: 40px; height: 40px; left: 8px;}
-  .feedback {left: 56px; width: 400px;}
-  .logo-image { pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain; }
   .percentage-indicator p { font-size: clamp(2.7vw, 2.9vw, 3.1vw) }
 }
 
@@ -46,30 +35,22 @@ button { padding-inline: 0; padding-block: 0; }
   h2 { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 600; line-height: 1.2em; letter-spacing: 0.2px;}
   h3 { font-size: clamp(3vw, 3.2vw, 3.4vw); font-weight: 200; line-height: 1em; }
   h4, p { font-family: Poppins, sans-serif; }
-  h4 { font-size: clamp(1.7vw, 1.9vw, 2.1vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em;}
-  p { font-size: clamp(1.5vw, 1.7vw, 1.9vw); font-weight: 400; letter-spacing: -0.166px;}
+  h4 { font-size: clamp(1.7vw, 2.1vw, 2.1vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em;}
+  p { font-size: clamp(1.5vw, 1.75vw, 1.9vw); font-weight: 400; letter-spacing: -0.166px;}
   .bar-graph-label p { font-weight: 600; line-height: 1.2em; font-size: clamp(1.6vw, 1.8vw, 2vw);}
 
   .radial-background, .radial-gradient { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .radial-gradient { background: radial-gradient(circle at center bottom, rgb(238,239,240) 0%, rgba(243,243,243,0.75) 40%, rgba(0,0,0,0) 60%); }
-
-  .logo-container {
-    position: absolute; width: auto; height: 3.1em; margin: 16px 0 0 4%;
-    display: flex; justify-content: center; align-items: center; z-index: 15;
-  }
-  .logo-divider {width: 56px; height: 56px; left: 12px;}
-  .feedback {left: 90px; width: 400px;}
-  .logo-image { pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain; }
   .percentage-indicator p { font-size: clamp(1.6vw, 1.8vw, 2vw)}
 }
 
 /* Desktop */
 @media screen and (min-width: 1025px) {
   h1, h2, h3, h4, p { font-family: Heebo, sans-serif; padding: 0; margin: 0; }
-  h1 { font-size: 1.8vw; line-height: 1.204em; font-weight: 500; letter-spacing: -0.23px; }
-  h2 { font-size: 1.6vw; font-weight: 500; line-height: 1.2em; }
+  h1 { font-size: 2.1vw; line-height: 1.204em; font-weight: 500; letter-spacing: -0.23px; }
+  h2 { font-size: 2vw; font-weight: 500; line-height: 1.2em; }
   .number-part h2 { line-height: 1.6em; }
-  h3 { font-size: 1.22vw; font-weight: 200; }
+  h3 { font-size: 1.45vw; font-weight: 400; }
   h4, p { font-family: Poppins, sans-serif; }
   h4 { font-size: 1.05vw; font-weight: 500; letter-spacing: -0.2px; line-height: 1.2em; }
   p { font-size: 0.95vw; font-weight: 400; }
@@ -77,12 +58,4 @@ button { padding-inline: 0; padding-block: 0; }
 
   .radial-background, .radial-gradient { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .radial-gradient { background: radial-gradient(circle at center bottom, rgb(238,239,240) 0%, rgba(243,243,243,0.75) 40%, rgba(0,0,0,0) 60%); }
-
-  .logo-container {
-    position: absolute; width: auto; height: 46px; margin: 24px 0 0 32px;
-    display: flex; justify-content: center; align-items: center; z-index: 15;
-  }
-  .logo-image { pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain; position: absolute;}
-  .logo-divider {width: 56px; height: 56px; left: 12px;}
-  .feedback {left: 90px; width: 400px;}
 }

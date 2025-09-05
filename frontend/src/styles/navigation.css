@@ -1,0 +1,49 @@
+.navigation {box-sizing: border-box; width: 100%; pointer-events: none; padding-left: 32px; padding-top: 24px; z-index: 9; position: absolute; display: flex; flex-direction: row; align-items: center; justify-content: space-between; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;}
+.logo-container {position: relative; width: auto; height: 48px; display: flex; justify-content: center; z-index: 15;}
+.logo-image {pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain;}
+.feedback, .nav-toggle {pointer-events: all; cursor: pointer; text-decoration: underline !important; color: rgb(6, 21, 1) !important; padding: 12px 6px 6px 12px; border: 1px solid black; border-radius: 6px; background: rgba(235, 235, 235, 0.311);}
+.feedback:hover, .nav-toggle:hover {background-color: rgba(255, 255, 255, 0.438); transition: background-color 25ms ease-in;}
+.nav-left {display: flex; align-items: center; justify-content: flex-end;}
+
+/* info graph stuff */
+.info-overlay, .info-panel {z-index: 8; position: absolute; height: 100dvh; width: 100vw;}
+.info-overlay .radial-gradient {background: radial-gradient(circle at center bottom, rgba(238, 239, 240, 0.75) 0%, rgba(243, 243, 243, 0.5) 60%, rgba(0, 0, 0, 0) 90%);}
+.info-overlay .radial-background {background-color: #a9d0e4;}
+.text-divider {display: flex;}
+
+/* -------- Media Queries -------- */
+
+/* Below 768px (mobile) */
+@media (max-width: 767px) {
+  .navigation {padding-left: 16px; padding-right: 16px; align-items: flex-start;}
+  .logo-container {height: 40px;}
+  .logo-divider {width: 48px; height: 48px;}
+  .feedback, .nav-toggle {height: 40px;} 
+  .nav-left {gap: 8px;}
+  .nav-toggle {width: 108px;}
+  .feedback {width: 168px;}
+}
+
+/* 768px - 1024px (tablet) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .navigation {padding-left: 32px; padding-right: 32px;}
+  .nav-left {gap: 16px;}
+  .logo-container {justify-content: flex-start; width: 100%;}
+  .feedback, .nav-toggle {height: 54px;} 
+  .nav-toggle {width: 168px;}
+  .feedback {width: 168px;}
+  .title-divider {width: 25%;}
+  .info-divider {width: 55%; text-align: left;}
+}
+
+/* Above 1024px (desktop) */
+@media (min-width: 1024px) {
+  .navigation {padding-left: 32px; padding-right: 32px;}
+  .logo-divider {width: 56px; height: 56px;}
+  .nav-left {gap: 24px;} 
+  .feedback, .nav-toggle {height: 48px;} 
+  .nav-toggle {width: 144px;}
+  .feedback {width: 216px;}
+  .title-divider {width: 15%;}
+  .info-divider {width: 65%; text-align: left;}
+}

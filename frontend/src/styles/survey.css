@@ -61,7 +61,7 @@ label:hover {background-color: rgba(128, 128, 128, 0.05); padding: 5px 8px 5px 8
 @media (min-width: 768px) and (max-width: 1024px) {
 /* Main survey component */
 .survey-section-wrapper, .survey-section-wrapper3 {z-index: 6; user-select: none; pointer-events: none; display: flex; justify-content: center; align-items: center; width: 100%; position: absolute;}
-.survey-section-wrapper {bottom: 2px;} .survey-section-wrapper3 {bottom: 20px;} .survey-section-wrapper3 {bottom: 0px !important;}
+.survey-section-wrapper {bottom: 2px;} .survey-section-wrapper3 {bottom: 20px;} .survey-section-wrapper3 {bottom: 0px !important; padding-right: 48px; padding-left: 48px; box-sizing: border-box;}
 .survey-section, .survey-section-2 {min-width: 100%; max-width: 100%; min-height: 26vh; max-height: 26vh; display: flex; justify-content: flex-start; align-content: flex-end; flex-wrap: wrap; position: relative;}
 .survey-section-2 {padding-bottom: 5%;}
 
@@ -78,7 +78,7 @@ button.begin-button2:hover, button.begin-button3:hover {background-color: #353b4
 .surveyStart, .questionnaire {display: flex; flex-direction: column; width: 100%;}
 .surveyStart {text-align: center; align-items: center;}
 .questionnaire {justify-content: flex-end; padding-left: 4%;}
-.question-section {display: flex; padding-bottom: 0.25em;} .question-part h4 {margin-left: 12px;}
+.question-section {display: flex; padding-bottom: 0.4em;} .question-part h4 {margin-left: 12px;}
 .question-part {position: relative; top: 8px; left: 5px;}
 .input-part-inside {pointer-events: all;}
 .number-part {position: relative; top: -3px; left: 3px;}
@@ -91,7 +91,7 @@ backdrop-filter: blur(6px);
 .begin-title2 {padding-bottom: 0.4em;}
 
 /* Label */ 
-label {font-size: 16px; color: #333; cursor: pointer; padding: 4px 8px 4px 8px; white-space: nowrap;}
+label {font-size: 18px; color: #333; cursor: pointer; padding: 4px 8px 4px 8px; white-space: nowrap;}
 label p:hover {color: #000000; transition: 0.1s ease-in;}
 label:hover {background-color: rgba(128, 128, 128, 0.05); padding: 4px 8px 4px 8px; border-radius: 4px;}
 
@@ -99,7 +99,7 @@ label:hover {background-color: rgba(128, 128, 128, 0.05); padding: 4px 8px 4px 8
 .lottie-option {display: inline-flex; cursor: pointer;}
 .lottie-option.selected {transform: scale(1.1); transition: transform 0.2s ease-in-out;}
 .input-part-inside {display: flex; align-items: center; gap: 6px; user-select: text;}
-.radio-button {cursor: pointer; height: 2em; width: 2em; min-height: 2em; min-width: 2em; outline: none;}
+.radio-button {cursor: pointer; height: 2em; width: 2em; min-height: 2em; min-width: 2em; outline: none; padding-bottom: 2px;}
 
 /* Special Cases */ 
 /* Special case for three/drei DOM environment context integration for z-index */
