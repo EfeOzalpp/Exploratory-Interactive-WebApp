@@ -1,5 +1,5 @@
 .navigation {box-sizing: border-box; width: 100%; pointer-events: none; padding-left: 32px; padding-top: 24px; z-index: 9; position: absolute; display: flex; flex-direction: row; align-items: center; justify-content: space-between; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;}
-.logo-container {position: relative; width: auto; height: 48px; display: flex; justify-content: center; z-index: 15;}
+.left {position: relative; width: auto; height: 48px; display: flex; justify-content: center; z-index: 15;}
 .logo-image {pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain;}
 .feedback, .nav-toggle {pointer-events: all; cursor: pointer; text-decoration: underline !important; color: rgb(6, 21, 1) !important; padding: 12px 6px 6px 12px; border: 1px solid black; border-radius: 6px; background: rgba(235, 235, 235, 0.311);}
 .feedback:hover, .nav-toggle:hover {background-color: rgba(255, 255, 255, 0.438); transition: background-color 25ms ease-in;}
@@ -11,12 +11,15 @@
 .info-overlay .radial-background {background-color: #a9d0e4;}
 .text-divider {display: flex;}
 
+/* Selecting graph dropdown */
+.graph-picker {pointer-events: all;}
+
 /* -------- Media Queries -------- */
 
 /* Below 768px (mobile) */
 @media (max-width: 767px) {
   .navigation {padding-left: 16px; padding-right: 16px; align-items: flex-start;}
-  .logo-container {height: 40px;}
+  .left {height: 40px;}
   .logo-divider {width: 48px; height: 48px;}
   .feedback, .nav-toggle {height: 40px;} 
   .nav-left {gap: 8px;}
@@ -28,11 +31,11 @@
 @media (min-width: 768px) and (max-width: 1023px) {
   .navigation {padding-left: 32px; padding-right: 32px;}
   .nav-left {gap: 16px;}
-  .logo-container {justify-content: flex-start; width: 100%;}
+  .left {justify-content: flex-start; width: 100%;}
   .feedback, .nav-toggle {height: 54px;} 
   .nav-toggle {width: 168px;}
   .feedback {width: 168px;}
-  .title-divider {width: 25%;}
+  .title-divider {width: 24%;}
   .info-divider {width: 55%; text-align: left;}
 }
 
@@ -46,4 +49,55 @@
   .feedback {width: 216px;}
   .title-divider {width: 15%;}
   .info-divider {width: 65%; text-align: left;}
+}
+/* ensure it’s clickable above the canvas */
+.graph-picker { position: relative; z-index: 20; pointer-events: all; }
+
+/* the select itself */
+.graph-picker select {
+  -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(6px);
+  border: 1px solid #111;
+  border-radius: 10px;
+  padding: 10px 36px 10px 12px;            /* room for caret on the right */
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #111;
+  cursor: pointer;
+  outline: none;
+  transition: box-shadow 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+/* hover / focus */
+.graph-picker select:hover { background: rgba(255,255,255,0.85); }
+.graph-picker select:focus { box-shadow: 0 0 0 3px rgba(0,153,68,0.25); border-color: #009944; }
+
+/* disabled placeholder look (when value === "") */
+.graph-picker select:invalid { color: rgba(0,0,0,0.55); }
+
+/* custom caret */
+.graph-picker::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #111;
+  pointer-events: none;
+}
+
+/* options (limited styling across browsers, but safe to set color) */
+.graph-picker select option { color: #111; }
+
+/* tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .graph-picker select { font-size: 14px; padding: 9px 34px 9px 12px; }
+}
+
+/* mobile */
+@media (max-width: 767px) {
+  .graph-picker select { font-size: 13px; padding: 9px 32px 9px 10px; border-radius: 8px; }
 }

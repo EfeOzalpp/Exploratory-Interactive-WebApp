@@ -8,6 +8,7 @@ import Navigation from '../nav/navigation.jsx';
 import Canvas from '../components/Canvas';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
+import { GraphProvider } from "../context/graphContext.tsx";
 
 const FrontPage = () => {
   useDynamicMargin();
@@ -52,6 +53,7 @@ const FrontPage = () => {
 
   return (
     <div className="app-content">
+          <GraphProvider>
         <Navigation /> 
       {!animationVisible && <Canvas answers={answers} />} {/* Render Canvas only when animationVisible is false */}
 
@@ -68,7 +70,7 @@ const FrontPage = () => {
           onAnswersUpdate={setAnswers}
         />
       </div>
-
+      </GraphProvider>
       <RadialBackground />
     </div>
   );

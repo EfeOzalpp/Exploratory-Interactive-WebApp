@@ -74,7 +74,7 @@
 @media screen and (min-width: 768px) and (max-width: 1024px) { 
 .draggable-info-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.372); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }  
 .draggable-container2 { height: auto; width: 368px; pointer-events: none; }  
-.main-graph-divider { margin-left: 1.5px; margin-right: 1.5px; padding: 2px 20px 7px 4px; border-radius: 2px 2px 38px 38px; background-color: rgba(235, 250, 253, 0.5); border-image: linear-gradient(to left, #a4c3cd49, #c8d3d7a8); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.2), inset -1px -1px -1px rgba(0, 0, 0, 0.1); border-top: solid 1px; }
+.main-graph-divider { margin-left: 32px; margin-right: 64px; padding: 2px 20px 7px 4px; border-radius: 38px 38px 38px 38px; background-color: rgba(235, 250, 253, 0.5); border-image: linear-gradient(to left, #a4c3cd49, #c8d3d7a8); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.2), inset -1px -1px -1px rgba(0, 0, 0, 0.1); border-top: solid 1px; }
 .divider { width: 100%; margin: 20px 0; text-align: left; align-items: center; display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: nowrap; }  
 .dot-text { width: 80%; }
 .title-divider {padding-left: 0.1em; padding-bottom: 0.0935em; }

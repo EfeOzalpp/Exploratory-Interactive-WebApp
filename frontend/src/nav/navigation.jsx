@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+// nav/Navigation.jsx
+import React, { useState, useEffect } from "react";
 import Logo from "../components/static/right";
 import InfoPanel from "./InfoPanel";
 import InfoGraph from "../components/dragGraphs/infoGraph";
+import GraphPicker from "./graphPicker";
+import { useGraph } from "../context/graphContext.tsx";  
 import "../styles/navigation.css";
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
+
+  // read/write the global section used by Graph/BarGraph
+  const { section, setSection } = useGraph();
 
   const handleFeedbackClick = () => {
     window.open(
@@ -18,7 +24,12 @@ const Navigation = () => {
   return (
     <>
       <nav className="navigation">
-        <Logo />
+        <div className="left">
+          <Logo />
+          <div className="graph-picker">
+            <GraphPicker value={section} onChange={setSection} />
+          </div>
+        </div>
 
         <div className="nav-left">
           <button
@@ -36,7 +47,6 @@ const Navigation = () => {
         </div>
       </nav>
 
-      {/* Full-viewport panel below nav */}
       <InfoPanel open={open} onClose={() => setOpen(false)}>
         <InfoGraph />
       </InfoPanel>
