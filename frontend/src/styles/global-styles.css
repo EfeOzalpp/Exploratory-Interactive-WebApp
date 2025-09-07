@@ -1,6 +1,7 @@
-/* Global */
+/* Global + Plus some extra styles (this css is global and is a smaller file compared to others) */
 canvas { touch-action: none !important;}
 a { text-decoration: none; }
+.gp-root { position: relative; }
 html, body {
   height: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden;
   background: radial-gradient(circle, rgba(215,215,215,0.8) 40%, rgba(205,205,205,0.6) 60%, rgba(197,197,197,0.3) 80%, transparent 100%), #8bbad2;

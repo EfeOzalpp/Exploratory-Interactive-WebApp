@@ -1,10 +1,20 @@
+// utils/sanityClient.js
 import { createClient } from '@sanity/client';
 
-const client = createClient({
-  projectId: '2dnm6wwp', // Your project ID
-  dataset: 'butterfly-habits', // Replace with your dataset name (usually 'production')
-  apiVersion: '2022-03-07', // Use the current date for API versioning
-  useCdn: false, 
+export const cdnClient = createClient({
+  projectId: '2dnm6wwp',
+  dataset: 'butterfly-habits',
+  apiVersion: '2022-03-07',
+  useCdn: true,                     // cached & fast
+  token: process.env.REACT_APP_SANITY_TOKEN, // avoid in browser if dataset is private, in this case its fine.
+});
+
+export const liveClient = createClient({
+  projectId: '2dnm6wwp',
+  dataset: 'butterfly-habits',
+  apiVersion: '2022-03-07',
+  useCdn: false,                    // bypass cache for accuracy
   token: process.env.REACT_APP_SANITY_TOKEN,
 });
-export default client;
+
+export default cdnClient;

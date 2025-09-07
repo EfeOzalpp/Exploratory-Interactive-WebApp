@@ -183,3 +183,4 @@ button.begin-button3 {bottom: 45px !important; position: relative;}
 .number-part {position: relative; top: -3px; left: 3px;}
 button.begin-button3 {bottom: 0px !important; position: relative;}
 }
+.section-picker, .audience-picker {pointer-events: all;}

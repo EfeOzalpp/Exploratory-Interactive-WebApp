@@ -679,9 +679,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           <Html
             position={latestPoint.position}
             center
-            zIndexRange={[110, 130]} // fixed z-index for components
+            zIndexRange={[110, 130]} // z-index range for components
             style={{
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
               '--offset-px': `${offsetPx}px`,
             }}
           >

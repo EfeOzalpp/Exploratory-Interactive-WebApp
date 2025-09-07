@@ -3,7 +3,7 @@ import '../styles/survey.css';
 import '../styles/global-styles.css';
 import '../styles/info-graph.css';
 import RadialBackground from '../components/static/radialBackground';
-import Survey from '../components/survey.jsx';
+import Survey from '../components/survey/survey.jsx';
 import Navigation from '../nav/navigation.jsx'; 
 import Canvas from '../components/Canvas';
 import DataVisualization from '../components/dataVisualization';
@@ -53,7 +53,7 @@ const FrontPage = () => {
 
   return (
     <div className="app-content">
-          <GraphProvider>
+      <GraphProvider>
         <Navigation /> 
       {!animationVisible && <Canvas answers={answers} />} {/* Render Canvas only when animationVisible is false */}
 

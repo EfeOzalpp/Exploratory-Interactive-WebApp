@@ -5,8 +5,16 @@ import { subscribeSurveyData } from "../utils/sanityAPI";
 type GraphContextType = {
   section: string;
   setSection: (s: string) => void;
-  data: any[];   // you can replace `any[]` with your real survey type
+  data: any[];   
   loading: boolean;
+
+  // survey gating
+  isSurveyActive: boolean;
+  setSurveyActive: (v: boolean) => void;
+
+  // becomes true once the user completes the survey at least once
+  hasCompletedSurvey: boolean;
+  setHasCompletedSurvey: (v: boolean) => void;
 };
 
 const GraphCtx = createContext<GraphContextType | null>(null);
@@ -15,6 +23,9 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const [section, setSection] = useState("");
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [isSurveyActive, setSurveyActive] = useState(false);
+  const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
 
   useEffect(() => {
     if (!section) { setData([]); return; }
@@ -27,7 +38,18 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   }, [section]);
 
   return (
-    <GraphCtx.Provider value={{ section, setSection, data, loading }}>
+    <GraphCtx.Provider
+      value={{
+        section,
+        setSection,
+        data,
+        loading,
+        isSurveyActive,
+        setSurveyActive,
+        hasCompletedSurvey,
+        setHasCompletedSurvey,
+      }}
+    >
       {children}
     </GraphCtx.Provider>
   );

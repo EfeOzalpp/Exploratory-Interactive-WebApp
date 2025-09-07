@@ -9,7 +9,7 @@ const Graph = ({ isDragging }) => {
   const { data: surveyData, loading, section } = useGraph();
 
   if (!section) return <p className="graph-loading">Pick a section to begin.</p>;
-  if (loading)    return <p className="graph-loading">Loading data...</p>;
+  if (loading) return null; // loading isn't supposed to take long at all. Like 400ms or so at most. Showing a loading overlay would look like unwanted layout shift. 
 
   return (
     <div className="graph-container" style={{ height: '100svh', width: '100%' }}>

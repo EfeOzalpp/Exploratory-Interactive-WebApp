@@ -139,6 +139,11 @@ border-radius: 3px 24px 24px 3px; }
 .gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%);
 border-radius: 3px; }
 .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
+
+.toggle-button.gp-toggle { position: absolute; top: -42px; right: 76px; z-index: 3; pointer-events: all; box-shadow: 0 2px 10px rgba(0,0,0,0.25);}
+.toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }
+.toggle-button.gp-toggle:active, .toggle-button:active { transform: translateY(0); }
+.toggle-button.gp-toggle[aria-expanded="false"] {top: -2px; right: -12px; position: relative;}
 }
 
 /* =============================================

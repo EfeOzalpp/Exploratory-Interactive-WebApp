@@ -1,17 +1,22 @@
 // nav/Navigation.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Logo from "../components/static/right";
 import InfoPanel from "./InfoPanel";
 import InfoGraph from "../components/dragGraphs/infoGraph";
 import GraphPicker from "./graphPicker";
-import { useGraph } from "../context/graphContext.tsx";  
+import { useGraph } from "../context/graphContext.tsx";
 import "../styles/navigation.css";
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
 
-  // read/write the global section used by Graph/BarGraph
-  const { section, setSection } = useGraph();
+  // global graph state
+  const {
+    section,
+    setSection,
+    isSurveyActive,
+    hasCompletedSurvey,
+  } = useGraph();
 
   const handleFeedbackClick = () => {
     window.open(
@@ -21,14 +26,24 @@ const Navigation = () => {
     );
   };
 
+  // only mount picker after user has completed a survey at least once,
+  // and keep it unmounted while any survey is active
+  const showPicker = hasCompletedSurvey && !isSurveyActive;
+
   return (
     <>
       <nav className="navigation">
         <div className="left">
           <Logo />
-          <div className="graph-picker">
-            <GraphPicker value={section} onChange={setSection} />
-          </div>
+
+          {showPicker && (
+            <div className="graph-picker">
+              <GraphPicker
+                value={section}
+                onChange={setSection}
+              />
+            </div>
+          )}
         </div>
 
         <div className="nav-left">
