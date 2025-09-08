@@ -1,11 +1,13 @@
 // nav/Navigation.jsx
 import React, { useState } from "react";
-import Logo from "../components/static/right";
-import InfoPanel from "./InfoPanel";
-import InfoGraph from "../components/dragGraphs/infoGraph";
+import Logo from "../components/static/left";
+import InfoPanel from "./infoPanel.jsx";
+import InfoGraph from "./infoGraph.jsx";
 import GraphPicker from "./graphPicker";
 import { useGraph } from "../context/graphContext.tsx";
+
 import "../styles/navigation.css";
+import '../styles/info-graph.css';
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
@@ -53,11 +55,11 @@ const Navigation = () => {
             aria-expanded={open}
             aria-controls="info-overlay"
           >
-            {open ? "The Idea -" : "The Idea +"}
+            {open ? "The idea -" : "The idea +"}
           </button>
 
           <button className="feedback" onClick={handleFeedbackClick}>
-            Leave Your Thoughts.
+            Leave your thoughts.
           </button>
         </div>
       </nav>

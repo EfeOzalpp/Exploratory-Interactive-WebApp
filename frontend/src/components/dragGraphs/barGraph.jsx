@@ -1,27 +1,61 @@
-// components/dragGraphs/BarGraph.jsx
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import Lottie from 'lottie-react';
-import { useGraph } from '../../context/graphContext.tsx'; 
+import React, { useState, useEffect, useRef, useLayoutEffect, Suspense } from 'react';
+import { useGraph } from '../../context/graphContext.tsx';
 import '../../styles/graph.css';
 
-import tree1 from '../../lottie-for-UI/tree1.json';
-import tree2 from '../../lottie-for-UI/tree2.json';
-import tree3 from '../../lottie-for-UI/tree3.json';
+// lazy-load the wrapper once
+const Lottie = React.lazy(() =>
+  import(/* webpackChunkName: "lottie-react" */ 'lottie-react')
+);
+
+// small helper that lazy-loads a JSON and renders a Lottie
+function TreeIcon({ jsonLoader, speed = 0.3, initialSegment = [5, 55] }) {
+  const ref = useRef(null);
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    jsonLoader().then((mod) => { if (alive) setData(mod.default || mod); });
+    return () => { alive = false; };
+  }, [jsonLoader]);
+
+  useEffect(() => {
+    if (ref.current) {
+      const t = setTimeout(() => ref.current?.setSpeed(speed), 50);
+      return () => clearTimeout(t);
+    }
+  }, [data, speed]);
+
+  return (
+    <div className="bar-icon">
+      <Suspense fallback={null}>
+        {data && (
+          <Lottie
+            animationData={data}
+            loop
+            autoplay
+            lottieRef={ref}
+            initialSegment={initialSegment}
+          />
+        )}
+      </Suspense>
+    </div>
+  );
+}
 
 const BarGraph = () => {
-  const { data, loading, section } = useGraph(); // <-- filtered by selected section
+  // 🚩 Pull mySection + hasCompletedSurvey to gate the personalized “You” marker
+  const { data, loading, section, mySection, hasCompletedSurvey } = useGraph();
+
   const [animationState, setAnimationState] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
-
   const barRefs = useRef({});
-  const greenLottieRef = useRef(null);
-  const yellowLottieRef = useRef(null);
-  const redLottieRef = useRef(null);
+
+  // “You” should show only on the user’s own section and after first survey completion
+  const canShowYou = Boolean(hasCompletedSurvey && mySection && section === mySection);
 
   // Kick bar grow animation once data is ready
   useEffect(() => {
     if (!loading) {
-      // small delay so layout settles before anim height transitions
       const t = setTimeout(() => setAnimateBars(true), 10);
       return () => clearTimeout(t);
     } else {
@@ -29,74 +63,50 @@ const BarGraph = () => {
     }
   }, [loading, data]);
 
-  // Categorize data into green / yellow / red
+  // Categorize data
   const categories = { green: 0, yellow: 0, red: 0 };
-  const percentages = { green: [], yellow: [], red: [] };
 
   data.forEach((item) => {
     const vals = Object.values(item.weights || {});
-    const avgWeight =
-      vals.length > 0 ? vals.reduce((sum, w) => sum + w, 0) / vals.length : 0.5;
+    const avg = vals.length ? vals.reduce((s, w) => s + w, 0) / vals.length : 0.5;
 
-    if (avgWeight <= 0.33) {
-      categories.green++;
-      percentages.green.push(avgWeight);
-    } else if (avgWeight < 0.60) {
-      categories.yellow++;
-      percentages.yellow.push(avgWeight);
-    } else {
-      categories.red++;
-      percentages.red.push(avgWeight);
-    }
+    if (avg <= 0.33) categories.green++;
+    else if (avg < 0.60) categories.yellow++;
+    else categories.red++;
   });
 
-  // "You vs others" percentage
+  // "You vs others" percentage — compute only when eligible
   let percentage = 0;
-  if (data.length > 0) {
+  if (canShowYou && data.length > 0) {
     const latestVals = Object.values(data[0].weights || {});
-    const latestWeight =
-      latestVals.length > 0
-        ? latestVals.reduce((s, w) => s + w, 0) / latestVals.length
-        : 0.5;
+    const latestAvg = latestVals.length
+      ? latestVals.reduce((s, w) => s + w, 0) / latestVals.length
+      : 0.5;
 
-    const usersWithHigherWeight = data.filter((entry) => {
+    const higher = data.filter((entry) => {
       const v = Object.values(entry.weights || {});
-      const avg = v.length > 0 ? v.reduce((s, w) => s + w, 0) / v.length : 0.5;
-      return avg > latestWeight;
+      const avg = v.length ? v.reduce((s, w) => s + w, 0) / v.length : 0.5;
+      return avg > latestAvg;
     });
 
-    percentage = Math.round((usersWithHigherWeight.length / data.length) * 100);
+    percentage = Math.round((higher.length / data.length) * 100);
   }
 
   const maxItems = Math.max(categories.green, categories.yellow, categories.red) + 15;
 
   // write CSS var for the "You" indicator height relative to each bar
   useLayoutEffect(() => {
-    Object.entries(barRefs.current).forEach(([color, ref]) => {
+    Object.entries(barRefs.current).forEach(([_, ref]) => {
       if (!ref) return;
+      if (!canShowYou) {
+        ref.style.setProperty('--user-percentage', '0%');
+        return;
+      }
       const heightPercentage =
         (ref.offsetHeight / (ref.parentElement?.offsetHeight || 1)) * 100;
       ref.style.setProperty('--user-percentage', `${(percentage / 100) * heightPercentage}%`);
     });
-  }, [percentage, animateBars]);
-
-  // Lottie speeds
-  useEffect(() => {
-    const applySpeed = () => {
-      greenLottieRef.current?.setSpeed(0.3);
-      yellowLottieRef.current?.setSpeed(0.2);
-      redLottieRef.current?.setSpeed(0.5);
-    };
-
-    const checkRefs = setInterval(() => {
-      if (greenLottieRef.current && yellowLottieRef.current && redLottieRef.current) {
-        applySpeed();
-        clearInterval(checkRefs);
-      }
-    }, 100);
-
-    return () => clearInterval(checkRefs);
-  }, []);
+  }, [percentage, animateBars, canShowYou]);
 
   useEffect(() => {
     if (!animationState) {
@@ -124,10 +134,14 @@ const BarGraph = () => {
           let userPercentage = (relativePercentage / 100) * heightPercentage;
           userPercentage = Math.min(userPercentage, heightPercentage);
 
+          // only show when eligible AND the marker belongs to this bar
           const showPercentage =
-            (percentage <= 33 && color === 'red') ||
-            (percentage > 33 && percentage <= 60 && color === 'yellow') ||
-            (percentage > 60 && color === 'green');
+            canShowYou &&
+            (
+              (percentage <= 33 && color === 'red') ||
+              (percentage > 33 && percentage <= 60 && color === 'yellow') ||
+              (percentage > 60 && color === 'green')
+            );
 
           return (
             <div
@@ -164,45 +178,29 @@ const BarGraph = () => {
         })}
       </div>
 
+      {/* Lotties: lazy wrapper + lazy JSONs */}
       <div className="bar-graph-icons">
-        <div className="bar-icon">
-          <Lottie
-            animationData={tree1}
-            loop
-            autoplay
-            lottieRef={greenLottieRef}
-            initialSegment={animationState ? [5, 55] : [0, 55]}
-            onDOMLoaded={() =>
-              setTimeout(() => greenLottieRef.current?.setSpeed(0.3), 50)
-            }
-          />
-        </div>
-
-        <div className="bar-icon">
-          <Lottie
-            animationData={tree2}
-            loop
-            autoplay
-            lottieRef={yellowLottieRef}
-            initialSegment={animationState ? [5, 55] : [0, 55]}
-            onDOMLoaded={() =>
-              setTimeout(() => yellowLottieRef.current?.setSpeed(0.2), 50)
-            }
-          />
-        </div>
-
-        <div className="bar-icon">
-          <Lottie
-            animationData={tree3}
-            loop
-            autoplay
-            lottieRef={redLottieRef}
-            initialSegment={animationState ? [5, 55] : [0, 55]}
-            onDOMLoaded={() =>
-              setTimeout(() => redLottieRef.current?.setSpeed(0.5), 50)
-            }
-          />
-        </div>
+        <TreeIcon
+          jsonLoader={() =>
+            import(/* webpackChunkName:"lottie-tree1" */ '../../lottie-for-UI/tree1.json')
+          }
+          speed={0.3}
+          initialSegment={animationState ? [5, 55] : [0, 55]}
+        />
+        <TreeIcon
+          jsonLoader={() =>
+            import(/* webpackChunkName:"lottie-tree2" */ '../../lottie-for-UI/tree2.json')
+          }
+          speed={0.2}
+          initialSegment={animationState ? [5, 55] : [0, 55]}
+        />
+        <TreeIcon
+          jsonLoader={() =>
+            import(/* webpackChunkName:"lottie-tree3" */ '../../lottie-for-UI/tree3.json')
+          }
+          speed={0.5}
+          initialSegment={animationState ? [5, 55] : [0, 55]}
+        />
       </div>
     </>
   );

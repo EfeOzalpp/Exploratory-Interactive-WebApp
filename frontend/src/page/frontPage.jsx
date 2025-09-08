@@ -1,7 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/survey.css';
-import '../styles/global-styles.css';
-import '../styles/info-graph.css';
 import RadialBackground from '../components/static/radialBackground';
 import Survey from '../components/survey/survey.jsx';
 import Navigation from '../nav/navigation.jsx'; 
@@ -9,6 +6,7 @@ import Canvas from '../components/Canvas';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider } from "../context/graphContext.tsx";
+import '../styles/global-styles.css';
 
 const FrontPage = () => {
   useDynamicMargin();

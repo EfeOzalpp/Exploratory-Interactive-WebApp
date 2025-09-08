@@ -1,11 +1,16 @@
-// context/GraphContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { subscribeSurveyData } from "../utils/sanityAPI";
 
 type GraphContextType = {
+  // section actively viewed (GraphPicker)
   section: string;
   setSection: (s: string) => void;
-  data: any[];   
+
+  // section the user originally submitted to (sticky across picker changes)
+  mySection: string;
+  setMySection: (s: string) => void;
+
+  data: any[];
   loading: boolean;
 
   // survey gating
@@ -21,6 +26,7 @@ const GraphCtx = createContext<GraphContextType | null>(null);
 
 export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const [section, setSection] = useState("");
+  const [mySection, setMySection] = useState("");
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -28,11 +34,17 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
 
   useEffect(() => {
-    if (!section) { setData([]); return; }
+    if (!section) {
+      setData([]);
+      return;
+    }
     setLoading(true);
     const unsub = subscribeSurveyData({
       section,
-      onData: (rows) => { setData(rows); setLoading(false); }
+      onData: (rows) => {
+        setData(rows);
+        setLoading(false);
+      },
     });
     return () => unsub();
   }, [section]);
@@ -42,6 +54,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         section,
         setSection,
+        mySection,
+        setMySection,
         data,
         loading,
         isSurveyActive,

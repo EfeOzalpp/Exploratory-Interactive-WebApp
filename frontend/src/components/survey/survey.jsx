@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import client from '../../utils/sanityClient';
-import { Canvas } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import React, { useState, Suspense } from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
-
+import { saveUserResponse } from '../../utils/saveUserResponse.ts';
 import RoleStep from './roleStep';
 import SectionPickerIntro from './sectionPicker';
 import QuestionFlow from './questionFlow';
+import '../../styles/survey.css';
+
+// lazy: loads THREE/R3F/drei only at survey end
+const DoneOverlayR3F = React.lazy(() =>
+  import(/* webpackChunkName: "survey-3d-overlay" */ './DoneOverlayR3F')
+);
 
 const ROLE_SECTIONS = {
   student: [
@@ -14,20 +17,31 @@ const ROLE_SECTIONS = {
     { value: 'digital-media', label: 'Digital / Time-Based' },
   ],
   staff: [
-    { value: 'design',       label: 'Design & Applied' },
-    { value: 'foundations',  label: 'Foundations & X-Discipline' },
+    { value: 'design',      label: 'Design & Applied' },
+    { value: 'foundations', label: 'Foundations & X-Discipline' },
   ],
 };
 
-const Survey = ({ setAnimationVisible, setGraphVisible, setSurveyWrapperClass, onAnswersUpdate }) => {
+const Survey = ({
+  setAnimationVisible,
+  setGraphVisible,
+  setSurveyWrapperClass,
+  onAnswersUpdate,
+}) => {
   const [stage, setStage] = useState('role'); // 'role' | 'section' | 'questions'
   const [audience, setAudience] = useState('');
   const [surveySection, setSurveySection] = useState('');
   const [error, setError] = useState('');
   const [showCompleteButton, setShowCompleteButton] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // include setSection from context
-  const { setSurveyActive, setHasCompletedSurvey, setSection } = useGraph();
+  const {
+    setSurveyActive,
+    setHasCompletedSurvey,
+    setSection,
+    setMySection,
+    setMyEntryId, // make sure your context exposes this
+  } = useGraph();
 
   const availableSections = audience ? (ROLE_SECTIONS[audience] || []) : [];
 
@@ -47,30 +61,39 @@ const Survey = ({ setAnimationVisible, setGraphVisible, setSurveyWrapperClass, o
     setStage('questions');
   };
 
-  // Step 3: submit answers (“I’M READY”)
-  const handleSubmitFromQuestions = async (answers) => {
-    // Set the global section so GraphPicker mounts with it selected
-    setSection(surveySection);
+  // Step 3: submit answers (“I’M READY”) — OPTIMISTIC REVEAL
+  const handleSubmitFromQuestions = (answers) => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
 
+    // 1) Reveal graph/overlay immediately (matches your working version)
+    setSection(surveySection);
+    setMySection(surveySection);
     setHasCompletedSurvey(true);
     setSurveyActive(false);
 
-    setShowCompleteButton(true);
     setGraphVisible(true);
     setAnimationVisible(true);
     setSurveyWrapperClass('complete-active');
+    setShowCompleteButton(true);
 
-    try {
-      await client.create({
-        _type: 'userResponseV2',
-        section: surveySection,
-        audience,
-        ...answers,
-        submittedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('Error saving response to Sanity:', err);
-    }
+    // 2) Persist in background; when saved, wire myEntryId so DotGraph can pin my dot
+    saveUserResponse(surveySection, { ...answers })
+      .then((created) => {
+        const id = created?._id || null;
+        setMyEntryId(id);
+        if (id && typeof window !== 'undefined') {
+          sessionStorage.setItem('gp.myEntryId', id);
+          sessionStorage.setItem('gp.mySection', surveySection);
+        }
+      })
+      .catch((err) => {
+        console.error('Error saving response:', err);
+        // keep the visualization visible; just surface a soft error
+        setError('We saved your view; syncing your response is taking longer than usual.');
+      })
+      .finally(() => setSubmitting(false));
   };
 
   // Overlay: DONE VIEWING (survey begins again)
@@ -82,15 +105,20 @@ const Survey = ({ setAnimationVisible, setGraphVisible, setSurveyWrapperClass, o
     setSurveySection('');
     setAnimationVisible(false);
     setSurveyWrapperClass('');
+    setSubmitting(false);
 
     setSurveyActive(true);
     setHasCompletedSurvey(false);
 
-    // (optional) clear global section so the picker shows placeholder next run
-    // setSection('');
+    // If "Done Viewing" should end personalization, you can uncomment:
+    // setMyEntryId(null);
+    // setMySection(null);
+    // if (typeof window !== 'undefined') {
+    //   sessionStorage.removeItem('gp.myEntryId');
+    //   sessionStorage.removeItem('gp.mySection');
+    // }
   };
 
-  // Clear error when audience changes and keep section valid
   const handleAudienceChange = (role) => {
     setAudience(role);
     setError('');
@@ -103,13 +131,25 @@ const Survey = ({ setAnimationVisible, setGraphVisible, setSurveyWrapperClass, o
     setError('');
   };
 
-  // COMPLETE overlay
+  // DONE VIEWING overlay — THREE only loads here
   if (showCompleteButton) {
     return (
-      <Canvas style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
-        <Html zIndexRange={[22, 22]}>
-          <div className="z-index-respective" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', height: '100vh', pointerEvents: 'none'}}>
-            <div className="survey-section-wrapper2">
+      <Suspense
+        fallback={
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 22,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'transparent',
+              pointerEvents: 'none',
+            }}
+          >
+            {/* lightweight fallback while overlay chunk loads */}
+            <div className="survey-section-wrapper2" style={{ pointerEvents: 'auto' }}>
               <div className="survey-section">
                 <div className="surveyStart">
                   <button className="begin-button4" onClick={handleComplete}>
@@ -119,12 +159,13 @@ const Survey = ({ setAnimationVisible, setGraphVisible, setSurveyWrapperClass, o
               </div>
             </div>
           </div>
-        </Html>
-      </Canvas>
+        }
+      >
+        <DoneOverlayR3F onComplete={handleComplete} />
+      </Suspense>
     );
   }
 
-  // Step switch
   if (stage === 'role') {
     return (
       <div className="survey-section">
@@ -146,17 +187,18 @@ const Survey = ({ setAnimationVisible, setGraphVisible, setSurveyWrapperClass, o
           onChange={handleSectionChange}
           onBegin={handleBeginFromSection}
           error={error}
-          sections={availableSections}  // only two options based on role
+          sections={availableSections}
         />
       </div>
     );
   }
 
-  // stage === 'questions'
   return (
     <QuestionFlow
       onAnswersUpdate={onAnswersUpdate}
       onSubmit={handleSubmitFromQuestions}
+      submitting={submitting}
+      error={error}
     />
   );
 };

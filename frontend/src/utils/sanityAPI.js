@@ -4,7 +4,7 @@
 //   export const liveClient = createClient({ useCdn: false, ... });
 import { cdnClient, liveClient } from './sanityClient';
 
-// --- scoring map (unchanged) ---
+// --- scoring map ---
 const answerRewiring = {
   question1: { A: 0, B: 0.5, C: 1 },
   question2: { C: 0, A: 0.5, B: 1 },

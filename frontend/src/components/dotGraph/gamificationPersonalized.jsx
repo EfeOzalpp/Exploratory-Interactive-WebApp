@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import '../../styles/gamification.css';
 
+const STORAGE_VERSION = 'v1';
+
 const GamificationPersonalized = ({ userData, percentage, color }) => {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
@@ -10,66 +12,92 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
     if (percentage === undefined || !userData) return;
 
     const titles = {
-      "0-20": [
-        "Carbon Culprit","Planet Polluter","Sustainability Enemy",
-        "I thrive in environmental hazard","I'm a burden for Earth",
-        "Sustainability Sinner","Green isn't my favorite color",
+      '0-20': [
+        'Carbon Culprit','Planet Polluter','Sustainability Enemy',
+        'I thrive in environmental hazard',"I'm a burden for Earth",
+        'Sustainability Sinner',"Green isn't my favorite color",
       ],
-      "21-40": [
-        "I Have a Backup Planet!","Nature? Is it Edible?","Sustainability, Who?",
-        "Comfort Seeker, Earth is Ok Too","I am Aware of My Bad-nature",
+      '21-40': [
+        'I Have a Backup Planet!','Nature? Is it Edible?','Sustainability, Who?',
+        'Comfort Seeker, Earth is Ok Too','I am Aware of My Bad-nature',
       ],
-      "41-60": [
-        "Middle Spot is Yours","Is it trendy to like nature?","Nature <3 (ok, where's my award?)",
-        "The Least I Can Do Is Honesty","I Like Mediocrity..:) (not really)",
+      '41-60': [
+        'Middle Spot is Yours','Is it trendy to like nature?','Nature <3 (ok, where\'s my award?)',
+        'The Least I Can Do Is Honesty','I Like Mediocrity..:) (not really)',
       ],
-      "61-80": [
-        "Humble-Green MF","Sustainability and Whatnot","Planet Partner in Crime",
-        "A cool person for a cool planet","Enjoyable Results, Thanks",
+      '61-80': [
+        'Humble-Green MF','Sustainability and Whatnot','Planet Partner in Crime',
+        'A cool person for a cool planet','Enjoyable Results, Thanks',
       ],
-      "81-100": [
-        "Nature's Humble Savior","Damn! Larger than life habits","The Most Precious Award Goes to...",
-        "A Reminder to Reward Yourself","Good Results, Keep It Up",
+      '81-100': [
+        "Nature's Humble Savior",'Damn! Larger than life habits','The Most Precious Award Goes to...',
+        'A Reminder to Reward Yourself','Good Results, Keep It Up',
       ],
     };
     const secondaryPool = {
-      "0-20": [
+      '0-20': [
         "Earth would've needed you, You're surpass only",
-        "Hug a tree. Effortlessly higher than only",
-        "Planetary evacuation! You're ahead of only",
+        'Hug a tree. Effortlessly higher than only',
+        'Planetary evacuation! You\'re ahead of only',
       ],
-      "21-40": [
+      '21-40': [
         "Hands down, it's not a crime, you surpass only",
-        "Low-effort gives-key results, you're ahead of",
-        "Humble beginnings, you're higher than",
+        'Low-effort gives-key results, you\'re ahead of',
+        'Humble beginnings, you\'re higher than',
       ],
-      "41-60": [
+      '41-60': [
         "You're getting there! -Ahead of",
-        "I mean... You do you. You're ahead of",
-        "Kind of in the middle, huh? You're higher than",
+        'I mean... You do you. You\'re ahead of',
+        'Kind of in the middle, huh? You\'re higher than',
       ],
-      "61-80": [
-        "Spectacular and frenzy! You're higher",
-        "Breathing, thriving, cooking. Ahead of",
-        "Right on, left off, You're higher than",
+      '61-80': [
+        'Spectacular and frenzy! You\'re higher',
+        'Breathing, thriving, cooking. Ahead of',
+        'Right on, left off, You\'re higher than',
       ],
-      "81-100": [
+      '81-100': [
         "You're ahead of almost everyone, higher than",
         "I'm Nature, appreciate ya' You're higher than",
         "WOW, that's rad. You're ahead of",
       ],
     };
 
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
     const pct = Number(percentage) || 0;
     const bucket =
-      pct <= 20 ? "0-20" :
-      pct <= 40 ? "21-40" :
-      pct <= 60 ? "41-60" :
-      pct <= 80 ? "61-80" : "81-100";
+      pct <= 20 ? '0-20' :
+      pct <= 40 ? '21-40' :
+      pct <= 60 ? '41-60' :
+      pct <= 80 ? '61-80' : '81-100';
 
-    setSelectedTitle(pick(titles[bucket]));
-    setSecondaryText(pick(secondaryPool[bucket]));
+    const storageKey = `gp:${STORAGE_VERSION}:${userData._id}:${bucket}`;
+
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // Try to restore from this session first
+    try {
+      const cached = sessionStorage.getItem(storageKey);
+      if (cached) {
+        const { title, secondary } = JSON.parse(cached);
+        setSelectedTitle(title);
+        setSecondaryText(secondary);
+        return;
+      }
+    } catch (_) {
+      // ignore storage errors and fall through to random pick
+    }
+
+    // Otherwise pick once and persist for this session
+    const title = pick(titles[bucket]);
+    const secondary = pick(secondaryPool[bucket]);
+
+    setSelectedTitle(title);
+    setSecondaryText(secondary);
+
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ title, secondary }));
+    } catch (_) {
+      // storage might be unavailable; it's fine to skip
+    }
   }, [percentage, userData]);
 
   if (!userData) return null;
@@ -114,19 +142,19 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
   const symbol = open ? '−' : '+';
 
   return (
-    <div className="gp-root" /* wrapper so toggle stays when panel is gone */>
+    <div className="gp-root">
       {/* Toggle button: always rendered, independent of panel presence */}
-    <button
-      type="button"
-      className="toggle-button gp-toggle"   // <- add "toggle-button"
-      aria-controls={open ? panelId : undefined}
-      aria-expanded={open}
-      aria-label={label}
-      onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
-      style={{ pointerEvents: 'auto' }}
-    >
-      <span className="gp-toggle-symbol">{symbol}</span>
-    </button>
+      <button
+        type="button"
+        className="toggle-button gp-toggle"
+        aria-controls={open ? panelId : undefined}
+        aria-expanded={open}
+        aria-label={label}
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        style={{ pointerEvents: 'auto' }}
+      >
+        <span className="gp-toggle-symbol">{symbol}</span>
+      </button>
 
       {/* OUTER PANEL: only render when open → fully gone when closed */}
       {open && (

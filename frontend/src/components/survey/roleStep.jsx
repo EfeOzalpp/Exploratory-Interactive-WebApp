@@ -16,7 +16,7 @@ export default function RoleStep({ value, onChange, onNext, error }) {
       )}
 
       <button className="begin-button" onClick={onNext} style={{ marginTop: '1rem' }}>
-        <h4>Next</h4>
+        <h4>Begin</h4>
       </button>
     </div>
   );

@@ -1,8 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import Graph from './dotGraph/graph';
-import BarGraph from './dragGraphs/barGraph';
+// components/dataVisualization.jsx (or wherever this file lives)
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import '../styles/global-styles.css';
 import '../styles/graph.css';
+
+// ⚡ Lazy load heavy components (split into their own chunks)
+// Prefetch Graph so it begins downloading ASAP.
+const Graph = React.lazy(() =>
+  import(/* webpackChunkName: "graph", webpackPrefetch: true */ './dotGraph/graph')
+);
+const BarGraph = React.lazy(() =>
+  import(/* webpackChunkName: "bar-graph" */ './dragGraphs/barGraph')
+);
 
 // Get initial position based on viewport size (for bar1 only)
 const getPositionByViewport = (customX = null, customY = null) => {
@@ -32,11 +40,14 @@ const VisualizationPage = () => {
   // initialize & handle resize
   useEffect(() => {
     // set initial position next tick
-    setTimeout(() => setPosition(getPositionByViewport()), 0);
+    const t = setTimeout(() => setPosition(getPositionByViewport()), 0);
 
     const handleResize = () => setPosition(getPositionByViewport());
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const dragRef = useRef(null);
@@ -111,8 +122,12 @@ const VisualizationPage = () => {
 
   return (
     <div>
-      <Graph isDragging={isDragging} />
+      {/* Graph chunk */}
+      <Suspense fallback={<div className="graph-loading" style={{ height: '100svh' }}>Loading graph…</div>}>
+        <Graph isDragging={isDragging} />
+      </Suspense>
 
+      {/* Draggable + toggle */}
       <div
         ref={dragRef}
         className="draggable-container"
@@ -149,7 +164,9 @@ const VisualizationPage = () => {
 
         {isBarGraphVisible && (
           <div className="draggable-bar-graph">
-            <BarGraph isVisible />
+            <Suspense fallback={<div style={{ width: 240, height: 120 }}>Loading…</div>}>
+              <BarGraph isVisible />
+            </Suspense>
           </div>
         )}
       </div>

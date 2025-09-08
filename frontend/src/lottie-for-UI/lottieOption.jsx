@@ -1,55 +1,71 @@
-import React, { useRef, useEffect } from "react";
-import Lottie from "lottie-react";
-import animationData from "./radio-button.json";
+import React, { useRef, useEffect, useState, Suspense } from "react";
+
+// lazy-load the wrapper
+const Lottie = React.lazy(() =>
+  import(/* webpackChunkName: "lottie-react" */ "lottie-react")
+);
 
 const LottieOption = ({ onClick, selected }) => {
-  const lottieRef = useRef();
+  const lottieRef = useRef(null);
+  const [animationData, setAnimationData] = useState(null);
 
+  // lazy-load the JSON too
   useEffect(() => {
-    if (lottieRef.current) {
-      lottieRef.current.setSpeed(2); // Set playback speed to 2x
+    let alive = true;
+    import(
+      /* webpackChunkName:"lottie-radio" */ "./radio-button.json"
+    ).then((mod) => {
+      if (alive) setAnimationData(mod.default || mod);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-      if (selected) {
-        lottieRef.current.setDirection(1); // Forward direction
-        lottieRef.current.playSegments([0, 15], true); // Play to the selected state
-      } else {
-        lottieRef.current.setDirection(-1); // Reverse direction
-        lottieRef.current.playSegments([2, 0], true); // Return to unselected state
-      }
+  // sync selection → animation state
+  useEffect(() => {
+    if (!lottieRef.current) return;
+    lottieRef.current.setSpeed(2);
+    if (selected) {
+      lottieRef.current.setDirection(1);
+      lottieRef.current.playSegments([0, 15], true);
+    } else {
+      lottieRef.current.setDirection(-1);
+      lottieRef.current.playSegments([2, 0], true);
     }
   }, [selected]);
 
   const handleMouseEnter = () => {
     if (lottieRef.current && !selected) {
-      lottieRef.current.setSpeed(2); // 🔥 Apply speed for hover animation
-      lottieRef.current.setDirection(1); // Forward direction
-      lottieRef.current.playSegments([0, 8], true); // Play a short hover segment
+      lottieRef.current.setSpeed(2);
+      lottieRef.current.setDirection(1);
+      lottieRef.current.playSegments([0, 8], true);
     }
   };
 
   const handleMouseLeave = () => {
     if (lottieRef.current && !selected) {
-      lottieRef.current.stop(); // Stop hover animation when mouse leaves
+      lottieRef.current.stop();
     }
-  };
-
-  const handleClick = () => {
-    onClick(); // Trigger the parent's click handler
   };
 
   return (
     <div
       className="radio-button"
-      onClick={handleClick}
+      onClick={onClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Lottie
-        lottieRef={lottieRef}
-        animationData={animationData}
-        loop={false}
-        autoplay={false} // Start paused
-      />
+      <Suspense fallback={<div className="lottie-skeleton" />}>
+        {animationData && (
+          <Lottie
+            lottieRef={lottieRef}
+            animationData={animationData}
+            loop={false}
+            autoplay={false}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
