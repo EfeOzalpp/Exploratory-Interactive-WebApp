@@ -10,15 +10,39 @@ import { useGraph } from '../../context/graphContext.tsx';
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
   const [points, setPoints] = useState([]);
-  const { section, mySection, myEntryId } = useGraph();
+const { section, mySection, myEntryId, observerMode } = useGraph();
+
+// Delay re-showing the “Complete” UI after observer mode closes
+const [showCompleteUI, setShowCompleteUI] = useState(!observerMode);
+const delayRef = useRef(null);
+
+useEffect(() => {
+  if (delayRef.current) {
+    clearTimeout(delayRef.current);
+    delayRef.current = null;
+  }
+  if (observerMode) {
+    // hide immediately when entering observer mode
+    setShowCompleteUI(false);
+  } else {
+    // wait 2s before showing again to avoid flicker during graph transitions
+    delayRef.current = setTimeout(() => {
+      setShowCompleteUI(true);
+      delayRef.current = null;
+    }, 2000);
+  }
+  return () => {
+    if (delayRef.current) clearTimeout(delayRef.current);
+  };
+}, [observerMode]);
 
   // CHANGED: use myEntryId (context) with sessionStorage fallback
   const personalizedEntryId =
     myEntryId || (typeof window !== 'undefined' ? sessionStorage.getItem('gp.myEntryId') : null);
 
-  // show personalized ONLY when the viewer is on the same section they submitted to
+  // show personalized when the viewer is on the same section they submitted to, and don't show it if the viewer is in observer mode
   // (and we actually have an id to pin)
-  const showPersonalized = !!(section && mySection && section === mySection && personalizedEntryId);
+  const showPersonalized = !!(showCompleteUI && section && mySection && section === mySection && personalizedEntryId);
 
   // Rotation + pinch ref and states
   const groupRef = useRef();
@@ -579,6 +603,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
   return (
     <>
+     {showCompleteUI && (
       <Html zIndexRange={[2, 24]} style={{ pointerEvents: 'none' }}>
         <div
           className="z-index-respective"
@@ -587,6 +612,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           <CompleteButton />
         </div>
       </Html>
+      )}
 
       <group ref={groupRef}>
         {points.map((point, index) => {

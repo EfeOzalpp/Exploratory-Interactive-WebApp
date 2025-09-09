@@ -96,7 +96,7 @@
 .main-graph-divider { background-color: rgba(255, 255, 255, 0.237); margin-top: 48px; margin-left: 160px; margin-right: 240px; padding: 16px 20px 24px 4px; border-radius: 36px 36px 36px 36px; border-image: linear-gradient(to left, #a4c3cd49, #c8d3d7a8); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.2), inset -1px -1px -1px rgba(0, 0, 0, 0.1); border-top: solid 1px; }
 .divider { width: 100%; margin: 36px 0; text-align: left; align-items: center; display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: nowrap; }  
 .dot-text { width: 80%; }
-.title-divider {padding-left: 0.4em; padding-bottom: 0.0935em; }
+.title-divider {padding-left: 2.4em; padding-bottom: 0.0935em; }
 .text-divider { padding: 120px 6px 14px 24px; }
 .dot { 
   border-left: 30px solid transparent;

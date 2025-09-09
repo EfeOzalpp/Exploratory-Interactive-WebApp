@@ -1,23 +1,27 @@
-// nav/Navigation.jsx
 import React, { useState } from "react";
 import Logo from "../components/static/left";
 import InfoPanel from "./infoPanel.jsx";
 import InfoGraph from "./infoGraph.jsx";
 import GraphPicker from "./graphPicker";
 import { useGraph } from "../context/graphContext.tsx";
-
 import "../styles/navigation.css";
-import '../styles/info-graph.css';
+import "../styles/info-graph.css";
+
+const DEFAULT_SECTION = "fine-arts";
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
 
-  // global graph state
   const {
     section,
     setSection,
     isSurveyActive,
     hasCompletedSurvey,
+    observerMode,
+    setObserverMode,
+    setSurveyActive,
+    openGraph,
+    closeGraph,
   } = useGraph();
 
   const handleFeedbackClick = () => {
@@ -28,27 +32,39 @@ const Navigation = () => {
     );
   };
 
-  // only mount picker after user has completed a survey at least once,
-  // and keep it unmounted while any survey is active
-  const showPicker = hasCompletedSurvey && !isSurveyActive;
+  const showPicker = (observerMode || hasCompletedSurvey) && !isSurveyActive;
+
+  const toggleObserverMode = () => {
+    const next = !observerMode;
+    setObserverMode(next);
+
+    if (next) {
+      // viewing-only mode: ensure a section + show viz, kill survey UI
+      if (!section) setSection(DEFAULT_SECTION);
+      setSurveyActive(false);
+      openGraph();
+    } else {
+      // leaving viewing-only mode; if user hasn't completed a survey yet,
+      // you can hide the viz again (optional)
+      if (!hasCompletedSurvey) closeGraph();
+      // decide if you want to re-open the survey UI or keep home screen
+      // setSurveyActive(true);
+    }
+  };
 
   return (
     <>
       <nav className="navigation">
         <div className="left">
           <Logo />
-
           {showPicker && (
             <div className="graph-picker">
-              <GraphPicker
-                value={section}
-                onChange={setSection}
-              />
+              <GraphPicker value={section} onChange={setSection} />
             </div>
           )}
         </div>
 
-        <div className="nav-left">
+        <div className="nav-right">
           <button
             className={`nav-toggle ${open ? "active" : ""}`}
             onClick={() => setOpen((prev) => !prev)}
@@ -60,6 +76,14 @@ const Navigation = () => {
 
           <button className="feedback" onClick={handleFeedbackClick}>
             Leave your thoughts.
+          </button>
+
+          <button
+            className={`observe-results ${observerMode ? "active" : ""}`}
+            onClick={toggleObserverMode}
+            aria-pressed={observerMode}
+          >
+            {observerMode ? "Close data view" : "View data"}
           </button>
         </div>
       </nav>

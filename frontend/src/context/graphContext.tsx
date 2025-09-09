@@ -2,11 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { subscribeSurveyData } from "../utils/sanityAPI";
 
 type GraphContextType = {
-  // section actively viewed (GraphPicker)
+  // picker + personalization
   section: string;
   setSection: (s: string) => void;
-
-  // section the user originally submitted to (sticky across picker changes)
   mySection: string;
   setMySection: (s: string) => void;
 
@@ -16,10 +14,17 @@ type GraphContextType = {
   // survey gating
   isSurveyActive: boolean;
   setSurveyActive: (v: boolean) => void;
-
-  // becomes true once the user completes the survey at least once
   hasCompletedSurvey: boolean;
   setHasCompletedSurvey: (v: boolean) => void;
+
+  // observer mode
+  observerMode: boolean;
+  setObserverMode: (v: boolean) => void;
+
+  // global viz visibility
+  vizVisible: boolean;
+  openGraph: () => void;
+  closeGraph: () => void;
 };
 
 const GraphCtx = createContext<GraphContextType | null>(null);
@@ -32,6 +37,11 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [isSurveyActive, setSurveyActive] = useState(false);
   const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
+
+  const [observerMode, setObserverMode] = useState(false);
+  const [vizVisible, setVizVisible] = useState(false);
+  const openGraph = () => setVizVisible(true);
+  const closeGraph = () => setVizVisible(false);
 
   useEffect(() => {
     if (!section) {
@@ -62,6 +72,11 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setSurveyActive,
         hasCompletedSurvey,
         setHasCompletedSurvey,
+        observerMode,
+        setObserverMode,
+        vizVisible,
+        openGraph,
+        closeGraph,
       }}
     >
       {children}
@@ -71,6 +86,5 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useGraph = () => {
   const ctx = useContext(GraphCtx);
-  if (!ctx) throw new Error("useGraph must be used within GraphProvider");
   return ctx;
 };

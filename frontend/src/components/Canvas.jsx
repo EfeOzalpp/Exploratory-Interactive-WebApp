@@ -29,6 +29,7 @@ const drawBackground = (p) => {
   p.drawingContext.fillStyle = gradient;
   p.drawingContext.fillRect(0, 0, p.width, p.height);
 };
+
 // Non-server-side real time color and behavior calculation based on weight for 2D graphics
 const answerRewiring = {
   question1: { A: 0, B: 0.5, C: 1 },

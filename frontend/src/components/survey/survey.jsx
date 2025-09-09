@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
 import { saveUserResponse } from '../../utils/saveUserResponse.ts';
 import RoleStep from './roleStep';
@@ -40,10 +40,24 @@ const Survey = ({
     setHasCompletedSurvey,
     setSection,
     setMySection,
-    setMyEntryId, // make sure your context exposes this
+    setMyEntryId,
+    observerMode,           
+    openGraph,              
+    section, 
   } = useGraph();
 
   const availableSections = audience ? (ROLE_SECTIONS[audience] || []) : [];
+
+  // Observe the results without taking survey
+  useEffect(() => {
+    if (observerMode) {
+      setSurveyActive(false);
+      if (!section) setSection("fine-arts");
+      openGraph();
+    }
+  }, [observerMode, section, setSection, openGraph, setSurveyActive]);
+
+  if (observerMode) return null; 
 
   // Step 1: confirm role
   const handleRoleNext = () => {
