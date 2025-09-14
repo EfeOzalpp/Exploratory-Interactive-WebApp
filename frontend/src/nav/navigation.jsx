@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// nav/Navigation.jsx
+import React, { useState, useEffect } from "react";
 import Logo from "../components/static/left";
 import InfoPanel from "./infoPanel.jsx";
 import InfoGraph from "./infoGraph.jsx";
@@ -11,6 +12,7 @@ const DEFAULT_SECTION = "fine-arts";
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
+  const [burgerOpen, setBurgerOpen] = useState(true); // small +/- toggle
 
   const {
     section,
@@ -23,6 +25,12 @@ const Navigation = () => {
     openGraph,
     closeGraph,
   } = useGraph();
+
+  useEffect(() => {
+    if (hasCompletedSurvey && observerMode) {
+      setObserverMode(false);
+    }
+  }, [hasCompletedSurvey, observerMode, setObserverMode]);
 
   const handleFeedbackClick = () => {
     window.open(
@@ -39,18 +47,20 @@ const Navigation = () => {
     setObserverMode(next);
 
     if (next) {
-      // viewing-only mode: ensure a section + show viz, kill survey UI
       if (!section) setSection(DEFAULT_SECTION);
       setSurveyActive(false);
       openGraph();
     } else {
-      // leaving viewing-only mode; if user hasn't completed a survey yet,
-      // you can hide the viz again (optional)
       if (!hasCompletedSurvey) closeGraph();
-      // decide if you want to re-open the survey UI or keep home screen
-      // setSurveyActive(true);
     }
   };
+
+  const showObserverButton = !hasCompletedSurvey || observerMode;
+
+  // Shared inline style when observerMode is active
+  const darkActiveStyle = observerMode
+    ? { backgroundColor: "#292929", color: "#ffffff" }
+    : undefined;
 
   return (
     <>
@@ -65,26 +75,54 @@ const Navigation = () => {
         </div>
 
         <div className="nav-right">
-          <button
-            className={`nav-toggle ${open ? "active" : ""}`}
-            onClick={() => setOpen((prev) => !prev)}
-            aria-expanded={open}
-            aria-controls="info-overlay"
-          >
-            {open ? "The idea -" : "The idea +"}
-          </button>
+          {/* LEVEL ONE — collapsible */}
+          <div className={`level-one ${burgerOpen ? "burger-closed" : ""}`}>
+            <button
+              className={`nav-toggle ${open ? "active" : ""}`}
+              onClick={() => setOpen((prev) => !prev)}
+              aria-expanded={open}
+              aria-controls="info-overlay"
+              style={darkActiveStyle} // <-- dark style when active
+            >
+              {open ? "< Close This Tab" : "What's the Idea?"}
+            </button>
 
-          <button className="feedback" onClick={handleFeedbackClick}>
-            Leave your thoughts.
-          </button>
+            <button
+              className="feedback"
+              onClick={handleFeedbackClick}
+              style={darkActiveStyle} // <-- dark style when active
+            >
+              Leave Your Thoughts
+            </button>
+          </div>
 
-          <button
-            className={`observe-results ${observerMode ? "active" : ""}`}
-            onClick={toggleObserverMode}
-            aria-pressed={observerMode}
-          >
-            {observerMode ? "Close data view" : "View data"}
-          </button>
+          {/* LEVEL TWO — observer CTA + burger toggle */}
+          <div className="level-two">
+            {showObserverButton && (
+              <button
+                className={`observe-results ${observerMode ? "active" : ""}`}
+                onClick={toggleObserverMode}
+                aria-pressed={observerMode}
+                style={darkActiveStyle} // <-- dark style when active
+              >
+                {observerMode ? "Back" : "Observe All Results"}
+              </button>
+            )}
+
+            <button
+              type="button"
+              className={`burger-toggle ${burgerOpen ? "open" : ""}`}
+              onClick={() => setBurgerOpen((v) => !v)}
+              aria-pressed={burgerOpen}
+              aria-controls="nav-tools"
+              aria-label={burgerOpen ? "Hide options" : "Show options"}
+              style={darkActiveStyle} // <-- dark style when active
+            >
+              <p style={{ margin: 0, lineHeight: 1, fontSize: 18 }}>
+                {burgerOpen ? "+" : "-"}
+              </p>
+            </button>
+          </div>
         </div>
       </nav>
 

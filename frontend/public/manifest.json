@@ -16,6 +16,11 @@
       "src": "butterfly-habits-logo-tp.svg",
       "type": "image/svg",
       "sizes": "1024x1024"
+    },
+    {
+      "src": "butterfly-habits-logo.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ],
   "start_url": ".",

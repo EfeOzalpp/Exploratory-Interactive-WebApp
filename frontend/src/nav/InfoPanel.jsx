@@ -1,48 +1,55 @@
-import React, { useEffect, useRef } from "react";
-import RadialBackground from "../components/static/radialBackground"; // adjust path if needed
+import React, { useEffect, useRef, useState } from "react";
+import RadialBackground from "../components/static/radialBackground";
 
-/**
- * Full-viewport overlay panel
- * - Locks body scroll while open
- * - Closes on overlay click or Escape
- */
+const TRANSITION_MS = 240; // keep in sync with CSS
+
 const InfoPanel = ({ open, onClose, children }) => {
+  const [mounted, setMounted] = useState(open);   // controls render/unrender
+  const [visible, setVisible] = useState(false);  // drives CSS animation
   const panelRef = useRef(null);
+  const closeTimer = useRef(null);
 
-  // lock body scroll
+  // mount → fade in, close → fade out then unmount
   useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    if (open) {
+      setMounted(true);
+      requestAnimationFrame(() => setVisible(true)); // allow initial paint
+    } else {
+      setVisible(false);
+      closeTimer.current = setTimeout(() => setMounted(false), TRANSITION_MS);
+    }
+    return () => closeTimer.current && clearTimeout(closeTimer.current);
   }, [open]);
 
-  // focus + Esc to close
+  // lock body scroll only while visible
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
+    if (!mounted || !visible) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [mounted, visible]);
+
+  // Esc to close
+  useEffect(() => {
+    if (!mounted) return;
+    const onKey = (e) => e.key === "Escape" && onClose?.();
     document.addEventListener("keydown", onKey);
     panelRef.current?.focus();
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [mounted, onClose]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   return (
     <div
-      className="info-overlay"
+      className={`info-overlay ${visible ? "is-visible" : ""}`}
       role="dialog"
       aria-modal="true"
+      aria-hidden={!visible}
       aria-labelledby="info-title"
       onClick={onClose}
     >
-      {/* radial bg lives behind the panel */}
       <RadialBackground />
-
       <div
         className="info-panel"
         ref={panelRef}

@@ -1,3 +1,4 @@
+// context/graphContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { subscribeSurveyData } from "../utils/sanityAPI";
 
@@ -5,8 +6,12 @@ type GraphContextType = {
   // picker + personalization
   section: string;
   setSection: (s: string) => void;
-  mySection: string;
-  setMySection: (s: string) => void;
+
+  mySection: string | null;                     // <- allow null
+  setMySection: (s: string | null) => void;     // <- allow null
+
+  myEntryId: string | null;                    
+  setMyEntryId: (id: string | null) => void;    
 
   data: any[];
   loading: boolean;
@@ -30,24 +35,32 @@ type GraphContextType = {
 const GraphCtx = createContext<GraphContextType | null>(null);
 
 export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
-  const [section, setSection] = useState("");
-  const [mySection, setMySection] = useState("");
+  // Default to "all" → shows everything by default
+  const [section, setSection] = useState<string>("all");
+
+  // Initialize from sessionStorage when available
+  const [mySection, setMySection] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem("gp.mySection");
+  });
+
+  const [myEntryId, setMyEntryId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem("gp.myEntryId");
+  });
+
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const [isSurveyActive, setSurveyActive] = useState(false);
-  const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
+  const [isSurveyActive, setSurveyActive] = useState<boolean>(false);
+  const [hasCompletedSurvey, setHasCompletedSurvey] = useState<boolean>(false);
 
-  const [observerMode, setObserverMode] = useState(false);
-  const [vizVisible, setVizVisible] = useState(false);
+  const [observerMode, setObserverMode] = useState<boolean>(false);
+  const [vizVisible, setVizVisible] = useState<boolean>(false);
   const openGraph = () => setVizVisible(true);
   const closeGraph = () => setVizVisible(false);
 
   useEffect(() => {
-    if (!section) {
-      setData([]);
-      return;
-    }
     setLoading(true);
     const unsub = subscribeSurveyData({
       section,
@@ -66,6 +79,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setSection,
         mySection,
         setMySection,
+        myEntryId,          
+        setMyEntryId,      
         data,
         loading,
         isSurveyActive,
@@ -86,5 +101,5 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useGraph = () => {
   const ctx = useContext(GraphCtx);
-  return ctx;
+  return ctx!;
 };

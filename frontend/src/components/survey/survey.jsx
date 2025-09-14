@@ -1,26 +1,16 @@
-import React, { useState, Suspense, useEffect } from 'react';
+// src/components/survey/Survey.jsx
+import React, { useState, Suspense, useEffect, useMemo } from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
 import { saveUserResponse } from '../../utils/saveUserResponse.ts';
 import RoleStep from './roleStep';
 import SectionPickerIntro from './sectionPicker';
 import QuestionFlow from './questionFlow';
 import '../../styles/survey.css';
+import { ROLE_SECTIONS } from './sections';
 
-// lazy: loads THREE/R3F/drei only at survey end
 const DoneOverlayR3F = React.lazy(() =>
   import(/* webpackChunkName: "survey-3d-overlay" */ './DoneOverlayR3F')
 );
-
-const ROLE_SECTIONS = {
-  student: [
-    { value: 'fine-arts',     label: 'Fine Arts' },
-    { value: 'digital-media', label: 'Digital / Time-Based' },
-  ],
-  staff: [
-    { value: 'design',      label: 'Design & Applied' },
-    { value: 'foundations', label: 'Foundations & X-Discipline' },
-  ],
-};
 
 const Survey = ({
   setAnimationVisible,
@@ -41,47 +31,66 @@ const Survey = ({
     setSection,
     setMySection,
     setMyEntryId,
-    observerMode,           
-    openGraph,              
-    section, 
+    observerMode,
+    openGraph,
+    section,
   } = useGraph();
 
-  const availableSections = audience ? (ROLE_SECTIONS[audience] || []) : [];
+  // Provide sections only for student/staff (visitor deliberately gets none)
+  const availableSections = useMemo(
+    () => (audience && audience !== 'visitor' ? (ROLE_SECTIONS[audience] || []) : []),
+    [audience]
+  );
 
-  // Observe the results without taking survey
+  // Observer mode: skip survey entirely and open graph
   useEffect(() => {
     if (observerMode) {
       setSurveyActive(false);
-      if (!section) setSection("fine-arts");
+      if (!section) setSection('fine-arts');
       openGraph();
     }
   }, [observerMode, section, setSection, openGraph, setSurveyActive]);
 
-  if (observerMode) return null; 
+  if (observerMode) return null;
 
   // Step 1: confirm role
   const handleRoleNext = () => {
-    if (!audience) { setError('Choose whether you are Student or Staff.'); return; }
+    if (!audience) {
+      setError('Choose whether you are Student, Staff, or Visitor.');
+      return;
+    }
     setError('');
+
+    // Visitor: skip section step entirely
+    if (audience === 'visitor') {
+      setSurveySection('visitor');       // <-- matches Sanity schema option
+      setAnimationVisible(false);
+      setStage('questions');             // jump straight to questions
+      return;
+    }
+
+    // Student/Staff: proceed to department/section picker
     setSurveySection('');
     setStage('section');
   };
 
-  // Step 2: confirm section
+  // Step 2: confirm section (for student/staff only)
   const handleBeginFromSection = () => {
-    if (!surveySection) { setError('Select your section.'); return; }
+    if (!surveySection) {
+      setError('Select your section.');
+      return;
+    }
     setError('');
     setAnimationVisible(false);
     setStage('questions');
   };
 
-  // Step 3: submit answers (“I’M READY”) — OPTIMISTIC REVEAL
+  // Step 3: submit answers — optimistic reveal
   const handleSubmitFromQuestions = (answers) => {
     if (submitting) return;
     setSubmitting(true);
     setError('');
 
-    // 1) Reveal graph/overlay immediately (matches your working version)
     setSection(surveySection);
     setMySection(surveySection);
     setHasCompletedSurvey(true);
@@ -92,7 +101,6 @@ const Survey = ({
     setSurveyWrapperClass('complete-active');
     setShowCompleteButton(true);
 
-    // 2) Persist in background; when saved, wire myEntryId so DotGraph can pin my dot
     saveUserResponse(surveySection, { ...answers })
       .then((created) => {
         const id = created?._id || null;
@@ -102,15 +110,11 @@ const Survey = ({
           sessionStorage.setItem('gp.mySection', surveySection);
         }
       })
-      .catch((err) => {
-        console.error('Error saving response:', err);
-        // keep the visualization visible; just surface a soft error
-        setError('We saved your view; syncing your response is taking longer than usual.');
-      })
+      .catch(console.error)
       .finally(() => setSubmitting(false));
   };
 
-  // Overlay: DONE VIEWING (survey begins again)
+  // Done viewing overlay — resets state so user can take again
   const handleComplete = () => {
     setShowCompleteButton(false);
     setGraphVisible(false);
@@ -120,24 +124,24 @@ const Survey = ({
     setAnimationVisible(false);
     setSurveyWrapperClass('');
     setSubmitting(false);
-
+    setError('');
     setSurveyActive(true);
     setHasCompletedSurvey(false);
-
-    // If "Done Viewing" should end personalization, you can uncomment:
-    // setMyEntryId(null);
-    // setMySection(null);
-    // if (typeof window !== 'undefined') {
-    //   sessionStorage.removeItem('gp.myEntryId');
-    //   sessionStorage.removeItem('gp.mySection');
-    // }
+    setMyEntryId(null);
+    setMySection(null);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('gp.myEntryId');
+      sessionStorage.removeItem('gp.mySection');
+    }
   };
 
   const handleAudienceChange = (role) => {
     setAudience(role);
     setError('');
-    const allowed = (ROLE_SECTIONS[role] || []).map(s => s.value);
-    setSurveySection(prev => (allowed.includes(prev) ? prev : ''));
+
+    // If switching roles, clear invalid section selections
+    const allowed = (ROLE_SECTIONS[role] || []).map((s) => s.value);
+    setSurveySection((prev) => (allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''));
   };
 
   const handleSectionChange = (val) => {
@@ -145,7 +149,7 @@ const Survey = ({
     setError('');
   };
 
-  // DONE VIEWING overlay — THREE only loads here
+  // Overlay render
   if (showCompleteButton) {
     return (
       <Suspense
@@ -162,12 +166,11 @@ const Survey = ({
               pointerEvents: 'none',
             }}
           >
-            {/* lightweight fallback while overlay chunk loads */}
             <div className="survey-section-wrapper2" style={{ pointerEvents: 'auto' }}>
               <div className="survey-section">
                 <div className="surveyStart">
                   <button className="begin-button4" onClick={handleComplete}>
-                    <h4>DONE VIEWING</h4>
+                    <span>Done Viewing</span>
                   </button>
                 </div>
               </div>
@@ -180,6 +183,7 @@ const Survey = ({
     );
   }
 
+  // Stage: role
   if (stage === 'role') {
     return (
       <div className="survey-section">
@@ -193,6 +197,7 @@ const Survey = ({
     );
   }
 
+  // Stage: section (student/staff only)
   if (stage === 'section') {
     return (
       <div className="survey-section">
@@ -207,6 +212,7 @@ const Survey = ({
     );
   }
 
+  // Stage: questions
   return (
     <QuestionFlow
       onAnswersUpdate={onAnswersUpdate}

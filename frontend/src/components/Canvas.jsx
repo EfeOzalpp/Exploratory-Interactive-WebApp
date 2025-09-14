@@ -30,7 +30,7 @@ const drawBackground = (p) => {
   p.drawingContext.fillRect(0, 0, p.width, p.height);
 };
 
-// Non-server-side real time color and behavior calculation based on weight for 2D graphics
+// each option has different weight values for corresponding answers
 const answerRewiring = {
   question1: { A: 0, B: 0.5, C: 1 },
   question2: { C: 0, A: 0.5, B: 1 },
@@ -184,8 +184,7 @@ const lerpColor = (color1, color2, t) => {
   return `rgb(${r}, ${g}, ${b})`; // Return valid "rgb(r, g, b)" format
 };
 
-
-// Behavior pop instead of color
+// Computes average behavior score (0–1) from survey answers
 const computeBehaviorScore = (answers) => {
   let totalWeight = 0;
   let count = 0;
@@ -202,13 +201,34 @@ const computeBehaviorScore = (answers) => {
 
   return totalWeight / count; // Average weight
 };
-// Opacity bump toggle behavior
-const applyOpacityToggle = (baseOpacity, speed = 1, minOpacity = 100) => { 
-  const timeFactor = performance.now() * speed; 
-  const oscillation = (0.5 + 0.5 * Math.sign(Math.sin(timeFactor * 0.0015))); // Square-wave flicker
-  // Ensure opacity stays above the minimum level
-  return Math.max(minOpacity, baseOpacity * oscillation);
+
+// Opacity bump toggle behavior (now varied smoothly between min/max)
+const applyOpacityToggle = (baseOpacity, speed = 1, minOpacity = 75, maxOpacity = 200, interval = 1200, ease = 0.08) => {
+  const tick = Math.floor(performance.now() / interval);
+
+  // Persist state across calls
+  if (!applyOpacityToggle.state) {
+    applyOpacityToggle.state = {
+      lastTick: tick,
+      current: (minOpacity + maxOpacity) / 2,
+      target: minOpacity + Math.random() * (maxOpacity - minOpacity),
+    };
+  }
+
+  const st = applyOpacityToggle.state;
+
+  // Pick a new random target every tick
+  if (st.lastTick !== tick) {
+    st.lastTick = tick;
+    st.target = minOpacity + Math.random() * (maxOpacity - minOpacity);
+  }
+
+  // Ease current toward target
+  st.current += (st.target - st.current) * ease;
+
+  return st.current; // Use as opacity value
 };
+
 // Apply scale random behavior effect
 const applySquareWaveScale = ( /*baseScale = 1,*/ minScale = 1, maxScale = 1.35, interval = 1200) => {
   const timeFactor = Math.floor(performance.now() / interval); 
@@ -449,7 +469,7 @@ const accent2RGB = extractRGB(accent2Lerp);
 const accent3RGB = extractRGB(accent3Lerp);
 
 // Opacity toggle bumpy behavior
-const opacityValue = applyOpacityToggle(100, 1);
+const opacityValue = applyOpacityToggle(255, 1, 75, 200);
 p.noStroke();
 
 shapesRef.current.forEach((shape) => {
@@ -483,14 +503,14 @@ p.translate(centerX, centerY);
       // Define scaling factors based on viewport width
       
 const widthScale = p.width < 1024 ? 0.5 : 1;
-const widthScale2 = p.width < 1024 ? 1.2 : 1;
-const widthScale3 = p.width < 1024 ? 2.4 : 1;
+const widthScale2 = p.width < 1024 ? 1.15 : 1;
+const widthScale3 = p.width < 1024 ? 2.2 : 1;
 const heightScale = p.width < 1024 ? -0.15 : 1;
 const heightScale2 = p.width < 1024 ? -0.3 : 1;
 const heightScale3 = p.width < 1024 ? -0.45 : 1;
 const heightOffset = p.width < 1024 ? p.height * -0.47 : 0;
   
-const treeHeightFactor = 0.8; 
+const treeHeightFactor = 0.75; 
 
 const elementsVisibility = elementsVisibilityRef.current;
 
@@ -564,7 +584,7 @@ if (elementsVisibility.cloud5Visible) {
     p.pop();
 }
 
-if (elementsVisibility.tree2Visible) {
+if (elementsVisibility.tree1Visible) {
 // Tree 1   
 p.push();
 p.translate(p.width * -0.4 * widthScale, p.height * 0.2 * heightScale2);
@@ -589,7 +609,7 @@ p.pop();
 if (elementsVisibility.tree2Visible) {
     // Tree 2 (Large)
     p.push();
-    p.translate(p.width * 0.4 * widthScale2, p.height * 0.2 * heightScale2);
+    p.translate(p.width * 0.4 * widthScale, p.height * 0.2 * heightScale2);
     const treeBaseSize2 = size * 1.1; // Smaller tree
     const verticalSpacing2 = treeBaseSize2 * 0.62;
 

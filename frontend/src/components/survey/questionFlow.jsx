@@ -1,3 +1,4 @@
+// src/components/survey/QuestionFlow.jsx
 import React, { useState } from 'react';
 import LottieOption from '../../lottie-for-UI/lottieOption';
 
@@ -97,6 +98,10 @@ export default function QuestionFlow({
           </div>
           <div className="question-part">
             <h4>{q.question}</h4>
+            {/* 👇 Only show on the very first question */}
+            {currentQuestion === 1 && (
+              <p className="question-hint">(Only 5 questions in total)</p>
+            )}
           </div>
         </div>
 
@@ -116,7 +121,7 @@ export default function QuestionFlow({
         ))}
 
         <button className="begin-button2" onClick={handleNext}>
-          {currentQuestion < questions.length ? <h4>NEXT</h4> : <h4>I'M READY</h4>}
+          {currentQuestion < questions.length ? <span>NEXT</span> : <span>I'M READY</span>}
         </button>
       </div>
     </div>
