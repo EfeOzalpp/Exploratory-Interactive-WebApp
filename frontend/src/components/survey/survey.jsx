@@ -25,6 +25,9 @@ const Survey = ({
   const [showCompleteButton, setShowCompleteButton] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // NEW: fade state (same as QuestionFlow)
+  const [fadeState, setFadeState] = useState('fade-in');
+
   const {
     setSurveyActive,
     setHasCompletedSurvey,
@@ -53,6 +56,16 @@ const Survey = ({
 
   if (observerMode) return null;
 
+  // NEW: small helper to orchestrate fade-out -> stage change -> fade-in
+  const transitionTo = (nextStage, sideEffects = () => {}) => {
+    setFadeState('fade-out');
+    setTimeout(() => {
+      sideEffects?.();
+      setStage(nextStage);
+      setFadeState('fade-in');
+    }, 70);
+  };
+
   // Step 1: confirm role
   const handleRoleNext = () => {
     if (!audience) {
@@ -61,17 +74,19 @@ const Survey = ({
     }
     setError('');
 
-    // Visitor: skip section step entirely
     if (audience === 'visitor') {
-      setSurveySection('visitor');       // <-- matches Sanity schema option
-      setAnimationVisible(false);
-      setStage('questions');             // jump straight to questions
+      // Visitor: skip section step entirely
+      transitionTo('questions', () => {
+        setSurveySection('visitor'); // matches Sanity schema option
+        setAnimationVisible(false);
+      });
       return;
     }
 
     // Student/Staff: proceed to department/section picker
-    setSurveySection('');
-    setStage('section');
+    transitionTo('section', () => {
+      setSurveySection('');
+    });
   };
 
   // Step 2: confirm section (for student/staff only)
@@ -81,8 +96,9 @@ const Survey = ({
       return;
     }
     setError('');
-    setAnimationVisible(false);
-    setStage('questions');
+    transitionTo('questions', () => {
+      setAnimationVisible(false);
+    });
   };
 
   // Step 3: submit answers — optimistic reveal
@@ -118,21 +134,27 @@ const Survey = ({
   const handleComplete = () => {
     setShowCompleteButton(false);
     setGraphVisible(false);
-    setStage('role');
-    setAudience('');
-    setSurveySection('');
-    setAnimationVisible(false);
-    setSurveyWrapperClass('');
-    setSubmitting(false);
-    setError('');
-    setSurveyActive(true);
-    setHasCompletedSurvey(false);
-    setMyEntryId(null);
-    setMySection(null);
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('gp.myEntryId');
-      sessionStorage.removeItem('gp.mySection');
-    }
+
+    // Fade the reset in, too (optional but nice)
+    setFadeState('fade-out');
+    setTimeout(() => {
+      setStage('role');
+      setAudience('');
+      setSurveySection('');
+      setAnimationVisible(false);
+      setSurveyWrapperClass('');
+      setSubmitting(false);
+      setError('');
+      setSurveyActive(true);
+      setHasCompletedSurvey(false);
+      setMyEntryId(null);
+      setMySection(null);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('gp.myEntryId');
+        sessionStorage.removeItem('gp.mySection');
+      }
+      setFadeState('fade-in');
+    }, 70);
   };
 
   const handleAudienceChange = (role) => {
@@ -186,7 +208,7 @@ const Survey = ({
   // Stage: role
   if (stage === 'role') {
     return (
-      <div className="survey-section">
+      <div className={`survey-section ${fadeState}`}>
         <RoleStep
           value={audience}
           onChange={handleAudienceChange}
@@ -200,7 +222,7 @@ const Survey = ({
   // Stage: section (student/staff only)
   if (stage === 'section') {
     return (
-      <div className="survey-section">
+      <div className={`survey-section ${fadeState}`}>
         <SectionPickerIntro
           value={surveySection}
           onChange={handleSectionChange}
@@ -214,12 +236,14 @@ const Survey = ({
 
   // Stage: questions
   return (
-    <QuestionFlow
-      onAnswersUpdate={onAnswersUpdate}
-      onSubmit={handleSubmitFromQuestions}
-      submitting={submitting}
-      error={error}
-    />
+    <div className={`survey-section ${fadeState}`}>
+      <QuestionFlow
+        onAnswersUpdate={onAnswersUpdate}
+        onSubmit={handleSubmitFromQuestions}
+        submitting={submitting}
+        error={error}
+      />
+    </div>
   );
 };
 

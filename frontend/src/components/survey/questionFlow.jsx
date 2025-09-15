@@ -1,5 +1,5 @@
 // src/components/survey/QuestionFlow.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LottieOption from '../../lottie-for-UI/lottieOption';
 
 const DEFAULT_QUESTIONS = [
@@ -50,10 +50,28 @@ export default function QuestionFlow({
   onSubmit,               // (answers) => void
   questions = DEFAULT_QUESTIONS,
 }) {
-  const [currentQuestion, setCurrentQuestion] = useState(1); // 1..5
+  const [currentQuestion, setCurrentQuestion] = useState(1); // 1..N
   const [answers, setAnswers] = useState({});
   const [error, setError] = useState('');
   const [fadeState, setFadeState] = useState('fade-in');
+
+  // Transient hint visibility (first question only)
+  const [hintVisible, setHintVisible] = useState(false);
+
+  useEffect(() => {
+    // On Q1, delay show by 2s, keep for 2s, then hide
+    if (currentQuestion === 1) {
+      setHintVisible(false);
+      const showTimer = setTimeout(() => setHintVisible(true), 2000);  // appear at t=2s
+      const hideTimer = setTimeout(() => setHintVisible(false), 4000); // disappear at t=4s
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+      };
+    } else {
+      setHintVisible(false);
+    }
+  }, [currentQuestion]);
 
   const handleOptionChange = (value) => {
     const updatedAnswers = { ...answers, [`question${currentQuestion}`]: value };
@@ -76,7 +94,7 @@ export default function QuestionFlow({
       } else {
         onSubmit?.(answers); // "I'M READY"
       }
-    }, 500);
+    }, 70);
   };
 
   const qIdx = currentQuestion - 1;
@@ -86,8 +104,8 @@ export default function QuestionFlow({
     <div className={`survey-section ${fadeState}`}>
       {error && (
         <div className={`error-container ${fadeState}`}>
-          <h2>None of these options fit?</h2>
-          <p className="email-tag">Mail: eozalp@massart.edu</p>
+          <h2>No option fits?</h2>
+          <p className="email-tag">Mail: eozalp.efe@gmail.com</p>
         </div>
       )}
 
@@ -96,11 +114,19 @@ export default function QuestionFlow({
           <div className="number-part">
             <h2>{currentQuestion}.</h2>
           </div>
-          <div className="question-part">
+
+          {/* Make this container a positioning context for the absolute hint */}
+          <div className="question-part question-part--rel">
             <h4>{q.question}</h4>
-            {/* 👇 Only show on the very first question */}
+
+            {/* Absolutely-positioned hint; no layout shift */}
             {currentQuestion === 1 && (
-              <p className="question-hint">(Only 5 questions in total)</p>
+              <p
+                className={`question-hint-bubble ${hintVisible ? 'show' : 'hide'}`}
+                aria-hidden={!hintVisible}
+              >
+                5 questions in total
+              </p>
             )}
           </div>
         </div>

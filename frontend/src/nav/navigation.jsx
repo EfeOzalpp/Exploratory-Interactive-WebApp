@@ -12,7 +12,7 @@ const DEFAULT_SECTION = "fine-arts";
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
-  const [burgerOpen, setBurgerOpen] = useState(true); // small +/- toggle
+  const [burgerOpen, setBurgerOpen] = useState(true);
 
   const {
     section,
@@ -27,9 +27,7 @@ const Navigation = () => {
   } = useGraph();
 
   useEffect(() => {
-    if (hasCompletedSurvey && observerMode) {
-      setObserverMode(false);
-    }
+    if (hasCompletedSurvey && observerMode) setObserverMode(false);
   }, [hasCompletedSurvey, observerMode, setObserverMode]);
 
   const handleFeedbackClick = () => {
@@ -45,7 +43,6 @@ const Navigation = () => {
   const toggleObserverMode = () => {
     const next = !observerMode;
     setObserverMode(next);
-
     if (next) {
       if (!section) setSection(DEFAULT_SECTION);
       setSurveyActive(false);
@@ -57,66 +54,86 @@ const Navigation = () => {
 
   const showObserverButton = !hasCompletedSurvey || observerMode;
 
-  // Shared inline style when observerMode is active
-  const darkActiveStyle = observerMode
-    ? { backgroundColor: "#292929", color: "#ffffff" }
-    : undefined;
+  // class modifiers
+const isDark = observerMode || hasCompletedSurvey; // dark if either is true
+  const postCompleteOnly = hasCompletedSurvey && !observerMode;  // completed, but not observing
 
   return (
     <>
       <nav className="navigation">
         <div className="left">
           <Logo />
-          {showPicker && (
-            <div className="graph-picker">
-              <GraphPicker value={section} onChange={setSection} />
-            </div>
-          )}
         </div>
 
         <div className="nav-right">
           {/* LEVEL ONE — collapsible */}
-          <div className={`level-one ${burgerOpen ? "burger-closed" : ""}`}>
+          <div
+            className={[
+              "level-one",
+              burgerOpen ? "burger-closed" : "",
+              isDark ? "is-dark" : "",
+            ].join(" ").trim()}
+          >
             <button
-              className={`nav-toggle ${open ? "active" : ""}`}
+              className={["nav-toggle", open ? "active" : "", isDark ? "is-dark" : ""].join(" ").trim()}
               onClick={() => setOpen((prev) => !prev)}
               aria-expanded={open}
               aria-controls="info-overlay"
-              style={darkActiveStyle} // <-- dark style when active
             >
               {open ? "< Close This Tab" : "What's the Idea?"}
             </button>
 
             <button
-              className="feedback"
+              className={["feedback", isDark ? "is-dark" : ""].join(" ").trim()}
               onClick={handleFeedbackClick}
-              style={darkActiveStyle} // <-- dark style when active
             >
               Leave Your Thoughts
             </button>
           </div>
 
-          {/* LEVEL TWO — observer CTA + burger toggle */}
-          <div className="level-two">
-            {showObserverButton && (
-              <button
-                className={`observe-results ${observerMode ? "active" : ""}`}
-                onClick={toggleObserverMode}
-                aria-pressed={observerMode}
-                style={darkActiveStyle} // <-- dark style when active
-              >
-                {observerMode ? "Back" : "Observe All Results"}
-              </button>
-            )}
+          {/* LEVEL TWO — vertical stack */}
+          <div
+            className={[
+              "level-two",
+              isDark ? "is-dark" : "",
+              postCompleteOnly ? "is-post-complete" : "",
+            ].join(" ").trim()}
+          >
+            {/* Nav divider doubles as horizontal container */}
+            <div className="nav-divider">
+              {showPicker && (
+                <div className="graph-picker">
+                  <GraphPicker value={section} onChange={setSection} />
+                </div>
+              )}
 
+              {showObserverButton && (
+                <button
+                  className={[
+                    "observe-results",
+                    observerMode ? "active" : "",
+                    isDark ? "is-dark" : "",
+                  ].join(" ").trim()}
+                  onClick={toggleObserverMode}
+                  aria-pressed={observerMode}
+                >
+                  {observerMode ? "Back" : "Observe All Results"}
+                </button>
+              )}
+            </div>
+
+            {/* Burger toggle at the bottom */}
             <button
               type="button"
-              className={`burger-toggle ${burgerOpen ? "open" : ""}`}
+              className={[
+                "burger-toggle",
+                burgerOpen ? "open" : "",
+                isDark ? "is-dark" : "",
+              ].join(" ").trim()}
               onClick={() => setBurgerOpen((v) => !v)}
               aria-pressed={burgerOpen}
               aria-controls="nav-tools"
               aria-label={burgerOpen ? "Hide options" : "Show options"}
-              style={darkActiveStyle} // <-- dark style when active
             >
               <p style={{ margin: 0, lineHeight: 1, fontSize: 18 }}>
                 {burgerOpen ? "+" : "-"}

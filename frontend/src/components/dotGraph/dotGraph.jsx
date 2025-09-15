@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import GamificationPersonalized from './gamificationPersonalized';
-import GamificationGeneral from './gamificationGeneral';
+import GamificationPersonalized from '../gamification/gamificationPersonalized';
+import GamificationGeneral from '../gamification/gamificationGeneral';
 import CompleteButton from '../completeButton.jsx';
-import { useDynamicOffset } from '../../utils/dynamicOffset.ts'; // Dynamic Offset to adjust offset for popups
+import { useDynamicOffset } from '../../utils/dynamicOffset.ts'; // Dynamic offset to anchor 2D UI to 3D
 import { useRealMobileViewport } from '../real-mobile.ts';
 import { useGraph } from '../../context/graphContext.tsx';
+import RingHalo from './ringHalo';
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
   const [points, setPoints] = useState([]);
@@ -40,9 +41,12 @@ useEffect(() => {
   const personalizedEntryId =
     myEntryId || (typeof window !== 'undefined' ? sessionStorage.getItem('gp.myEntryId') : null);
 
+  // is my entry present in the *current* filtered dataset?   
+  const isEntryInView = !!(personalizedEntryId && data?.some(d => d._id === personalizedEntryId));
+
   // show personalized when the viewer is on the same section they submitted to, and don't show it if the viewer is in observer mode
   // (and we actually have an id to pin)
-  const showPersonalized = !!(showCompleteUI && section && mySection && section === mySection && personalizedEntryId);
+  const showPersonalized = !!(showCompleteUI && !observerMode && isEntryInView);
 
   // Rotation + pinch ref and states
   const groupRef = useRef();
@@ -60,6 +64,9 @@ useEffect(() => {
   const isTouchRotatingRef = useRef(false);
   const lastTouchPositionRef = useRef({ x: 0, y: 0 });
   const pinchDeltaRef = useRef(0);
+
+  // Lock wheel (zoom-in & zoom-out) during section selector dropdown interaction
+  const hoverLockRef   = useRef(false); // tracks gp:menu-hover
 
   // Mobile-only tooltip auto-hide helpers
   const hideTimerRef = useRef(null);
@@ -93,7 +100,7 @@ useEffect(() => {
   const [radius, setRadius] = useState(20);
 
   // Target values based on screen size
-  const targetRadius = isSmallScreen ? 350 : 450;
+  const targetRadius = isSmallScreen ? 450 : 250;
   const scalingFactor = 0.5;
   const dynamicRadius = targetRadius + data.length * scalingFactor;
   const finalRadius = Math.max(minRadius, Math.min(maxRadius, dynamicRadius));
@@ -266,9 +273,18 @@ useEffect(() => {
   let targetX = 0;
   let targetY = 0;
 
-  // NEW: smooth desktop wheel zoom state (target + velocity)
+  // smooth desktop wheel zoom state (target + velocity)
   const zoomTargetRef = useRef(null);
   const zoomVelRef = useRef(0);
+
+  // Listen for GraphPicker mouse hover to prevent zoom
+  useEffect(() => {
+    const onHover = (e) => {
+      hoverLockRef.current = !!(e?.detail?.hover);
+    };
+    window.addEventListener("gp:menu-hover", onHover);
+    return () => window.removeEventListener("gp:menu-hover", onHover);
+  }, []);
 
   // Event listeners and special cases
   useEffect(() => {
@@ -305,6 +321,10 @@ useEffect(() => {
     const WHEEL_SENSITIVITY = 0.5;
 
     const handleScroll = (event) => {
+
+      // if picker is open, ignore wheel completely
+      if (hoverLockRef.current) return;
+      
       if (event.ctrlKey) {
         setRadius((prevRadius) => {
           const newRadius = prevRadius - event.deltaY * 2;
@@ -498,23 +518,20 @@ useEffect(() => {
     camera.lookAt(0, 0, 0);
   });
 
-  // CHANGED: find *my* point / entry
+  // keep the rest, but base the personalized card off isEntryInView
   const myPoint = points.find((p) => p._id === personalizedEntryId);
   const myEntry = data.find((e) => e._id === personalizedEntryId);
 
-  // CHANGED: compute percentage only for my personalized entry
+  // percentage only if personalized view is active & my entry is in view
   let percentage = 0;
   if (showPersonalized && myEntry) {
     const latestVals = Object.values(myEntry.weights || {});
-    const latestAvg =
-      latestVals.length ? latestVals.reduce((s, w) => s + w, 0) / latestVals.length : 0.5;
-
+    const latestAvg = latestVals.length ? latestVals.reduce((s, w) => s + w, 0) / latestVals.length : 0.5;
     const higher = data.filter((entry) => {
       const v = Object.values(entry.weights || {});
       const avg = v.length ? v.reduce((s, w) => s + w, 0) / v.length : 0.5;
       return avg > latestAvg;
     });
-
     percentage = Math.round((higher.length / data.length) * 100);
   }
 
@@ -645,22 +662,39 @@ useEffect(() => {
         })}
 
         {/* PERSONALIZED center panel ONLY when viewing own section and we found my point */}
-        {showPersonalized && myPoint && myEntry && (
-          <Html
-            position={myPoint.position}
-            center
-            zIndexRange={[110, 130]}
-            style={{ pointerEvents: 'none', '--offset-px': `${offsetPx}px` }}
-          >
-            <div>
-              <GamificationPersonalized
-                userData={myEntry}
-                percentage={percentage}
-                color={myPoint.color}
-              />
-            </div>
-          </Html>
-        )}
+{showPersonalized && myPoint && myEntry && (
+  <>
+    {/* Personalized halo behind my dot */}
+    <group position={myPoint.position}>
+      <RingHalo
+        color={myPoint.color}
+        baseRadius={1.4}
+        active={true}         // you can tie this to open state if needed
+        bloomLayer={1}        // optional: keep halo out of bloom layer
+      />
+      <mesh>
+        <sphereGeometry args={[1.4, 48, 48]} />
+        <meshStandardMaterial color={myPoint.color} />
+      </mesh>
+    </group>
+
+    {/* Panel overlay in HTML */}
+    <Html
+      position={myPoint.position}
+      center
+      zIndexRange={[110, 130]}
+      style={{ pointerEvents: 'none', '--offset-px': `${offsetPx}px` }}
+    >
+      <div>
+        <GamificationPersonalized
+          userData={myEntry}
+          percentage={percentage}
+          color={myPoint.color}
+        />
+      </div>
+    </Html>
+  </>
+)}
 
         {/* General tooltip for hovered dots */}
         {hoveredDot &&
@@ -691,4 +725,4 @@ useEffect(() => {
   );
 };
 
-export default DotGraph;
+export default DotGraph; 

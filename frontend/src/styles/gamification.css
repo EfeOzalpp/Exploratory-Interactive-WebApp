@@ -1,4 +1,26 @@
 /* Gamification Styles */
+/* Fade the whole gp-root */
+.gp-root {
+  transition: opacity 0.2s ease;
+  opacity: 1;
+}
+
+.gp-root.hidden {
+  opacity: 0;
+}
+
+.gp-root.visible {
+  opacity: 1;
+}
+
+/* Ensure toggle button never fades away */
+.gp-toggle {
+  opacity: 1;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2; /* sits above faded content */
+}
+
 
 /* Mobile */
 @media screen and (max-width: 767px) { 
@@ -144,6 +166,7 @@ border-radius: 3px; }
 .toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }
 .toggle-button.gp-toggle:active, .toggle-button:active { transform: translateY(0); }
 .toggle-button.gp-toggle[aria-expanded="false"] {top: -2px; right: -12px; position: relative;}
+
 }
 
 /* =============================================
@@ -190,7 +213,7 @@ border-radius: 3px; }
 .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
 
 .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
-.personalized-result {  padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; min-height: 233px; height: 263px; width: 280px; max-width: 280px; min-width: 280px; left: 160px; pointer-events: all; z-index: 10;}
+.personalized-result {  padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; min-height: 233px; width: 280px; max-width: 280px; min-width: 280px; left: 160px; pointer-events: all; z-index: 10;}
 .personalized-result::before { border-radius: 24px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(60px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
 
 .knob-arrow { left: 9px; position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid ; border-radius: 2px; transition: bottom 0.3s ease; }
