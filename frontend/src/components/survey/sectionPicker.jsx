@@ -182,7 +182,22 @@ export default function SectionPickerIntro({
             autoComplete="off"
             spellCheck={false}
           />
-          <span className="section-chevron" aria-hidden>▾</span>
+          <span className="section-chevron" aria-hidden>
+          <svg
+            className="section-chevron-svg"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+          >
+            <polyline
+              points="6 9 12 15 18 9"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg></span>
         </div>
 
         {open && (

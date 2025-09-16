@@ -188,7 +188,7 @@ const Survey = ({
               pointerEvents: 'none',
             }}
           >
-            <div className="survey-section-wrapper2" style={{ pointerEvents: 'auto' }}>
+            <div className="survey-section-wrapper2">
               <div className="survey-section">
                 <div className="surveyStart">
                   <button className="begin-button4" onClick={handleComplete}>

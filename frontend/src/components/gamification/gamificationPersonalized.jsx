@@ -1,16 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/gamification.css';
 
-const STORAGE_VERSION = 'v1';
-const FADE_MS = 200;          // root fade timing
-const PROX_THRESHOLD = 0.02;  // ~18% of viewport diagonal
+import { useSkewedPercentColor } from '../../utils/hooks.ts';
+import { usePersonalizedPools } from '../../utils/useGamificationPools.ts';
+
+const FADE_MS = 200;
+const PROX_THRESHOLD = 0.02;
 
 const GamificationPersonalized = ({ userData, percentage, color }) => {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
-
-  const [open, setOpen] = useState(true);  // logical open/close
+  const [open, setOpen] = useState(true);
   const [nearButton, setNearButton] = useState(false);
+
+  // hooks must be unconditional
+  const safePct = Number(percentage) || 0;
+  const { css: skewedColor } = useSkewedPercentColor(safePct);
+
+  // CMS-powered picker
+  const { pick } = usePersonalizedPools();
 
   // proximity-driven reveal
   const btnRef = useRef(null);
@@ -44,6 +52,7 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
       window.removeEventListener('scroll', onResizeOrScroll);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const scheduleCheck = () => {
@@ -68,106 +77,65 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
     });
   };
 
-  // title + secondary selection
   useEffect(() => {
     if (percentage === undefined || !userData) return;
 
-    const titles = {
-      '0-20': ['Carbon Culprit', 'Planet Polluter', 'Sustainability Enemy'],
-      '21-40': ['I Have a Backup Planet!', 'Nature? Is it Edible?'],
-      '41-60': ['Middle Spot is Yours', 'Is it trendy to like nature?'],
-      '61-80': ['Humble-Green MF', 'Sustainability and Whatnot'],
-      '81-100': ["Nature's Humble Savior", 'Damn! Larger than life habits'],
+    // Fallback buckets only used if CMS has no matching doc or is empty
+    const fallbackBuckets = {
+      '0-20': {
+        titles: ['Carbon Culprit', 'Planet Polluter', 'Sustainability Enemy'],
+        secondary: ["Earth would've needed you, You're surpass only"],
+      },
+      '21-40': {
+        titles: ['I Have a Backup Planet!', 'Nature? Is it Edible?'],
+        secondary: ["Hands down, it's not a crime, you surpass only"],
+      },
+      '41-60': {
+        titles: ['Middle Spot is Yours', 'Is it trendy to like nature?'],
+        secondary: ["You're getting there! -Ahead of"],
+      },
+      '61-80': {
+        titles: ['Humble-Green MF', 'Sustainability and Whatnot'],
+        secondary: ["Spectacular and frenzy! You're higher"],
+      },
+      '81-100': {
+        titles: ["Nature's Humble Savior", 'Damn! Larger than life habits'],
+        secondary: ["You're ahead of almost everyone, higher than"],
+      },
     };
-    const secondaryPool = {
-      '0-20': ["Earth would've needed you, You're surpass only"],
-      '21-40': ["Hands down, it's not a crime, you surpass only"],
-      '41-60': ["You're getting there! -Ahead of"],
-      '61-80': ['Spectacular and frenzy! You\'re higher'],
-      '81-100': ["You're ahead of almost everyone, higher than"],
-    };
 
-    const pct = Number(percentage) || 0;
-    const bucket =
-      pct <= 20 ? '0-20' :
-      pct <= 40 ? '21-40' :
-      pct <= 60 ? '41-60' :
-      pct <= 80 ? '61-80' : '81-100';
+    const chosen = pick(safePct, 'gp', String(userData._id || 'me'), fallbackBuckets);
 
-    const storageKey = `gp:${STORAGE_VERSION}:${userData._id}:${bucket}`;
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    // debug: see where copy came from
+    console.log(
+      '[GamificationPersonalized] pct=%d, _id=%s → chosen=%o',
+      safePct,
+      userData?._id,
+      chosen
+    );
 
-    try {
-      const cached = sessionStorage.getItem(storageKey);
-      if (cached) {
-        const { title, secondary } = JSON.parse(cached);
-        setSelectedTitle(title);
-        setSecondaryText(secondary);
-        return;
-      }
-    } catch (_) {}
-
-    const title = pick(titles[bucket]);
-    const secondary = pick(secondaryPool[bucket]);
-    setSelectedTitle(title);
-    setSecondaryText(secondary);
-
-    try {
-      sessionStorage.setItem(storageKey, JSON.stringify({ title, secondary }));
-    } catch (_) {}
-  }, [percentage, userData]);
+    if (chosen) {
+      setSelectedTitle(chosen.title);
+      setSecondaryText(chosen.secondary);
+    } else {
+      // absolute last-resort text
+      setSelectedTitle('Eco Participant');
+      setSecondaryText('Right in the pack—beating');
+    }
+  }, [percentage, userData, safePct, pick]);
 
   if (!userData) return null;
-
-  // color helpers (unchanged)
-  const cubicBezier = (t, p0, p1, p2, p3) => {
-    const c = (1 - t), c2 = c * c, c3 = c2 * c;
-    const t2 = t * t, t3 = t2 * t;
-    return (c3 * p0) + (3 * c2 * t * p1) + (3 * c * t2 * p2) + (t3 * p3);
-  };
-  const skewPercentage = (p) => cubicBezier(p/100, 0, 0.6, 0.85, 1) * 100;
-  const interpolateColor = (t, c1, c2) => ({
-    r: Math.round(c1.r + (c2.r - c1.r) * t),
-    g: Math.round(c1.g + (c2.g - c1.g) * t),
-    b: Math.round(c1.b + (c2.b - c1.b) * t),
-  });
-  const getSkewedColor = (p) => {
-    const skewedT = skewPercentage(p) / 100;
-    const stops = [
-      { stop: 0.0, color: { r: 249, g: 14, b: 33 } },
-      { stop: 0.46, color: { r: 252, g: 159, b: 29 } },
-      { stop: 0.64, color: { r: 245, g: 252, b: 95 } },
-      { stop: 0.8, color: { r: 0, g: 253, b: 156 } },
-      { stop: 1.0, color: { r: 1, g: 238, b: 0 } },
-    ];
-    let lower = stops[0], upper = stops[stops.length - 1];
-    for (let i = 0; i < stops.length - 1; i++) {
-      if (skewedT >= stops[i].stop && skewedT <= stops[i + 1].stop) {
-        lower = stops[i]; upper = stops[i + 1]; break;
-      }
-    }
-    const range = upper.stop - lower.stop;
-    const t = range === 0 ? 0 : (skewedT - lower.stop) / range;
-    const c = interpolateColor(t, lower.color, upper.color);
-    return `rgb(${c.r}, ${c.g}, ${c.b})`;
-  };
-  const skewedColor = getSkewedColor(percentage);
 
   const panelId = `gp-panel-${userData?._id || 'me'}`;
   const label = open ? 'Hide your result' : 'Show your result';
   const symbol = open ? '−' : '+';
-
   const visible = open || nearButton;
 
   return (
     <div
       className="gp-root"
-      style={{
-        opacity: visible ? 1 : 0,
-        transition: `opacity ${FADE_MS}ms ease`,
-      }}
+      style={{ opacity: visible ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
     >
-      {/* Toggle button */}
       <button
         ref={btnRef}
         type="button"
@@ -184,24 +152,15 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
         <span className="gp-toggle-symbol">{symbol}</span>
       </button>
 
-      {/* Panel: unmounts immediately when closed */}
       {open && (
-        <div
-          id={panelId}
-          className="personalized-result gp-container"
-          style={{ pointerEvents: 'none' }}
-        >
+        <div id={panelId} className="personalized-result gp-container" style={{ pointerEvents: 'none' }}>
           <div className="gamification-text">
             <h4 className="gam-title">Compared to the pool you are:</h4>
             <h1 className="personal-title">{selectedTitle}</h1>
             <p>
               {secondaryText}{' '}
-              <strong
-                style={{
-                  textShadow: `0px 0px 12px ${color}, 0px 0px 22px ${skewedColor}`,
-                }}
-              >
-                {percentage}%
+              <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${skewedColor}` }}>
+                {safePct}%
               </strong>{' '}
               people!
             </p>
@@ -211,10 +170,7 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
             <div className="percentage-knob">
               <div
                 className="knob-arrow"
-                style={{
-                  bottom: `${percentage}%`,
-                  borderBottom: `18px solid ${skewedColor}`,
-                }}
+                style={{ bottom: `${safePct}%`, borderBottom: `18px solid ${skewedColor}` }}
               />
             </div>
           </div>

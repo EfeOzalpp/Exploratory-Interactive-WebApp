@@ -23,10 +23,52 @@
         margin: 0;
         background-color: #c9d4d9;
       }
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #c9d4d9;
+        z-index: 9999;
+      }
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 6px solid rgba(255, 255, 255, 0.6);
+        border-top: 6px solid #333;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
     </style>
   </head>
   <body>
     <noscript>Please enable JavaScript</noscript>
+
+    <!-- Initial loader (will be cleared once React mounts) -->
+    <div id="initial-loader">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- React app mounts here -->
     <div id="butterfly-habits"></div>
+
+    <script>
+      // When React attaches, remove loader
+      window.addEventListener('DOMContentLoaded', () => {
+        const root = document.getElementById('butterfly-habits');
+        const loader = document.getElementById('initial-loader');
+        if (root && loader) {
+          const observer = new MutationObserver(() => {
+            loader.style.display = 'none';
+            observer.disconnect();
+          });
+          observer.observe(root, { childList: true });
+        }
+      });
+    </script>
   </body>
 </html>

@@ -7,7 +7,24 @@ import Canvas from '../components/Canvas';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider, useGraph } from "../context/graphContext.tsx";
+import GamificationCopyPreloader from '../utils/gamificationCopyPreloader.tsx';
 import '../styles/global-styles.css';
+
+function DeferredGamificationPreloader() {
+  const [start, setStart] = useState(false);
+
+  useEffect(() => {
+    const cb = () => setStart(true);
+    // Don’t block first paint; wait for idle or next tick
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(cb, { timeout: 1500 });
+    } else {
+      setTimeout(cb, 0);
+    }
+  }, []);
+
+  return start ? <GamificationCopyPreloader /> : null;
+}
 
 const FrontPageInner = () => {
   useDynamicMargin();
@@ -17,7 +34,7 @@ const FrontPageInner = () => {
   const [surveyWrapperClass, setSurveyWrapperClass] = useState(''); 
   const [answers, setAnswers] = useState({});
 
-  // 👇 global viz control from context
+  // global viz control from context
   const { vizVisible, openGraph, closeGraph } = useGraph();
 
   // keep Survey’s prop signature: proxy to context
@@ -52,6 +69,7 @@ const FrontPageInner = () => {
 
   return (
     <div className="app-content">
+      <DeferredGamificationPreloader />
       <Navigation />
 
       {/* Hide the q5 Canvas whenever the 3D viz is visible OR the overlay is animating */}

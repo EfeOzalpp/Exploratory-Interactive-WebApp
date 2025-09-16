@@ -88,54 +88,47 @@ button.nav-toggle.active { text-align: left; text-decoration: none;}
 /* ---- Options ---- */
 .gp-option { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid transparent; cursor: pointer; transition: background-color 100ms ease, border-color 100ms ease, transform 80ms ease; }
 .gp-option.is-active { background: rgba(255, 255, 255, 0.498); }
-.gp-option.is-selected { border-color: rgba(148, 148, 148, 0.8); }
+.gp-option.is-selected { border-color: rgba(181, 181, 181, 0.82); background-color: white;}
 .gp-option:active { transform: translateY(1px); }
 .gp-dot { width: 8px; height: 8px; border-radius: 50%; background: #c3cbd5; flex: 0 0 auto; }
 .gp-dot.is-selected { background: #0b0b0b; }
 .gp-label { flex: 1 1 auto; font-size: 1rem; color: #0f172a; }
 .gp-count { flex: 0 0 auto; margin-left: 8px; opacity: 0.85; font-variant-numeric: tabular-nums; color: #0f172a; }
+.gp-back-icon { width: 16px; height: 15px; color: #3e3e3e;}
 
 /* ---- Fixed width option (opt-in) ---- */
 .gp--w300 .gp-trigger, .gp--w300 .gp-listbox { width: 300px; max-width: 300px; }
 
-/* ---- Transparent scrollbar (WebKit) ---- */
-.gp-listbox::-webkit-scrollbar { width: 8px; height: 8px; }
-.gp-listbox::-webkit-scrollbar-track { background: transparent; }
-.gp-listbox::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.25); border-radius: 6px; border: 1px solid rgba(255,255,255,0.35); }
-.gp-listbox::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.35); }
+/* For Chrome, Edge, Safari */
+.gp-listbox {
+  scrollbar-width: thin;        /* Firefox */
+  scrollbar-color: #999 transparent; /* thumb + track color */
+}
 
-/* ---- Transparent scrollbar (Firefox) ---- */
-.gp-listbox { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.35) transparent; }
+.gp-listbox::-webkit-scrollbar {
+  width: 6px;   /* slim width */
+}
 
-/* Remove scrollbar buttons (the up/down triangles) */
+.gp-listbox::-webkit-scrollbar-track {
+  background: transparent; /* or your bg color */
+}
+
+.gp-listbox::-webkit-scrollbar-thumb {
+  background-color: #999;   /* scrollbar thumb */
+  border-radius: 4px;       /* rounded */
+}
+
+.gp-listbox::-webkit-scrollbar-thumb:hover {
+  background-color: #666;
+}
+
+/* Hide the chevron buttons */
 .gp-listbox::-webkit-scrollbar-button {
   display: none;
   width: 0;
   height: 0;
 }
 
-/* Style the scrollbar itself */
-.gp-listbox::-webkit-scrollbar {
-  width: 8px; /* adjust thickness */
-  background: transparent; /* no background box */
-}
-
-/* The draggable thumb */
-.gp-listbox::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-}
-
-/* Hover effect for thumb */
-.gp-listbox::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-/* Optional: Firefox support */
-.gp-listbox {
-  scrollbar-width: thin;       /* makes it slimmer */
-  scrollbar-color: rgba(0,0,0,0.3) transparent; /* thumb / track */
-}
 
 /* ---------- Mobile (<768px) ---------- */
 @media (max-width: 767px) {

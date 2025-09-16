@@ -1,54 +1,54 @@
+// src/components/dotGraph/DotGraph.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import GamificationPersonalized from '../gamification/gamificationPersonalized';
 import GamificationGeneral from '../gamification/gamificationGeneral';
 import CompleteButton from '../completeButton.jsx';
-import { useDynamicOffset } from '../../utils/dynamicOffset.ts'; // Dynamic offset to anchor 2D UI to 3D
+import { useDynamicOffset } from '../../utils/dynamicOffset.ts';
 import { useRealMobileViewport } from '../real-mobile.ts';
 import { useGraph } from '../../context/graphContext.tsx';
 import RingHalo from './ringHalo';
 
+// centralized gradient utils (pure functions; safe to use in loops/effects)
+import { sampleStops, rgbString } from '../../utils/hooks.ts';
+
 const DotGraph = ({ isDragging = false, data = [] }) => {
   const [points, setPoints] = useState([]);
-const { section, mySection, myEntryId, observerMode } = useGraph();
+  const { section, mySection, myEntryId, observerMode } = useGraph();
 
-// Delay re-showing the “Complete” UI after observer mode closes
-const [showCompleteUI, setShowCompleteUI] = useState(!observerMode);
-const delayRef = useRef(null);
+  // Delay re-showing the “Complete” UI after observer mode closes
+  const [showCompleteUI, setShowCompleteUI] = useState(!observerMode);
+  const delayRef = useRef(null);
 
-useEffect(() => {
-  if (delayRef.current) {
-    clearTimeout(delayRef.current);
-    delayRef.current = null;
-  }
-  if (observerMode) {
-    // hide immediately when entering observer mode
-    setShowCompleteUI(false);
-  } else {
-    // wait 2s before showing again to avoid flicker during graph transitions
-    delayRef.current = setTimeout(() => {
-      setShowCompleteUI(true);
+  useEffect(() => {
+    if (delayRef.current) {
+      clearTimeout(delayRef.current);
       delayRef.current = null;
-    }, 2000);
-  }
-  return () => {
-    if (delayRef.current) clearTimeout(delayRef.current);
-  };
-}, [observerMode]);
+    }
+    if (observerMode) {
+      setShowCompleteUI(false);
+    } else {
+      delayRef.current = setTimeout(() => {
+        setShowCompleteUI(true);
+        delayRef.current = null;
+      }, 2000);
+    }
+    return () => {
+      if (delayRef.current) clearTimeout(delayRef.current);
+    };
+  }, [observerMode]);
 
-  // CHANGED: use myEntryId (context) with sessionStorage fallback
   const personalizedEntryId =
     myEntryId || (typeof window !== 'undefined' ? sessionStorage.getItem('gp.myEntryId') : null);
 
-  // is my entry present in the *current* filtered dataset?   
   const isEntryInView = !!(personalizedEntryId && data?.some(d => d._id === personalizedEntryId));
-
-  // show personalized when the viewer is on the same section they submitted to, and don't show it if the viewer is in observer mode
-  // (and we actually have an id to pin)
   const showPersonalized = !!(showCompleteUI && !observerMode && isEntryInView);
 
-  // Rotation + pinch ref and states
+  // ---------- helpers ----------
+  // Centralized color: flip avg (1-avg), then sample brand gradient
+  const colorForAverage = (avg /* 0..1 */) => rgbString(sampleStops(1 - avg));
+
   const groupRef = useRef();
   const [rotationAngles, setRotationAngles] = useState({ x: 0, y: 0 });
   const [lastCursorPosition, setLastCursorPosition] = useState({ x: 0, y: 0 });
@@ -64,27 +64,22 @@ useEffect(() => {
   const isTouchRotatingRef = useRef(false);
   const lastTouchPositionRef = useRef({ x: 0, y: 0 });
   const pinchDeltaRef = useRef(0);
+  const hoverLockRef = useRef(false);
 
-  // Lock wheel (zoom-in & zoom-out) during section selector dropdown interaction
-  const hoverLockRef   = useRef(false); // tracks gp:menu-hover
-
-  // Mobile-only tooltip auto-hide helpers
   const hideTimerRef = useRef(null);
   const lastRotSampleRef = useRef({ x: 0, y: 0 });
 
-  // Dot hover states, edge case states
   const [hoveredDot, setHoveredDot] = useState(null);
   const hoverCheckInterval = useRef(null);
   const [viewportClass, setViewportClass] = useState('');
   const touchStartDistance = useRef(null);
   const { camera } = useThree();
 
-  // Screen Detector
+  // Screen detector
   const isSmallScreen = window.innerWidth < 768;
   const isNotDesktop = window.innerWidth <= 1024;
   const isDesktop2 = window.innerWidth > 1024;
 
-  // Viewport/device detector replacement
   const isRealMobile = useRealMobileViewport();
   const useMobileLayout = isSmallScreen || isRealMobile;
   const useDesktopLayout = !useMobileLayout;
@@ -96,10 +91,8 @@ useEffect(() => {
   const minRadius = isSmallScreen ? 2 : 20;
   const maxRadius = 400;
 
-  // First load zoom position
   const [radius, setRadius] = useState(20);
 
-  // Target values based on screen size
   const targetRadius = isSmallScreen ? 450 : 250;
   const scalingFactor = 0.5;
   const dynamicRadius = targetRadius + data.length * scalingFactor;
@@ -127,10 +120,8 @@ useEffect(() => {
     requestAnimationFrame(animateRadius);
   }, [finalRadius]);
 
-  // Get dynamic offset
   const dynamicOffset = useDynamicOffset();
 
-  // easing helpers
   const nonlinearLerp = (start, end, t) => {
     const easedT = 1 - Math.pow(1 - t, 5);
     const value = start + (end - start) * easedT;
@@ -138,7 +129,6 @@ useEffect(() => {
   };
   const lerp = (start, end, t) => start + (end - start) * t;
 
-  // Map radius to a 0..1 range for gamification offset
   const zoomFactor = (radius - minRadius) / (maxRadius - minRadius);
 
   const currentWidth = window.innerWidth;
@@ -147,38 +137,6 @@ useEffect(() => {
 
   const offsetOne = isPortrait ? 160 : 120;
   const offsetPx = nonlinearLerp(offsetOne, dynamicOffset, zoomFactor);
-
-  // color interpolation
-  const interpolateColor = (weight) => {
-    const flippedWeight = 1 - weight;
-    const colorStops = [
-      { stop: 0.0, color: { r: 249, g: 14, b: 33 } },
-      { stop: 0.46, color: { r: 252, g: 159, b: 29 } },
-      { stop: 0.64, color: { r: 245, g: 252, b: 95 } },
-      { stop: 0.8, color: { r: 0, g: 253, b: 156 } },
-      { stop: 1, color: { r: 1, g: 238, b: 0 } },
-    ];
-
-    let lower = colorStops[0],
-      upper = colorStops[colorStops.length - 1];
-
-    for (let i = 0; i < colorStops.length - 1; i++) {
-      if (flippedWeight >= colorStops[i].stop && flippedWeight <= colorStops[i + 1].stop) {
-        lower = colorStops[i];
-        upper = colorStops[i + 1];
-        break;
-      }
-    }
-
-    const range = upper.stop - lower.stop;
-    const normalizedWeight = range === 0 ? 0 : (flippedWeight - lower.stop) / range;
-
-    const r = Math.round(lower.color.r + (upper.color.r - lower.color.r) * normalizedWeight);
-    const g = Math.round(lower.color.g + (upper.color.g - lower.color.g) * normalizedWeight);
-    const b = Math.round(lower.color.b + (upper.color.b - lower.color.b) * normalizedWeight);
-
-    return `rgb(${r}, ${g}, ${b})`;
-  };
 
   const spreadFactor = 75;
 
@@ -196,10 +154,7 @@ useEffect(() => {
       let retries = 0;
 
       do {
-        if (retries > maxRetries) {
-          console.warn(`Failed to place point ${i} after ${maxRetries} retries.`);
-          break;
-        }
+        if (retries > maxRetries) break;
 
         position = [
           (Math.random() - 0.5) * spreadFactor,
@@ -219,12 +174,10 @@ useEffect(() => {
         retries++;
       } while (overlapping);
 
-      if (!overlapping) {
-        positions.push(position);
-      }
+      if (!overlapping) positions.push(position);
     }
 
-    // Validation step (dev aid)
+    // optional validation (kept)
     for (let i = 0; i < positions.length; i++) {
       for (let j = i + 1; j < positions.length; j++) {
         const distance = Math.sqrt(
@@ -240,7 +193,7 @@ useEffect(() => {
     return positions;
   };
 
-  // CHANGED: center *my* entry only when personalized view is active
+  // place points + use centralized color
   useEffect(() => {
     const positions = generatePositions(data.length, 2, spreadFactor);
 
@@ -252,7 +205,7 @@ useEffect(() => {
       return {
         position: positions[index],
         originalPosition: positions[index],
-        color: interpolateColor(averageWeight),
+        color: colorForAverage(averageWeight), // ✅ centralized gradient
         averageWeight,
         _id: response._id,
       };
@@ -268,16 +221,13 @@ useEffect(() => {
 
     setPoints(newPoints);
   }, [data, showPersonalized, personalizedEntryId]);
-  // ------------------------------------------------------------------------
 
   let targetX = 0;
   let targetY = 0;
 
-  // smooth desktop wheel zoom state (target + velocity)
   const zoomTargetRef = useRef(null);
   const zoomVelRef = useRef(0);
 
-  // Listen for GraphPicker mouse hover to prevent zoom
   useEffect(() => {
     const onHover = (e) => {
       hoverLockRef.current = !!(e?.detail?.hover);
@@ -286,7 +236,6 @@ useEffect(() => {
     return () => window.removeEventListener("gp:menu-hover", onHover);
   }, []);
 
-  // Event listeners and special cases
   useEffect(() => {
     if (isDragging) {
       lastCursorPositionRef.current = {
@@ -321,10 +270,8 @@ useEffect(() => {
     const WHEEL_SENSITIVITY = 0.5;
 
     const handleScroll = (event) => {
-
-      // if picker is open, ignore wheel completely
       if (hoverLockRef.current) return;
-      
+
       if (event.ctrlKey) {
         setRadius((prevRadius) => {
           const newRadius = prevRadius - event.deltaY * 2;
@@ -377,10 +324,8 @@ useEffect(() => {
         isTouchRotatingRef.current = false;
 
         const [touch1, touch2] = event.touches;
-        const x1 = touch1.clientX,
-          y1 = touch1.clientY;
-        const x2 = touch2.clientX,
-          y2 = touch2.clientY;
+        const x1 = touch1.clientX, y1 = touch1.clientY;
+        const x2 = touch2.clientX, y2 = touch2.clientY;
         const newDistance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 
         if (touchStartDistance.current !== null) {
@@ -518,7 +463,6 @@ useEffect(() => {
     camera.lookAt(0, 0, 0);
   });
 
-  // keep the rest, but base the personalized card off isEntryInView
   const myPoint = points.find((p) => p._id === personalizedEntryId);
   const myEntry = data.find((e) => e._id === personalizedEntryId);
 
@@ -620,20 +564,19 @@ useEffect(() => {
 
   return (
     <>
-     {showCompleteUI && (
-      <Html zIndexRange={[2, 24]} style={{ pointerEvents: 'none' }}>
-        <div
-          className="z-index-respective"
-          style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', height: '100vh', pointerEvents: 'none' }}
-        >
-          <CompleteButton />
-        </div>
-      </Html>
+      {showCompleteUI && (
+        <Html zIndexRange={[2, 24]} style={{ pointerEvents: 'none' }}>
+          <div
+            className="z-index-respective"
+            style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', height: '100vh', pointerEvents: 'none' }}
+          >
+            <CompleteButton />
+          </div>
+        </Html>
       )}
 
       <group ref={groupRef}>
         {points.map((point, index) => {
-          // CHANGED: suppress hover only for *my* centered point (when personalized is shown)
           const isMine = point._id === personalizedEntryId;
           const suppressHover = showPersonalized && isMine;
 
@@ -661,40 +604,38 @@ useEffect(() => {
           );
         })}
 
-        {/* PERSONALIZED center panel ONLY when viewing own section and we found my point */}
-{showPersonalized && myPoint && myEntry && (
-  <>
-    {/* Personalized halo behind my dot */}
-    <group position={myPoint.position}>
-      <RingHalo
-        color={myPoint.color}
-        baseRadius={1.4}
-        active={true}         // you can tie this to open state if needed
-        bloomLayer={1}        // optional: keep halo out of bloom layer
-      />
-      <mesh>
-        <sphereGeometry args={[1.4, 48, 48]} />
-        <meshStandardMaterial color={myPoint.color} />
-      </mesh>
-    </group>
+        {/* PERSONALIZED center panel */}
+        {showPersonalized && myPoint && myEntry && (
+          <>
+            <group position={myPoint.position}>
+              <RingHalo
+                color={myPoint.color}
+                baseRadius={1.4}
+                active={true}
+                bloomLayer={1}
+              />
+              <mesh>
+                <sphereGeometry args={[1.4, 48, 48]} />
+                <meshStandardMaterial color={myPoint.color} />
+              </mesh>
+            </group>
 
-    {/* Panel overlay in HTML */}
-    <Html
-      position={myPoint.position}
-      center
-      zIndexRange={[110, 130]}
-      style={{ pointerEvents: 'none', '--offset-px': `${offsetPx}px` }}
-    >
-      <div>
-        <GamificationPersonalized
-          userData={myEntry}
-          percentage={percentage}
-          color={myPoint.color}
-        />
-      </div>
-    </Html>
-  </>
-)}
+            <Html
+              position={myPoint.position}
+              center
+              zIndexRange={[110, 130]}
+              style={{ pointerEvents: 'none', '--offset-px': `${offsetPx}px` }}
+            >
+              <div>
+                <GamificationPersonalized
+                  userData={myEntry}
+                  percentage={percentage}
+                  color={myPoint.color}
+                />
+              </div>
+            </Html>
+          </>
+        )}
 
         {/* General tooltip for hovered dots */}
         {hoveredDot &&
@@ -725,4 +666,4 @@ useEffect(() => {
   );
 };
 
-export default DotGraph; 
+export default DotGraph;

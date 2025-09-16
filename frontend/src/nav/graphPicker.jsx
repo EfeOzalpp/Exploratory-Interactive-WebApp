@@ -80,7 +80,7 @@ export default function GraphPicker({ value = "all", onChange }) {
       document.removeEventListener("pointerdown", onDocPointerDown, true);
       window.removeEventListener("blur", onWindowBlur);
     };
-  }, [open]);
+  }, []);
 
   const VISIBLE_OPTS = useMemo(() => {
     if (mode === "student") return [{ id: GO_BACK, label: "‹ Back" }, ...STUDENT_OPTS];
@@ -284,9 +284,33 @@ useEffect(() => {
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => chooseIndex(idx)}
               >
-                {showDot && <span className={`gp-dot${value === opt.id ? " is-selected" : ""}`} />}
-                <span className="gp-label">{opt.label}</span>
-                {showCount && <span className="gp-count">({n})</span>}
+              {isBack ? (
+                  <>
+                    <span className="gp-back-icon" aria-hidden>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <polyline
+                          points="15 18 9 12 15 6"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <span className="gp-label">{opt.label.replace("‹ ", "")}</span>
+                  </>
+                ) : (
+                  <>
+                    {showDot && <span className={`gp-dot${value === opt.id ? " is-selected" : ""}`} />}
+                    <span className="gp-label">{opt.label}</span>
+                    {showCount && <span className="gp-count">({n})</span>}
+                  </>
+                )}
               </div>
             );
           })}
