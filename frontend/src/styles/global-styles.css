@@ -1,48 +1,45 @@
 /* Global + Plus some extra styles (this css is global and is a smaller file compared to others) */
-canvas { touch-action: none !important;}
+canvas { touch-action: none !important; }
 a { text-decoration: none; }
 .gp-root { position: relative; }
-html, body, #root {
-  height: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden;
-  background: radial-gradient(circle, rgba(215,215,215,0.8) 40%, rgba(205,205,205,0.6) 60%, rgba(197,197,197,0.3) 80%, transparent 100%), #8bbad2;
-  background-blend-mode: overlay;
-  overscroll-behavior: none;
-  touch-action: none;
-}
+html, body, #root { height: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; background: radial-gradient(circle, rgba(215,215,215,0.8) 40%, rgba(205,205,205,0.6) 60%, rgba(197,197,197,0.3) 80%, transparent 100%), #8bbad2; background-blend-mode: overlay; overscroll-behavior: none; touch-action: none; }
 button { padding-inline: 0; padding-block: 0; }
 h1, h2, h3, h4, p, .begin-button span, .begin-button2 span .begin-button3 span, .begin-button4 span, .observe-results { font-family: Heebo, sans-serif; padding: 0; margin: 0; }
 h4, p, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span, .observe-results { font-family: Poppins, sans-serif; }
+body {margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;} 
+html, body {margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: relative; touch-action: none; overscroll-behavior: none;} 
+#butterfly-habits {width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column;}   
+.q5Canvas {z-index: 2;}
+code {font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;}
 
 /* Mobile */
 @media screen and (max-width: 767px) {
   h1 { font-size: clamp(5.6vw, 5.8vw, 6vw); line-height: 1.224em; font-weight: 500; letter-spacing: -0.2px; }
   h1.begin-title2 { white-space: nowrap; }
-  h2 { font-size: clamp(4.8vw, 5vw, 5.2vw); font-weight: 600; line-height: 1.2em; letter-spacing: 0.2px;}
+  h2 { font-size: clamp(4.8vw, 5vw, 5.2vw); font-weight: 600; line-height: 1.2em; letter-spacing: 0.2px; }
   h3 { font-size: clamp(4.4vw, 4.8vw, 5vw); font-weight: 400; line-height: 1em; }
-  h4, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em;}
-  .observe-results, .nav-toggle, .feedback { font-size: clamp(3vw, 3.2vw, 3.4vw); font-weight: 500; letter-spacing: -0.166px;}
-  p { font-size: clamp(3vw, 3.4vw, 3.6vw); font-weight: 400; letter-spacing: -0.166px;}
-  .bar-graph-label p { font-weight: 600; line-height: 1.2em; font-size: clamp(2.5vw, 2.7vw, 2.9vw);}
-
+  h4, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
+  .observe-results, .nav-toggle, .feedback { font-size: clamp(3vw, 3.2vw, 3.4vw); font-weight: 500; letter-spacing: -0.166px; }
+  p { font-size: clamp(3vw, 3.4vw, 3.6vw); font-weight: 400; letter-spacing: -0.166px; }
+  .bar-graph-label p { font-weight: 600; line-height: 1.2em; font-size: clamp(2.5vw, 2.7vw, 2.9vw); }
   .radial-background, .radial-gradient { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .radial-gradient { background: radial-gradient(circle at center bottom, rgb(238,239,240) 0%, rgba(243,243,243,0.75) 40%, rgba(0,0,0,0) 60%); }
-  .percentage-indicator p { font-size: clamp(2.7vw, 2.9vw, 3.1vw) }
+  .percentage-indicator p { font-size: clamp(2.7vw, 2.9vw, 3.1vw); }
 }
 
 /* Tablet */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
   h1 { font-size: clamp(3.6vw, 3.8vw, 4vw); line-height: 1.154em; font-weight: 500; letter-spacing: -0.2px; }
   h1.begin-title2 { white-space: nowrap; }
-  h2 { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 600; line-height: 1.2em; letter-spacing: 0.2px;}
+  h2 { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 600; line-height: 1.2em; letter-spacing: 0.2px; }
   h3 { font-size: clamp(2.6vw, 2.8vw, 3vw); font-weight: 400; line-height: 1em; }
-  h4, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span {font-size: clamp(1.7vw, 2.1vw, 2.1vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em;}
-  .observe-results, .nav-toggle, .feedback {font-size: clamp(1.6vw, 1.8vw, 2.2vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em;}
-  p { font-size: clamp(1.5vw, 1.75vw, 1.9vw); font-weight: 400; letter-spacing: -0.166px;}
-  .bar-graph-label p { font-weight: 600; line-height: 1.2em; font-size: clamp(1.6vw, 1.8vw, 2vw);}
-
+  h4, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span { font-size: clamp(1.7vw, 2.1vw, 2.1vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
+  .observe-results, .nav-toggle, .feedback { font-size: clamp(1.6vw, 1.8vw, 2.2vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
+  p { font-size: clamp(1.5vw, 1.75vw, 1.9vw); font-weight: 400; letter-spacing: -0.166px; }
+  .bar-graph-label p { font-weight: 600; line-height: 1.2em; font-size: clamp(1.6vw, 1.8vw, 2vw); }
   .radial-background, .radial-gradient { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .radial-gradient { background: radial-gradient(circle at center bottom, rgb(238,239,240) 0%, rgba(243,243,243,0.75) 40%, rgba(0,0,0,0) 60%); }
-  .percentage-indicator p { font-size: clamp(1.6vw, 1.8vw, 2vw)}
+  .percentage-indicator p { font-size: clamp(1.6vw, 1.8vw, 2vw); }
 }
 
 /* Desktop */
@@ -51,11 +48,11 @@ h4, p, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-butt
   h2 { font-size: 2vw; font-weight: 500; line-height: 1.2em; }
   .number-part h2 { line-height: 1.6em; }
   h3 { font-size: 1.45vw; font-weight: 400; }
-  h4, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span { font-size: 1.05vw; font-weight: 500; letter-spacing: -0.2px; line-height: 1.2em; }
-  .observe-results { font-size:0.95vw; font-weight: 500; letter-spacing: -0.15px; line-height: 1.1em; }
+  h4 { font-size: 1.05vw; font-weight: 500; letter-spacing: -0.2px; line-height: 1.2em; }
+  .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span, .observe-results { font-size: 0.95vw; font-weight: 500; letter-spacing: -0.15px; line-height: 1.1em; }
   p { font-size: 0.95vw; font-weight: 400; }
+  .feedback, .nav-toggle { font-size: 0.95vw; font-weight: 500; letter-spacing: -0.1px; }
   .bar-graph-label p { font-weight: 600; line-height: 1.2em; font-size: 0.9vw; }
-
   .radial-background, .radial-gradient { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
   .radial-gradient { background: radial-gradient(circle at center bottom, rgb(238,239,240) 0%, rgba(243,243,243,0.75) 40%, rgba(0,0,0,0) 60%); }
 }

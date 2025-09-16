@@ -26,11 +26,13 @@ export default function SectionPickerIntro({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return options;
-    return options.filter(
-      (o) =>
-        o.label.toLowerCase().includes(q) ||
-        o.value.toLowerCase().includes(q)
-    );
+
+    return options.filter((o) => {
+      const labelMatch = o.label.toLowerCase().includes(q);
+      const valueMatch = o.value.toLowerCase().includes(q);
+      const aliasMatch = o.aliases?.some((a) => a.toLowerCase().includes(q));
+      return labelMatch || valueMatch || aliasMatch;
+    });
   }, [options, search]);
 
   // Keep activeIndex in range when list changes

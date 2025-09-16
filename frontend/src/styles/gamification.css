@@ -1,221 +1,172 @@
 /* Gamification Styles */
 /* Fade the whole gp-root */
-.gp-root {
-  transition: opacity 0.2s ease;
-  opacity: 1;
-}
-
-.gp-root.hidden {
-  opacity: 0;
-}
-
-.gp-root.visible {
-  opacity: 1;
-}
-
-/* Ensure toggle button never fades away */
-.gp-toggle {
-  opacity: 1;
-  pointer-events: auto;
-  position: relative;
-  z-index: 2; /* sits above faded content */
-}
-
+.gp-root { opacity: 0; transition: opacity 200ms ease; }
+/* JS will add/remove this */
+.gp-root.is-visible { opacity: 1; }
+/* GP toggle button: center icon & animate +/− swap */
+.gp-toggle { display: inline-flex; align-items: center; justify-content: center; }
+.gp-toggle-icon { position: relative; width: 18px; height: 18px; display: inline-block; line-height: 0; }
+.gp-toggle-icon svg { position: absolute; inset: 0; transition: transform 0.15s ease-out, opacity 0.15s ease-out; }
+/* Closed (panel hidden): show plus, hide minus */
+.gp-toggle-icon.is-closed .icon-plus { opacity: 1; transform: scale(1) rotate(0deg); }
+.gp-toggle-icon.is-closed .icon-minus { opacity: 0; transform: scale(0.85) rotate(-90deg); }
+/* Open (panel visible): show minus, hide plus */
+.gp-toggle-icon.is-open .icon-plus { opacity: 0; transform: scale(0.85) rotate(90deg); }
+.gp-toggle-icon.is-open .icon-minus { opacity: 1; transform: scale(1) rotate(0deg); }
 
 /* Mobile */
-@media screen and (max-width: 767px) { 
-/* =============================================
-Personalized Gamification
-============================================= */
-.personalized-result { transform: translateX(var(--offset-px)); padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 210px; max-width: 210px; min-width: 210px; left: -8px; pointer-events: all; z-index: 10; }
-.personalized-result:before { border-radius: 16px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
-.personalized-result::after { content: ''; position: absolute; transform: rotate(-90deg) !important; border-width: 8px; left: -15px !important; top: calc(50% - 8px) !important; border-style: solid; border-color: transparent transparent #f7ffffc2 transparent;}
-.gamification-text { pointer-events: none; width: 75%; max-width: 75%; min-width: 75%; text-align: left; padding: 18px 0px 14px 6px; display: flex; flex-direction: column; justify-content: space-between; }
-.gam-title { padding-bottom: 0.3em; color: rgba(24, 24, 24, 0.874); } .personal-title { padding: 0.1em 0 0.3em 0.02em; }
-
-.gamification-knob { position: relative; width: 10%; display: flex; align-items: flex-end; justify-content: flex-end; }
-.percentage-knob { height: 89%; position: relative; background: none; }
-.knob-arrow { position: absolute; bottom: 0; left: -50%; transform: translateX(-83%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-radius: 2px; transition: bottom 0.3s ease;}
-.gamification-bar { width: 15%; }
-.percentage-bar { width: 100%; height: 100%; border-radius: 3px 16px 16px 3px;
-   background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%);
+@media screen and (max-width: 767px) {
+  /* =============================================
+  Personalized Gamification
+  ============================================= */
+  .personalized-result { transform: translateX(var(--offset-px)); padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 210px; max-width: 210px; min-width: 210px; left: -8px; pointer-events: all; z-index: 10; }
+  .personalized-result:before { border-radius: 16px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
+  .personalized-result::after { content: ""; position: absolute; transform: rotate(-90deg) !important; border-width: 8px; left: -15px !important; top: calc(50% - 8px) !important; border-style: solid; border-color: transparent transparent #f7ffffc2 transparent; }
+  .gamification-text { pointer-events: none; width: 75%; max-width: 75%; min-width: 75%; text-align: left; padding: 18px 0px 14px 6px; display: flex; flex-direction: column; justify-content: space-between; }
+  .gam-title { padding-bottom: 0.3em; color: rgba(24, 24, 24, 0.874); }
+  .personal-title { padding: 0.1em 0 0.3em 0.02em; }
+  .gamification-knob { position: relative; width: 10%; display: flex; align-items: flex-end; justify-content: flex-end; }
+  .percentage-knob { height: 89%; position: relative; background: none; }
+  .knob-arrow { position: absolute; bottom: 0; left: -50%; transform: translateX(-83%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
+  .gamification-bar { width: 15%; }
+  .percentage-bar { width: 100%; height: 100%; border-radius: 3px 16px 16px 3px; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); }
+  /* =============================================
+  Generalized Gamification
+  ============================================= */
+  .gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
+  .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
+  .gam-general-description { min-height: fit-content; text-align: left; width: 80%; padding-left: 0.4em; }
+  .gam-description-title { padding: 0.6em 0 0.4em 0.1em; }
+  .gam-description-text { padding: 0.3em 0 0.4em; }
+  .gam-visualization { width: 20%; display: flex; position: relative; flex-wrap: nowrap; justify-content: flex-end; }
+  .gam-percentage-knob { position: relative; width: 6px; height: 100%; }
+  .gam-percentage-bar { width: 60%; height: 108%; margin-top: -35%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 3px 12px 3px; }
+  .gam-knob-arrow { position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
+  /* =============================================
+  Generalized Gamification Edge Cases
+  ============================================= */
+  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fafdee; padding: 12px 12px 12px 8px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 180px; max-width: 180px; min-width: 180px; left: -20px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result::after { content: ""; position: absolute; top: 50%; left: -14px; transform: translateY(-50%) rotate(90deg); border-width: 8px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
+  .is-top .generalized-result { height: 200px !important; width: 200px !important; max-width: 200px !important; min-width: 200px !important; max-height: 200px; height: 180px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: -16px !important; }
+  .is-top .generalized-result::after { transform: translateY(-50%) rotate(360deg) !important; left: 46% !important; top: -7.5px !important; border-color: transparent transparent #f7ffffe7 transparent; }
+  .is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -110px; top: 0px; width: 180px; max-width: 180px; min-width: 180px; }
+  .is-right .generalized-result::after, .is-mid .generalized-result::after { transform: translateY(-50%) rotate(90deg); left: 100%; top: 50%; border-color: transparent transparent #f7ffffe7 transparent; }
+  .is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: 14px; height: 200px !important; width: 200px !important; max-width: 200px !important; min-width: 200px !important; max-height: 180px; height: 180px !important; }
+  .is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: 104% !important; border-color: transparent transparent #f7ffffe7 transparent; }
+  .is-left .generalized-result { top: 0px; width: 180px; max-width: 180px; min-width: 180px; }
+  .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
+  .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; }
 }
 
-/* =============================================
-Generalized Gamification
-============================================= */
-.gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
-.gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
-.gam-general-description { min-height: fit-content; text-align: left; width: 80%; padding-left: 0.4em; }
-.gam-description-title { padding: 0.6em 0 0.4em 0.1em; }
-.gam-description-text { padding: 0.3em 0 0.4em; }
-
-.gam-visualization { width: 20%; display: flex; position: relative; flex-wrap: nowrap; justify-content: flex-end; }
-.gam-percentage-knob { position: relative; width: 6px; height: 100%; }
-.gam-percentage-bar { width: 60%; height: 108%; margin-top: -35%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 3px 12px 3px; }
-.gam-knob-arrow { position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
-
-/* =============================================
-Generalized Gamification Edge Cases
-============================================= */
-.generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fafdee; padding: 12px 12px 12px 8px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 180px; max-width: 180px; min-width: 180px; left: -20px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
-.generalized-result::after { content: ''; position: absolute; top: 50%; left: -14px; transform: translateY(-50%) rotate(90deg); border-width: 8px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
-
-.is-top .generalized-result { height: 200px !important; width: 200px !important; max-width: 200px !important; min-width: 200px !important; max-height: 200px; height: 180px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: -16px !important; }
-.is-top .generalized-result::after { transform: translateY(-50%) rotate(360deg) !important; left: 46% !important; top: -7.5px !important; border-color: transparent transparent #f7ffffe7 transparent; }
-
-.is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -110px; top: 0px; width: 180px; max-width: 180px; min-width: 180px; }
-.is-right .generalized-result::after, .is-mid .generalized-result::after { transform: translateY(-50%) rotate(90deg); left: 100%; top: 50%; border-color: transparent transparent #f7ffffe7 transparent; }
-
-.is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: 14px; height: 200px !important; width: 200px !important; max-width: 200px !important; min-width: 200px !important; max-height: 180px; height: 180px !important;}
-.is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: 104% !important; border-color: transparent transparent #f7ffffe7 transparent; }
-
-.is-left .generalized-result { top: 0px; width: 180px; max-width: 180px; min-width: 180px; }
-.is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
-
-.is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; }
-}     
-
 /* Tablet */
-@media screen and (min-width: 768px) and (max-width: 1024px) { 
-/* =============================================
-Personalized Gamification
-============================================= */
-.personalized-result { padding: 0px 0px 0px 12px; border-radius: 12px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 280px; max-width: 280px; min-width: 280px; left: 165px; pointer-events: all; z-index: 10; }
-.personalized-result:before { border-radius: 12px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
-.personalized-result::after { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
-
-.gamification-text { pointer-events: none; width: 75%; max-width: 75%; min-width: 75%; text-align: left; padding: 24px 0 24px 9px; }
-.gam-title { padding-bottom: 0.3em; color: rgba(24, 24, 24, 0.874); } .personal-title { padding: 0.5em 0 0.4em 0.03em; }
-
-.gamification-knob { position: relative; width: 10%; display: flex; justify-content: center; align-items: flex-end; }
-.percentage-knob { height: 94%; width: 10px; position: relative; background: none; }
-.knob-arrow { position: absolute; bottom: 0; left: 9px; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid rgb(73, 140, 143); border-radius: 2px; transition: bottom 0.3s ease; }
-.gamification-bar { width: 15%; }
-.percentage-bar { width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%);
-border-radius: 3px 12px 12px 3px; }
-
-/* =============================================
-Generalized Gamification
-============================================= */
-.gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
-.gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
-.gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
-.gam-description-title { padding: 0.8em 0 0.2em 0em; }
-.gam-description-text { padding: 0.3em 0 0.4em; }
-
-.gam-visualization { width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
-.gam-percentage-knob { position: relative; left: -8px; height: 100%; }
-.gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%);
-border-radius: 3px; }
-.gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
-
-/* =============================================
-Generalized Gamification Edge Cases
-============================================= */
-.generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6;; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 240px; max-width: 240px; min-width: 240px; left: 72px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
-.generalized-result::after { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
-
-.is-top .generalized-result { height: 200px !important; min-height: 200px !important; max-height: 200px !important; width: 280px !important; min-width: 280px !important; max-width: 280px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 52px !important; }
-.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: -4% !important;}
-
-.is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -148px; top: 0px; }
-.is-right .generalized-result::after, .is-mid .generalized-result::after {transform: translateY(-50%) rotate(-90deg); left: 100%; top: 50%; }
-
-.is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: -57px; height: 200px !important; width: 280px !important; max-width: 280px !important; min-width: 280px !important; }
-.is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after {transform: translateY(-50%) rotate(0deg) !important; left: 46.5% !important; top: 104% !important; }
-
-.is-left .generalized-result { top: 0px; }
-.is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
-
-.is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+  /* =============================================
+  Personalized Gamification
+  ============================================= */
+  .personalized-result { padding: 0px 0px 0px 12px; border-radius: 12px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 280px; max-width: 280px; min-width: 280px; left: 165px; pointer-events: all; z-index: 10; }
+  .personalized-result:before { border-radius: 12px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
+  .personalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
+  .gamification-text { pointer-events: none; width: 75%; max-width: 75%; min-width: 75%; text-align: left; padding: 24px 0 24px 9px; }
+  .gam-title { padding-bottom: 0.3em; color: rgba(24, 24, 24, 0.874); }
+  .personal-title { padding: 0.5em 0 0.4em 0.03em; }
+  .gamification-knob { position: relative; width: 10%; display: flex; justify-content: center; align-items: flex-end; }
+  .percentage-knob { height: 94%; width: 10px; position: relative; background: none; }
+  .knob-arrow { position: absolute; bottom: 0; left: 9px; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid rgb(73, 140, 143); border-radius: 2px; transition: bottom 0.3s ease; }
+  .gamification-bar { width: 15%; }
+  .percentage-bar { width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 12px 12px 3px; }
+  /* =============================================
+  Generalized Gamification
+  ============================================= */
+  .gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
+  .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
+  .gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
+  .gam-description-title { padding: 0.8em 0 0.2em 0em; }
+  .gam-description-text { padding: 0.3em 0 0.4em; }
+  .gam-visualization { width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
+  .gam-percentage-knob { position: relative; left: -8px; height: 100%; }
+  .gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
+  .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
+  /* =============================================
+  Generalized Gamification Edge Cases
+  ============================================= */
+  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 240px; max-width: 240px; min-width: 240px; left: 72px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
+  .is-top .generalized-result { height: 200px !important; min-height: 200px !important; max-height: 200px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 52px !important; }
+  .is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: -4% !important; }
+  .is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -148px; top: 0px; }
+  .is-right .generalized-result::after, .is-mid .generalized-result::after { transform: translateY(-50%) rotate(-90deg); left: 100%; top: 50%; }
+  .is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: -57px; height: 200px !important; width: 280px !important; max-width: 280px !important; min-width: 280px !important; }
+  .is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; left: 46.5% !important; top: 104% !important; }
+  .is-left .generalized-result { top: 0px; }
+  .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
+  .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
 }
 
 /* Desktop */
-@media screen and (min-width: 1025px) { 
-/* =============================================
-   Personalized Gamification
-   ============================================= */
-.personalized-result::after { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
-
-.gamification-text { pointer-events: none; width: 70%; max-width: 70%; min-width: 70%; text-align: left; padding: 24px 0 24px 9px; }
-.gam-title { padding-bottom: 0.3em; padding-top: 0.3em; color: rgba(24, 24, 24, 0.874); }
-
-.gamification-knob { position: relative; width: 15%; display: flex; justify-content: center; align-items: flex-end; }
-.percentage-knob { height: 94%; width: 0px; position: relative; background: none; }
-.gamification-bar { width: 15%; }
-.percentage-bar { width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%);
-border-radius: 3px 24px 24px 3px; }
-   
-/* =============================================
-  Generalized Gamification
-  ============================================= */
-.gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
-.gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
-.gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
-.gam-description-title { padding: 0.8em 0 0.2em 0em; }
-.gam-description-text { padding: 0.3em 0 0.4em; }
-
-.gam-visualization { width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
-.gam-percentage-knob { position: relative; left: -8px; height: 100%; }
-.gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%);
-border-radius: 3px; }
-.gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
-
-.toggle-button.gp-toggle { position: absolute; top: -42px; right: 76px; z-index: 3; pointer-events: all; box-shadow: 0 2px 10px rgba(0,0,0,0.25);}
-.toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }
-.toggle-button.gp-toggle:active, .toggle-button:active { transform: translateY(0); }
-.toggle-button.gp-toggle[aria-expanded="false"] {top: -2px; right: -12px; position: relative;}
-
+@media screen and (min-width: 1025px) {
+  /* =============================================
+     Personalized Gamification
+     ============================================= */
+  .personalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
+  .gamification-text { pointer-events: none; width: 70%; max-width: 70%; min-width: 70%; text-align: left; padding: 24px 0 24px 9px; }
+  .gam-title { padding-bottom: 0.3em; padding-top: 0.3em; color: rgba(24, 24, 24, 0.874); }
+  .gamification-knob { position: relative; width: 15%; display: flex; justify-content: center; align-items: flex-end; }
+  .percentage-knob { height: 94%; width: 0px; position: relative; background: none; }
+  .gamification-bar { width: 15%; }
+  .percentage-bar { width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 24px 24px 3px; }
+  /* =============================================
+    Generalized Gamification
+    ============================================= */
+  .gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
+  .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
+  .gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
+  .gam-description-title { padding: 0.8em 0 0.2em 0em; }
+  .gam-description-text { padding: 0.3em 0 0.4em; }
+  .gam-visualization { width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
+  .gam-percentage-knob { position: relative; left: -8px; height: 100%; }
+  .gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
+  .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
+  .toggle-button.gp-toggle { position: absolute; top: -42px; right: 76px; z-index: 3; pointer-events: all; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }
+  .toggle-button.gp-toggle:active, .toggle-button:active { transform: translateY(0); }
+  .toggle-button.gp-toggle[aria-expanded="false"] { top: -2px; right: -12px; position: relative; }
 }
 
 /* =============================================
    Generalized Gamification Edge Cases
-   ============================================= */  
+   ============================================= */
 @media screen and (min-width: 1025px) and (max-width: 1320px) {
-.generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6;; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 160px; max-width: 160px; min-width: 160px; left: 30px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
-.generalized-result::after { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
-
-.is-top .generalized-result { height: 160px !important; min-height: 160px !important; max-height: 160px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 32px !important; }
-.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 44.5% !important; top: -4% !important;}
-
-.is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -108px; top: 0px; }
-.is-right .generalized-result::after, .is-mid .generalized-result::after {transform: translateY(-50%) rotate(-90deg); left: 100%; top: 50%; }
-
-.is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: -30px; height: 160px !important; min-height: 160px !important; max-height: 160px !important; }
-.is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after {transform: translateY(-50%) rotate(0deg) !important; left: 44.5% !important; top: 104% !important; }
-
-.is-left .generalized-result { top: 0px; }
-.is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
-
-.is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
-.personalized-result { padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 200px; max-width: 200px; min-width: 200px; left: 125px; pointer-events: all; z-index: 10; }
-.personalized-result:before { border-radius: 24px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
-
-.knob-arrow { left: 7px; position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg) scale(0.7); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid ; border-radius: 2px; transition: bottom 0.3s ease; }
-.personal-title { padding: 0.5em 0 0.4em 0em; }
+  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 160px; max-width: 160px; min-width: 160px; left: 30px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
+  .is-top .generalized-result { height: 160px !important; min-height: 160px !important; max-height: 160px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 32px !important; }
+  .is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 44.5% !important; top: -4% !important; }
+  .is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -108px; top: 0px; }
+  .is-right .generalized-result::after, .is-mid .generalized-result::after { transform: translateY(-50%) rotate(-90deg); left: 100%; top: 50%; }
+  .is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: -30px; height: 160px !important; min-height: 160px !important; max-height: 160px !important; }
+  .is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; left: 44.5% !important; top: 104% !important; }
+  .is-left .generalized-result { top: 0px; }
+  .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
+  .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
+  .personalized-result { padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 200px; max-width: 200px; min-width: 200px; left: 125px; pointer-events: all; z-index: 10; }
+  .personalized-result:before { border-radius: 24px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
+  .knob-arrow { left: 7px; position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg) scale(0.7); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid; border-radius: 2px; transition: bottom 0.3s ease; }
+  .personal-title { padding: 0.5em 0 0.4em 0em; }
 }
 
 @media screen and (min-width: 1320px) {
-.generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6;; padding: 12px; border-radius: 18px; text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 220px; max-width: 220px; min-width: 220px; left: 50px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
-.generalized-result::after { content: ''; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
-
-.is-top .generalized-result { min-width: 250px !important; width: 250px !important; max-width: 260px !important; height: 180px !important; min-height: 180px !important; max-height: 180px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 25px !important; }
-.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: -4% !important;}
-
-.is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -140px; top: 0px; }
-.is-right .generalized-result::after, .is-mid .generalized-result::after {transform: translateY(-50%) rotate(-90deg); left: 100%; top: 50%; }
-
-.is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: -28px; height: 180px !important; min-height: 180px !important; max-height: 180px !important; min-width: 250px !important; width: 250px !important; max-width: 260px !important; }
-.is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after {transform: translateY(-50%) rotate(0deg) !important; left: 46% !important; top: 104% !important; }
-
-.is-left .generalized-result { top: 0px; }
-.is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
-
-.is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
-.personalized-result {  padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; min-height: 233px; width: 280px; max-width: 280px; min-width: 280px; left: 160px; pointer-events: all; z-index: 10;}
-.personalized-result::before { border-radius: 24px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(60px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
-
-.knob-arrow { left: 9px; position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid ; border-radius: 2px; transition: bottom 0.3s ease; }
-.personal-title { padding: 0.5em 0 0.3em 0.03em; }
+  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 220px; max-width: 220px; min-width: 220px; left: 50px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
+  .is-top .generalized-result { min-width: 250px !important; width: 250px !important; max-width: 260px !important; height: 180px !important; min-height: 180px !important; max-height: 180px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 25px !important; }
+  .is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: -4% !important; }
+  .is-right .generalized-result, .is-mid .generalized-result { transform: translateX(calc(1 - var(--offset-px))); left: -140px; top: 0px; }
+  .is-right .generalized-result::after, .is-mid .generalized-result::after { transform: translateY(-50%) rotate(-90deg); left: 100%; top: 50%; }
+  .is-bottom .generalized-result, .is-left.is-bottom .generalized-result { transform: translateY(calc(-1 * var(--offset-px))); left: 0; top: -28px; height: 180px !important; min-height: 180px !important; max-height: 180px !important; min-width: 250px !important; width: 250px !important; max-width: 260px !important; }
+  .is-bottom .generalized-result::after, .is-left.is-bottom .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; left: 46% !important; top: 104% !important; }
+  .is-left .generalized-result { top: 0px; }
+  .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
+  .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
+  .personalized-result { padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; min-height: 233px; width: 280px; max-width: 280px; min-width: 280px; left: 160px; pointer-events: all; z-index: 10; }
+  .personalized-result::before { border-radius: 24px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(60px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
+  .knob-arrow { left: 9px; position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid; border-radius: 2px; transition: bottom 0.3s ease; }
+  .personal-title { padding: 0.5em 0 0.3em 0.03em; }
 }

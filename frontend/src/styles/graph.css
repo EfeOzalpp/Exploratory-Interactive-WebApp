@@ -6,76 +6,61 @@
 .green-animation { animation-name: greenFluctuation; }
 .yellow-animation { animation-name: yellowFluctuation; }
 .red-animation { animation-name: redFluctuation; }
-@keyframes greenFluctuation { 
-  50% { background-color: rgb(0, 238, 163); } 
-  0%, 100% { background-color: rgb(0, 253, 84); } 
-}
+@keyframes greenFluctuation { 50% { background-color: rgb(0, 238, 163); } 0%, 100% { background-color: rgb(0, 253, 84); } }
+@keyframes yellowFluctuation { 50% { background-color: rgb(243, 249, 116); } 0%, 100% { background-color: rgb(252, 228, 95); } }
+@keyframes redFluctuation { 50% { background-color: rgb(250, 43, 102); } 0%, 100% { background-color: rgb(252, 159, 29); } }
 
-@keyframes yellowFluctuation { 
-  50% { background-color: rgb(243, 249, 116); } 
-  0%, 100% { background-color: rgb(252, 228, 95); } 
-}
-
-@keyframes redFluctuation { 
-  50% { background-color: rgb(250, 43, 102); } 
-  0%, 100% { background-color: rgb(252, 159, 29); } 
-}
+.toggle-icon svg { transform: scale(1); }
+.toggle-icon.open svg { transform: rotate(0deg) scale(1); }
+.toggle-icon.closed svg { transform: rotate(90deg) scale(1.1); }
 
 .graph-wrapper { backdrop-filter: 6px; opacity: 0; transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out; pointer-events: none; position: relative; transition-delay: 0.2s; z-index: 2; }
 .graph-wrapper.visible { backdrop-filter: 0px; opacity: 1; pointer-events: all; display: block; z-index: 2; }
-
 .graph-wrapper.hidden { display: none; }
-.bar-graph-divider {height: 100%; width: 100%; align-items: flex-end; display: flex; justify-content: center;}
-.percentage-indicator {touch-action: none; pointer-events: none;}
+
+.bar-graph-divider { height: 100%; width: 100%; align-items: flex-end; display: flex; justify-content: center; }
+.percentage-indicator { touch-action: none; pointer-events: none; }
 
 .bar-graph-bar:first-child { position: relative; border-left: 1px solid transparent; border-right: 1px solid transparent; }
-
 .bar-graph-bar:first-child::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 6%, rgba(108, 121, 122, 0.3) 15%, rgba(30, 30, 30, 0) 40%, transparent 100%); }
-
 .bar-graph-bar:first-child::after { content: ""; position: absolute; top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 6%, rgba(108, 121, 122, 0.3) 15%, rgba(30, 30, 30, 0) 40%, transparent 100%); pointer-events: none; }
 
 .bar-graph-bar:nth-child(3) { position: relative; border-right: 1px solid transparent; border-left: 1px solid transparent; }
-
 .bar-graph-bar:nth-child(3)::after { content: ""; position: absolute; top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 6%, rgba(108, 121, 122, 0.3) 15%, rgba(30, 30, 30, 0) 40%, transparent 100%); }
-
 .bar-graph-bar:nth-child(3)::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 6%, rgba(108, 121, 122, 0.3) 15%, rgba(30, 30, 30, 0) 40%, transparent 100%); }
 
 /* Mobile */
-@media screen and (max-width: 767px) { 
-.draggable-container { height: 375px; width: 225px; pointer-events: none; }
-.draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
-.bar-graph-overlay::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
-.bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 239px; height: 100%; box-sizing: border-box; padding: 0 0.8em; }
-.bar-graph-icons { display: flex; justify-content: space-around; width: 88%; margin-top: 6px; padding-bottom: 0.5em; }
-.bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 9%; }
-.bar-graph-bar { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 28%; height: 100%; padding: 0 0.4em; }
-.bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
-.bar-graph-label { position: relative; top: 24px; color: #333; text-align: center; padding-bottom: 8px; }
-.toggle-button { padding: 10px 16px; background-color: #292929; color: white; border-radius: 5px; border: none; cursor: pointer; transition: all 0.2s ease; position: relative; width: fit-content; pointer-events: all; }
-.toggle-button p { pointer-events: none; user-select: none; font-size: clamp(2.4vw, 2.8vw, 3.4vw)}
-.toggle-button:hover { background-color: #353B41; }
-.graph-container { z-index: 4; position: relative; }
-.percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.427); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
-.percentage-indicator { position: absolute; top: calc(-4.4vw + 26px); left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.82); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
-.percentage-indicator::before { content: ''; position: absolute; transform: rotate(180deg); top: -4px !important; left: 40%; top: 100%; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
-.bar-graph-bar:first-child { position: relative; border-left: 1px solid transparent; border-right: 1px solid transparent; }
+@media screen and (max-width: 767px) {
+  .draggable-container { height: 375px; width: 225px; pointer-events: none; }
+  .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
+  .bar-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
+  .bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 239px; height: 100%; box-sizing: border-box; padding: 0 0.8em; }
+  .bar-graph-icons { display: flex; justify-content: space-around; width: 88%; margin-top: 6px; padding-bottom: 0.5em; }
+  .bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 9%; }
+  .bar-graph-bar { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 28%; height: 100%; padding: 0 0.4em; }
+  .bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
+  .bar-graph-label { position: relative; top: 24px; color: #333; text-align: center; padding-bottom: 8px; }
+  .toggle-button { padding: 10px 16px; background-color: #292929; color: white; border-radius: 5px; border: none; cursor: pointer; transition: all 0.2s ease; position: relative; width: fit-content; pointer-events: all; }
+  .toggle-button p { pointer-events: none; user-select: none; font-size: clamp(2.4vw, 2.8vw, 3.4vw); }
+  .toggle-button:hover { background-color: #353B41; }
+  .graph-container { z-index: 4; position: relative; }
+  .percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.427); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+  .percentage-indicator { position: absolute; top: calc(-4.4vw + 26px); left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.82); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
+  .percentage-indicator::before { content: ""; position: absolute; transform: rotate(180deg); top: -4px !important; left: 40%; top: 100%; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
 
-.bar-graph-bar:first-child::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); }
-
-.bar-graph-bar:first-child::after { content: ""; position: absolute; top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); pointer-events: none; }
-
-.bar-graph-bar:nth-child(3) { position: relative; border-right: 1px solid transparent; border-left: 1px solid transparent; }
-
-.bar-graph-bar:nth-child(3)::after { content: ""; position: absolute; top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); }
-
-.bar-graph-bar:nth-child(3)::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); }
+  .bar-graph-bar:first-child { position: relative; border-left: 1px solid transparent; border-right: 1px solid transparent; }
+  .bar-graph-bar:first-child::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); }
+  .bar-graph-bar:first-child::after { content: ""; position: absolute; top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); pointer-events: none; }
+  .bar-graph-bar:nth-child(3) { position: relative; border-right: 1px solid transparent; border-left: 1px solid transparent; }
+  .bar-graph-bar:nth-child(3)::after { content: ""; position: absolute; top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); }
+  .bar-graph-bar:nth-child(3)::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 10%, rgba(108, 121, 122, 0.3) 25%, rgba(30, 30, 30, 0) 60%, transparent 100%); }
 }
 
-/* Tablet */ 
-@media screen and (min-width: 768px) and (max-width: 1024px) { 
+/* Tablet */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
   .draggable-container { height: 475px; width: 250px; pointer-events: none; }
   .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
-  .bar-graph-overlay::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
+  .bar-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
   .bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 250px; height: 100%; box-sizing: border-box; padding: 0 1.2em; }
   .bar-graph-icons { display: flex; justify-content: space-around; width: 85%; margin-top: 8px; padding-bottom: 1em; }
   .bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 7%; }
@@ -88,31 +73,32 @@
   .graph-container { z-index: 4; position: relative; }
   .percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 50%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
   .percentage-indicator { position: absolute; top: calc(-1.1vw - 24px); left: -25%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.941); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
-  .percentage-indicator::before { content: ''; position: absolute; bottom: -5px; left: 100%; top: 50%; transform: translateX(-32%) rotate(-90deg); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
+  .percentage-indicator::before { content: ""; position: absolute; bottom: -5px; left: 100%; top: 50%; transform: translateX(-32%) rotate(-90deg); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
 }
 
-/* Desktop */ 
-@media screen and (min-width: 1025px) { 
-.draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
-.draggable-graph-overlay::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
-.bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 250px; height: 100%; box-sizing: border-box; padding: 0 1.2em; }
-.bar-graph-icons { display: flex; justify-content: space-around; width: 85%; margin-top: 8px; padding-bottom: 1em; }
-.bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 7%; }
-.bar-graph-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 28%; height: 100%; padding: 0 0.4em; }
-.bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
-.bar-graph-label { position: relative; top: 24px; color: #333; text-align: center; padding-bottom: 8px; }
-.toggle-button { padding: 8px 12px; background-color: #292929; color: white; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; position: relative; width: fit-content; pointer-events: all; }
-.toggle-button p { pointer-events: none; user-select: none; font-size: 0.8vw;}
-.toggle-button:hover { background-color: #353B41; }
-.graph-container { z-index: 4; position: relative; }
-.percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
-.percentage-indicator { position: absolute; top: calc(-1.1vw - 14px); left: -25%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.941); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
-.percentage-indicator::before { content: ''; position: absolute; bottom: -5px; left: 100%; top: 50%; transform: translateX(-32%) rotate(-90deg); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
+/* Desktop */
+@media screen and (min-width: 1025px) {
+  .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
+  .draggable-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
+  .bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 250px; height: 100%; box-sizing: border-box; padding: 0 1.2em; }
+  .bar-graph-icons { display: flex; justify-content: space-around; width: 85%; margin-top: 8px; padding-bottom: 1em; }
+  .bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 7%; }
+  .bar-graph-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 28%; height: 100%; padding: 0 0.4em; }
+  .bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
+  .bar-graph-label { position: relative; top: 24px; color: #333; text-align: center; padding-bottom: 8px; }
+  .toggle-button { display: flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); width: 40px; height: 40px; background-color: #292929; color: white; border-radius: 6px; border-color: #444; cursor: pointer; position: relative; pointer-events: all; }
+  .toggle-button:hover { background-color: #353B41; }
+  .toggle-icon { display: flex; align-items: center; justify-content: center; line-height: 0; }
+  .graph-container { z-index: 4; position: relative; }
+  .percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+  .percentage-indicator { position: absolute; top: calc(-1.1vw - 14px); left: -25%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.941); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
+  .percentage-indicator::before { content: ""; position: absolute; bottom: -5px; left: 100%; top: 50%; transform: translateX(-32%) rotate(-90deg); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
 }
 
-@media screen and (min-width: 1025px) and (max-width: 1320px) { 
-.draggable-container { height: 440px; width: 250px; pointer-events: none; }
+@media screen and (min-width: 1025px) and (max-width: 1320px) {
+  .draggable-container { height: 440px; width: 250px; pointer-events: none; }
 }
-@media screen and (min-width: 1320px) { 
-.draggable-container { height: 500px; width: 250px; pointer-events: none; } 
+
+@media screen and (min-width: 1320px) {
+  .draggable-container { height: 500px; width: 250px; pointer-events: none; }
 }

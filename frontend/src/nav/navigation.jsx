@@ -55,8 +55,8 @@ const Navigation = () => {
   const showObserverButton = !hasCompletedSurvey || observerMode;
 
   // class modifiers
-const isDark = observerMode || hasCompletedSurvey; // dark if either is true
-  const postCompleteOnly = hasCompletedSurvey && !observerMode;  // completed, but not observing
+  const isDark = observerMode || hasCompletedSurvey; // dark if either is true
+  const postCompleteOnly = hasCompletedSurvey && !observerMode; // completed, but not observing
 
   return (
     <>
@@ -72,19 +72,51 @@ const isDark = observerMode || hasCompletedSurvey; // dark if either is true
               "level-one",
               burgerOpen ? "burger-closed" : "",
               isDark ? "is-dark" : "",
-            ].join(" ").trim()}
+            ]
+              .join(" ")
+              .trim()}
           >
             <button
-              className={["nav-toggle", open ? "active" : "", isDark ? "is-dark" : ""].join(" ").trim()}
+              className={[
+                "nav-toggle",
+                open ? "active" : "",
+                isDark ? "is-dark" : "",
+              ]
+                .join(" ")
+                .trim()}
               onClick={() => setOpen((prev) => !prev)}
               aria-expanded={open}
               aria-controls="info-overlay"
             >
-              {open ? "< Close This Tab" : "What's the Idea?"}
+              {open ? (
+                <>
+                  <span className="nav-toggle-icon" aria-hidden>
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                    >
+                      <polyline
+                        points="15 18 9 12 15 6"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>Go Back</span>
+                </>
+              ) : (
+                "What's the Idea?"
+              )}
             </button>
 
             <button
-              className={["feedback", isDark ? "is-dark" : ""].join(" ").trim()}
+              className={["feedback", isDark ? "is-dark" : ""]
+                .join(" ")
+                .trim()}
               onClick={handleFeedbackClick}
             >
               Leave Your Thoughts
@@ -97,7 +129,9 @@ const isDark = observerMode || hasCompletedSurvey; // dark if either is true
               "level-two",
               isDark ? "is-dark" : "",
               postCompleteOnly ? "is-post-complete" : "",
-            ].join(" ").trim()}
+            ]
+              .join(" ")
+              .trim()}
           >
             {/* Nav divider doubles as horizontal container */}
             <div className="nav-divider">
@@ -113,7 +147,9 @@ const isDark = observerMode || hasCompletedSurvey; // dark if either is true
                     "observe-results",
                     observerMode ? "active" : "",
                     isDark ? "is-dark" : "",
-                  ].join(" ").trim()}
+                  ]
+                    .join(" ")
+                    .trim()}
                   onClick={toggleObserverMode}
                   aria-pressed={observerMode}
                 >
@@ -129,15 +165,42 @@ const isDark = observerMode || hasCompletedSurvey; // dark if either is true
                 "burger-toggle",
                 burgerOpen ? "open" : "",
                 isDark ? "is-dark" : "",
-              ].join(" ").trim()}
+              ]
+                .join(" ")
+                .trim()}
               onClick={() => setBurgerOpen((v) => !v)}
               aria-pressed={burgerOpen}
               aria-controls="nav-tools"
               aria-label={burgerOpen ? "Hide options" : "Show options"}
             >
-              <p style={{ margin: 0, lineHeight: 1, fontSize: 18 }}>
-                {burgerOpen ? "+" : "-"}
-              </p>
+              <span
+                className={`burger-icon ${burgerOpen ? "is-closed" : "is-open"}`}
+                aria-hidden
+              >
+                {/* plus */}
+                <svg
+                  className="icon-plus"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
+                  <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
+                </svg>
+                {/* minus */}
+                <svg
+                  className="icon-minus"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
+                </svg>
+              </span>
             </button>
           </div>
         </div>

@@ -1,10 +1,8 @@
-// components/dataVisualization.jsx (or wherever this file lives)
+// components/dataVisualization.jsx
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import '../styles/global-styles.css';
 import '../styles/graph.css';
 
-// ⚡ Lazy load heavy components (split into their own chunks)
-// Prefetch Graph so it begins downloading ASAP.
 const Graph = React.lazy(() =>
   import(/* webpackChunkName: "graph", webpackPrefetch: true */ './dotGraph/graph')
 );
@@ -12,7 +10,6 @@ const BarGraph = React.lazy(() =>
   import(/* webpackChunkName: "bar-graph" */ './dragGraphs/barGraph')
 );
 
-// Get initial position based on viewport size (for bar1 only)
 const getPositionByViewport = (customX = null, customY = null) => {
   const width = window.innerWidth;
   let bar1Position = { x: 0, y: 0 };
@@ -34,14 +31,10 @@ const getPositionByViewport = (customX = null, customY = null) => {
 const VisualizationPage = () => {
   const [isBarGraphVisible, setIsBarGraphVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
-
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  // initialize & handle resize
   useEffect(() => {
-    // set initial position next tick
     const t = setTimeout(() => setPosition(getPositionByViewport()), 0);
-
     const handleResize = () => setPosition(getPositionByViewport());
     window.addEventListener('resize', handleResize);
     return () => {
@@ -95,10 +88,8 @@ const VisualizationPage = () => {
 
   const handleDragEnd = () => setIsDragging(false);
 
-  // global listeners while dragging
   useEffect(() => {
     if (!isDragging) return;
-
     const handleMove = (e) => handleDrag(e);
     const handleUp = () => handleDragEnd();
     const preventTextSelection = (event) => event.preventDefault();
@@ -122,7 +113,6 @@ const VisualizationPage = () => {
 
   return (
     <div>
-      {/* Graph chunk */}
       <Suspense fallback={<div className="graph-loading" style={{ height: '100svh' }}>Loading graph…</div>}>
         <Graph isDragging={isDragging} />
       </Suspense>
@@ -159,7 +149,37 @@ const VisualizationPage = () => {
             setIsBarGraphVisible((prev) => !prev);
           }}
         >
-          <p>{isBarGraphVisible ? '-' : '+'}</p>
+          <span
+            className={`toggle-icon ${isBarGraphVisible ? 'open' : 'closed'}`}
+            aria-hidden
+          >
+            {isBarGraphVisible ? (
+              // minus icon
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                style={{ transition: 'transform 0.15s ease-out' }}
+              >
+                <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
+              </svg>
+            ) : (
+              // plus icon
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                style={{ transition: 'transform 0.15s ease-out' }}
+              >
+                <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
+                <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
+              </svg>
+            )}
+          </span>
         </div>
 
         {isBarGraphVisible && (

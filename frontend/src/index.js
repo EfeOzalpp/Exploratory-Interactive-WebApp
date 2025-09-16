@@ -2,7 +2,6 @@
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom/client'; // Import the createRoot method
-import './styles/index.css';
 import './fonts/fonts1.css';
 
 

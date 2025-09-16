@@ -1,3 +1,4 @@
+// src/components/gamification/GamificationPersonalized.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import '../../styles/gamification.css';
 
@@ -6,25 +7,27 @@ import { usePersonalizedPools } from '../../utils/useGamificationPools.ts';
 
 const FADE_MS = 200;
 const PROX_THRESHOLD = 0.02;
+const CLOSE_GRACE_MS = 1000; // keep wrapper visible this long after close
 
 const GamificationPersonalized = ({ userData, percentage, color }) => {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
   const [open, setOpen] = useState(true);
+
+  // wrapper visibility grace (panel unmounts instantly; wrapper fades later)
+  const [closingGrace, setClosingGrace] = useState(false);
+  const closeTimerRef = useRef(null);
+
   const [nearButton, setNearButton] = useState(false);
-
-  // hooks must be unconditional
-  const safePct = Number(percentage) || 0;
-  const { css: skewedColor } = useSkewedPercentColor(safePct);
-
-  // CMS-powered picker
-  const { pick } = usePersonalizedPools();
-
-  // proximity-driven reveal
   const btnRef = useRef(null);
   const rafRef = useRef(0);
   const lastPointerRef = useRef({ x: 0, y: 0, has: false });
 
+  const safePct = Number(percentage) || 0;
+  const { css: skewedColor } = useSkewedPercentColor(safePct);
+  const { pick } = usePersonalizedPools();
+
+  // --- proximity check for the toggle button ---
   useEffect(() => {
     const onMouseMove = (e) => {
       lastPointerRef.current = { x: e.clientX, y: e.clientY, has: true };
@@ -77,48 +80,49 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
     });
   };
 
+  // --- wrapper close-grace controller (panel unmounts instantly) ---
+  useEffect(() => {
+    if (!open) {
+      setClosingGrace(true); // keep wrapper visible
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = setTimeout(() => {
+        setClosingGrace(false);
+        closeTimerRef.current = null;
+      }, CLOSE_GRACE_MS);
+    } else {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+      setClosingGrace(false);
+    }
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, [open]);
+
+  // --- copy selection (CMS + fallback) ---
   useEffect(() => {
     if (percentage === undefined || !userData) return;
 
-    // Fallback buckets only used if CMS has no matching doc or is empty
     const fallbackBuckets = {
-      '0-20': {
-        titles: ['Carbon Culprit', 'Planet Polluter', 'Sustainability Enemy'],
-        secondary: ["Earth would've needed you, You're surpass only"],
-      },
-      '21-40': {
-        titles: ['I Have a Backup Planet!', 'Nature? Is it Edible?'],
-        secondary: ["Hands down, it's not a crime, you surpass only"],
-      },
-      '41-60': {
-        titles: ['Middle Spot is Yours', 'Is it trendy to like nature?'],
-        secondary: ["You're getting there! -Ahead of"],
-      },
-      '61-80': {
-        titles: ['Humble-Green MF', 'Sustainability and Whatnot'],
-        secondary: ["Spectacular and frenzy! You're higher"],
-      },
-      '81-100': {
-        titles: ["Nature's Humble Savior", 'Damn! Larger than life habits'],
-        secondary: ["You're ahead of almost everyone, higher than"],
-      },
+      '0-20':   { titles: ['Carbon Culprit', 'Planet Polluter', 'Sustainability Enemy'],            secondary: ["Earth would've needed you, You're surpass only"] },
+      '21-40':  { titles: ['I Have a Backup Planet!', 'Nature? Is it Edible?'],                    secondary: ["Hands down, it's not a crime, you surpass only"] },
+      '41-60':  { titles: ['Middle Spot is Yours', 'Is it trendy to like nature?'],                secondary: ["You're getting there! -Ahead of"] },
+      '61-80':  { titles: ['Humble-Green MF', 'Sustainability and Whatnot'],                       secondary: ["Spectacular and frenzy! You're higher"] },
+      '81-100': { titles: ["Nature's Humble Savior", 'Damn! Larger than life habits'],             secondary: ["You're ahead of almost everyone, higher than"] },
     };
 
     const chosen = pick(safePct, 'gp', String(userData._id || 'me'), fallbackBuckets);
-
-    // debug: see where copy came from
-    console.log(
-      '[GamificationPersonalized] pct=%d, _id=%s → chosen=%o',
-      safePct,
-      userData?._id,
-      chosen
-    );
+    // console.log('[GamificationPersonalized] pct=%d, _id=%s → chosen=%o', safePct, userData?._id, chosen);
 
     if (chosen) {
       setSelectedTitle(chosen.title);
       setSecondaryText(chosen.secondary);
     } else {
-      // absolute last-resort text
       setSelectedTitle('Eco Participant');
       setSecondaryText('Right in the pack—beating');
     }
@@ -128,14 +132,12 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
 
   const panelId = `gp-panel-${userData?._id || 'me'}`;
   const label = open ? 'Hide your result' : 'Show your result';
-  const symbol = open ? '−' : '+';
-  const visible = open || nearButton;
+
+  // wrapper visible while: open OR in close-grace OR pointer near toggle
+  const wrapperVisible = open || closingGrace || nearButton;
 
   return (
-    <div
-      className="gp-root"
-      style={{ opacity: visible ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
-    >
+    <div className={`gp-root ${wrapperVisible ? 'is-visible' : ''}`}>
       <button
         ref={btnRef}
         type="button"
@@ -149,11 +151,27 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
         }}
         style={{ pointerEvents: 'auto' }}
       >
-        <span className="gp-toggle-symbol">{symbol}</span>
+        {/* Animated + / – icon */}
+        <span className={`gp-toggle-icon ${open ? 'is-open' : 'is-closed'}`} aria-hidden>
+          {/* Plus */}
+          <svg className="icon-plus" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+            <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
+            <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
+          </svg>
+          {/* Minus */}
+          <svg className="icon-minus" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+            <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
+          </svg>
+        </span>
       </button>
 
+      {/* PANEL: mounts only when open (no close delay) */}
       {open && (
-        <div id={panelId} className="personalized-result gp-container" style={{ pointerEvents: 'none' }}>
+        <div
+          id={panelId}
+          className="personalized-result gp-container"
+          style={{ pointerEvents: 'none', transition: `opacity ${FADE_MS}ms ease` }}
+        >
           <div className="gamification-text">
             <h4 className="gam-title">Compared to the pool you are:</h4>
             <h1 className="personal-title">{selectedTitle}</h1>
