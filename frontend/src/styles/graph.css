@@ -10,6 +10,7 @@
 @keyframes yellowFluctuation { 50% { background-color: rgb(243, 249, 116); } 0%, 100% { background-color: rgb(252, 228, 95); } }
 @keyframes redFluctuation { 50% { background-color: rgb(250, 43, 102); } 0%, 100% { background-color: rgb(252, 159, 29); } }
 
+.toggle-button:hover { background-color: #353B41; }
 .toggle-icon svg { transform: scale(1); }
 .toggle-icon.open svg { transform: rotate(0deg) scale(1); }
 .toggle-icon.closed svg { transform: rotate(90deg) scale(1.1); }
@@ -67,9 +68,8 @@
   .bar-graph-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 28%; height: 100%; padding: 0 0.4em; }
   .bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
   .bar-graph-label { position: relative; top: 27px; color: #333; text-align: center; padding-bottom: 8px; }
-  .toggle-button { padding: 8px 12px; background-color: #292929; color: white; border-radius: 5px; border: none; cursor: pointer; transition: all 0.2s ease; position: relative; width: fit-content; pointer-events: all; }
-  .toggle-button p { pointer-events: none; user-select: none; font-size: 1.4vw; }
-  .toggle-button:hover { background-color: #353B41; }
+  .toggle-button { display: flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); width: 40px; height: 40px; background-color: #292929; color: white; border-radius: 6px; border-color: #444; cursor: pointer; position: relative; pointer-events: all; }
+  .toggle-icon { display: flex; align-items: center; justify-content: center; line-height: 0; }
   .graph-container { z-index: 4; position: relative; }
   .percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 50%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
   .percentage-indicator { position: absolute; top: calc(-1.1vw - 24px); left: -25%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.941); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
@@ -87,7 +87,6 @@
   .bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
   .bar-graph-label { position: relative; top: 24px; color: #333; text-align: center; padding-bottom: 8px; }
   .toggle-button { display: flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); width: 40px; height: 40px; background-color: #292929; color: white; border-radius: 6px; border-color: #444; cursor: pointer; position: relative; pointer-events: all; }
-  .toggle-button:hover { background-color: #353B41; }
   .toggle-icon { display: flex; align-items: center; justify-content: center; line-height: 0; }
   .graph-container { z-index: 4; position: relative; }
   .percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }

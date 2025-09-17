@@ -1,4 +1,5 @@
 /* ---------- Base ---------- */
+.nav-toggle.active { justify-content: flex-start; }
 .navigation { box-sizing: border-box; width: 100%; pointer-events: none; padding-left: 32px; padding-top: 24px; position: absolute; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
 .left { position: relative; width: auto; height: 48px; display: flex; justify-content: center; z-index: 15; }
 .logo-image { pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -6,7 +7,7 @@
 .level-two { display: flex; flex-direction: column; width: 100%; position: relative; justify-content: flex-end; align-items: flex-end; }
 button.observe-results { pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff; }
 
-.feedback, .nav-toggle { pointer-events: all; cursor: pointer; text-decoration: underline; color: rgb(6, 21, 1); padding: 12px 6px 6px 12px; border: 1px solid black; border-radius: 6px; background: #ffffff; }
+.feedback, .nav-toggle { pointer-events: all; cursor: pointer; text-decoration: underline; color: rgb(6, 21, 1); padding: 12px 6px 6px 12px; border: 1px solid rgb(138, 138, 138); border-radius: 6px; background: #ffffff; }
 button.nav-toggle.active { text-align: left; text-decoration: none; }
 .nav-right { display: flex; align-items: flex-end; justify-content: flex-end; }
 .burger-toggle { background: rgb(255, 255, 255); cursor: pointer; z-index: 10; pointer-events: all; position: relative; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); color: black; }
@@ -61,7 +62,7 @@ div.level-one, .observe-results { z-index: 10; }
 .gp-trigger-label { display: inline-block; max-width: calc(100% - 18px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Popover list (absolute; glass) ---- */
-.gp-listbox { width: 320px; position: absolute; left: 0; right: 0; background: linear-gradient(180deg, rgba(255,255,255,0.70), rgba(255,255,255,0.45)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.38); border-radius: 8px; box-shadow: 0 18px 36px rgba(236, 236, 236, 0.18), 0 6px 16px rgba(224, 224, 224, 0.12); max-height: 300px; overflow-y: auto; padding: 8px; z-index: 50; }
+.gp-listbox { width: 320px; position: absolute; left: 0; right: 0; background: linear-gradient(180deg, rgba(255,255,255,0.70), rgba(255,255,255,0.45)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.38); border-radius: 8px; box-shadow: 0 18px 36px rgba(236, 236, 236, 0.18), 0 6px 16px rgba(224, 224, 224, 0.12); max-height: 340px; overflow-y: auto; padding: 8px; z-index: 50; }
 .gp-listbox.drop-down { top: calc(100% + 8px); }
 .gp-listbox.drop-up { bottom: calc(100% + 8px); }
 
@@ -116,17 +117,23 @@ div.level-one, .observe-results { z-index: 10; }
   .feedback, .nav-toggle { padding: 12px 6px 6px 12px; }
 
   /* vertical reveal: slide up from bottom */
-  div.level-one { display: flex; gap: 8px; position: relative; transform: translateY(0); opacity: 1; transition: transform 400ms ease, opacity 400ms ease; will-change: transform, opacity; flex-direction: column; align-items: flex-end; }
+  div.level-one { display: flex; gap: 16px; position: relative; transform: translateY(0); opacity: 1; transition: transform 400ms ease, opacity 400ms ease; will-change: transform, opacity; flex-direction: column; align-items: flex-end; }
   div.level-one.burger-closed { transform: translateY(14px); opacity: 0; pointer-events: none; }
   div.level-one.burger-closed .feedback, div.level-one.burger-closed .nav-toggle { pointer-events: none; }
 
   .burger-toggle { width: 40px; height: 40px; border-radius: 8px; margin-top: 16px; }
-
+  .level-two.is-dark.is-post-complete .burger-toggle {margin-top: 0px;}
   .level-two { margin-bottom: 1.1em; }
-  button.observe-results { padding-bottom: 1.1em; padding-top: 1.1em; width: 26vw; }
-  .feedback, .nav-toggle { height: 48px; }
-  .nav-toggle { width: 26vw; }
-  .feedback { width: 26vw; }
+  .level-two.is-dark.is-post-complete {flex-direction: row; align-items: center;}
+  .level-two.is-dark.is-post-complete .nav-divider {width: calc(50vw + 98px);}  
+  button.observe-results { padding-bottom: 1.6em; padding-top: 1.6em; width: 24vw; }
+  .feedback, .nav-toggle { padding-bottom: 1.6em; padding-top: 1.6em; }
+  .nav-toggle.active { padding-bottom: 1.34em; padding-top: 1.34em;}
+  .nav-toggle { width: 18vw; }
+  .feedback { width: 20vw; }
+
+  .nav-toggle {width: 18vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center;} 
+  .nav-toggle-icon { top: 1px; position: relative; }
 }
 
 /* ---------- Desktop (>=1024px) ---------- */
@@ -151,7 +158,6 @@ div.level-one, .observe-results { z-index: 10; }
   button.observe-results.active { width: 6vw; }
   .feedback, .nav-toggle { height: 56px; }
   .nav-toggle { width: 14vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
-  .nav-toggle.active { justify-content: flex-start; }
   .feedback { width: 14vw; }
 
   .nav-toggle-icon { top: 1px; position: relative; }
@@ -159,7 +165,7 @@ div.level-one, .observe-results { z-index: 10; }
   .gp-picker { max-width: 880px; }
   .gp-trigger { font-family: Heebo, sans-serif; padding: 1.2em 18px; border-radius: 8px; font-size: 1.1vw; font-weight: 600; color: #282828; }
   .gp-trigger-chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 10px; background: rgba(0,0,0,0.04); border: 1px solid #d6dee6; box-shadow: 0 1px 2px rgba(0,0,0,.05) inset; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; pointer-events: none; }
-  .gp-listbox { border-radius: 16px; max-height: 340px; }
+  .gp-listbox { border-radius: 16px; max-height: 400px; }
   .gp-option { padding: 14px 16px; }
   .gp-label { font-size: 1.05rem; }
 

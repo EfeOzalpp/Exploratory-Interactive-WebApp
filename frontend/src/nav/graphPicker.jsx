@@ -36,6 +36,12 @@ export default function GraphPicker({ value = "all", onChange }) {
     []
   );
 
+  const ALL_LABELS = useMemo(() => {
+    const list = [...SPECIAL, ...BASE_STUDENT, ...BASE_STAFF];
+    const map = new Map(list.map(o => [o.id, o.label]));
+    return map;
+  }, [BASE_STUDENT, BASE_STAFF]);
+
   const sortByCountThenAlpha = useCallback((items) => {
     return [...items].sort((a, b) => {
       const cb = counts?.[b.id] ?? 0;
@@ -90,11 +96,10 @@ export default function GraphPicker({ value = "all", onChange }) {
 
   // *** Updated trigger label logic ***
   const triggerCoreLabel = useMemo(() => {
-    if (mode === "student") return "Student Departments";
-    if (mode === "staff")   return "Institutional Departments";
-    const found = MAIN_OPTS.find(o => o.id === value);
-    return found ? found.label : "Choose a section…";
-  }, [mode, value, MAIN_OPTS]);
+    if (open && mode === "student") return "Student Departments";
+    if (open && mode === "staff")   return "Institutional Departments";
+    return ALL_LABELS.get(value) || "Choose a section…";
+  }, [open, mode, value, ALL_LABELS]);
 
   const openRef = useRef(false);
   useEffect(() => { openRef.current = open; }, [open]);

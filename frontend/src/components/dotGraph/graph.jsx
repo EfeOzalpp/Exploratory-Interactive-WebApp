@@ -1,4 +1,4 @@
-// components/dragGraphs/graph.jsx
+// components/dotGraph/graph.jsx
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import DotGraph from './dotGraph';
@@ -9,7 +9,10 @@ const Graph = ({ isDragging }) => {
   const { data: surveyData, loading, section } = useGraph();
 
   if (!section) return <p className="graph-loading">Pick a section to begin.</p>;
-  if (loading) return null; // loading isn't supposed to take long at all. Like 400ms or so at most. Showing a loading overlay would look like unwanted layout shift. 
+  if (loading) return null;
+
+  // always pass an array
+  const safeData = Array.isArray(surveyData) ? surveyData : [];
 
   return (
     <div className="graph-container" style={{ height: '100svh', width: '100%' }}>
@@ -38,8 +41,8 @@ const Graph = ({ isDragging }) => {
 
         <meshStandardMaterial metalness={0.8} roughness={0} />
 
-        {/* Pass filtered surveyData to DotGraph */}
-        <DotGraph data={surveyData} isDragging={isDragging} />
+        {/* pass safe array */}
+        <DotGraph data={safeData} isDragging={isDragging} />
       </Canvas>
     </div>
   );

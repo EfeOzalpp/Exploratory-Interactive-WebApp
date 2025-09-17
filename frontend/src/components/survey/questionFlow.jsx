@@ -9,6 +9,7 @@ const DEFAULT_QUESTIONS = [
       { label: 'Public Transportation, walking or biking.', value: 'A' },
       { label: 'Electric or hybrid vehicle', value: 'B' },
       { label: 'Gas-powered vehicle', value: 'C' },
+      { label: 'Prefer not to say / Other', value: 'D' }, // NEW
     ],
   },
   {
@@ -17,6 +18,7 @@ const DEFAULT_QUESTIONS = [
       { label: 'Moderate consumption of meat or dairy.', value: 'A' },
       { label: 'Regular consumption of meat and dairy.', value: 'B' },
       { label: 'Plant-based or vegetarian.', value: 'C' },
+      { label: 'Prefer not to say / Other', value: 'D' }, // NEW
     ],
   },
   {
@@ -25,6 +27,7 @@ const DEFAULT_QUESTIONS = [
       { label: 'I try to reduce energy use mainly to save on bills.', value: 'A' },
       { label: 'I rarely think about energy efficiency.', value: 'B' },
       { label: 'I make a point to turn off the lights, and utilities.', value: 'C' },
+      { label: 'Prefer not to say / Other', value: 'D' }, // NEW
     ],
   },
   {
@@ -33,6 +36,7 @@ const DEFAULT_QUESTIONS = [
       { label: 'Often buy second-hand or eco-friendly products.', value: 'A' },
       { label: 'Occasionally choose sustainable brands.', value: 'B' },
       { label: 'I preferably shop what I like without worry', value: 'C' },
+      { label: 'Prefer not to say / Other', value: 'D' }, // NEW
     ],
   },
   {
@@ -41,15 +45,12 @@ const DEFAULT_QUESTIONS = [
       { label: 'I frequently visit parks and reserves.', value: 'A' },
       { label: "I don't avoid nature if it's on my path.", value: 'B' },
       { label: "I never thought of spending time in nature.", value: 'C' },
+      { label: 'Prefer not to say / Other', value: 'D' }, // NEW
     ],
   },
 ];
 
-export default function QuestionFlow({
-  onAnswersUpdate,
-  onSubmit,               // (answers) => void
-  questions = DEFAULT_QUESTIONS,
-}) {
+export default function QuestionFlow({ onAnswersUpdate, onSubmit, questions = DEFAULT_QUESTIONS }) {
   const [currentQuestion, setCurrentQuestion] = useState(1); // 1..N
   const [answers, setAnswers] = useState({});
   const [error, setError] = useState('');
@@ -59,15 +60,11 @@ export default function QuestionFlow({
   const [hintVisible, setHintVisible] = useState(false);
 
   useEffect(() => {
-    // On Q1, delay show by 2s, keep for 2s, then hide
     if (currentQuestion === 1) {
       setHintVisible(false);
-      const showTimer = setTimeout(() => setHintVisible(true), 2000);  // appear at t=2s
-      const hideTimer = setTimeout(() => setHintVisible(false), 4000); // disappear at t=4s
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
+      const showTimer = setTimeout(() => setHintVisible(true), 2000);
+      const hideTimer = setTimeout(() => setHintVisible(false), 4000);
+      return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
     } else {
       setHintVisible(false);
     }
@@ -86,13 +83,12 @@ export default function QuestionFlow({
       return;
     }
     setFadeState('fade-out');
-
     setTimeout(() => {
       setFadeState('fade-in');
       if (currentQuestion < questions.length) {
         setCurrentQuestion((q) => q + 1);
       } else {
-        onSubmit?.(answers); // "I'M READY"
+        onSubmit?.(answers);
       }
     }, 70);
   };
@@ -111,20 +107,12 @@ export default function QuestionFlow({
 
       <div className="questionnaire">
         <div className="question-section">
-          <div className="number-part">
-            <h2>{currentQuestion}.</h2>
-          </div>
+          <div className="number-part"><h2>{currentQuestion}.</h2></div>
 
-          {/* Make this container a positioning context for the absolute hint */}
           <div className="question-part question-part--rel">
             <h4>{q.question}</h4>
-
-            {/* Absolutely-positioned hint; no layout shift */}
             {currentQuestion === 1 && (
-              <p
-                className={`question-hint-bubble ${hintVisible ? 'show' : 'hide'}`}
-                aria-hidden={!hintVisible}
-              >
+              <p className={`question-hint-bubble ${hintVisible ? 'show' : 'hide'}`} aria-hidden={!hintVisible}>
                 5 questions in total
               </p>
             )}

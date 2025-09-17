@@ -3,7 +3,7 @@ import q5 from 'q5';
 
 // Canvas Background style extracted
 const drawBackground = (p) => {
-  p.background('#b4e4fdff');
+  p.background('#90d6ffff');
   let innerRadius, outerRadius;
   
   if (p.width < 768) {
@@ -21,9 +21,9 @@ const drawBackground = (p) => {
     p.width / 2, p.height / 2, innerRadius,
     p.width / 2, p.height / 2, outerRadius
   );
-  gradient.addColorStop(0.1, 'rgba(230, 230, 230, 0.82)');
-  gradient.addColorStop(0.35, 'rgba(211, 211, 211, 0.6)');
-  gradient.addColorStop(0.7, 'rgba(197,197,197,0.3)');
+  gradient.addColorStop(0.1, 'rgba(246, 246, 246, 0.86)');
+  gradient.addColorStop(0.35, 'rgba(224, 224, 224, 0.6)');
+  gradient.addColorStop(0.7, 'rgba(235, 235, 235, 0.3)');
   gradient.addColorStop(1, 'transparent');
   
   p.drawingContext.fillStyle = gradient;
@@ -32,57 +32,57 @@ const drawBackground = (p) => {
 
 // each option has different weight values for corresponding answers
 const answerRewiring = {
-  question1: { A: 0, B: 0.5, C: 1 },
-  question2: { C: 0, A: 0.5, B: 1 },
-  question3: { C: 0, A: 0.5, B: 1 },
-  question4: { A: 0, B: 0.5, C: 1 },
-  question5: { A: 0, B: 0.5, C: 1 },
+  question1: { A: 0, B: 0.3, C: 1, D: 0.7 },
+  question2: { C: 0, A: 0.3, B: 1, D: 0.7 },
+  question3: { C: 0, A: 0.3, B: 1, D: 0.7 },
+  question4: { A: 0, B: 0.3, C: 1, D: 0.7 },
+  question5: { A: 0, B: 0.3, C: 1, D: 0.7 },
 };
+
 // Generate base-color theme
 const interpolateColor = (weight) => {
-  const flippedWeight = 1 - weight; 
+  // coerce to [0,1]
+  const safe = Number.isFinite(weight) ? Math.min(1, Math.max(0, weight)) : 0.5;
+  const flippedWeight = 1 - safe;
 
   const colorStops = [
-    { stop: 0.0, color: { r: 245, g: 4, b: 8 } }, 
-    { stop: 0.46, color: { r: 241, g: 142, b: 4 } }, 
-    { stop: 0.58, color: { r: 241, g: 233, b: 4 } }, 
-    { stop: 0.75, color: { r: 186, g: 241, b: 4 } }, 
-    { stop: 1, color: { r: 3, g: 235, b: 8 } } 
+    { stop: 0.0,  color: { r: 245, g: 4,   b: 8 } },
+    { stop: 0.46, color: { r: 241, g: 142, b: 4 } },
+    { stop: 0.58, color: { r: 241, g: 233, b: 4 } },
+    { stop: 0.75, color: { r: 186, g: 241, b: 4 } },
+    { stop: 1.0,  color: { r: 3,   g: 235, b: 8 } },
   ];
 
   let lower = colorStops[0], upper = colorStops[colorStops.length - 1];
-
   for (let i = 0; i < colorStops.length - 1; i++) {
     if (flippedWeight >= colorStops[i].stop && flippedWeight <= colorStops[i + 1].stop) {
-      lower = colorStops[i];
-      upper = colorStops[i + 1];
-      break;
+      lower = colorStops[i]; upper = colorStops[i + 1]; break;
     }
   }
+  const range = Math.max(upper.stop - lower.stop, 1e-6);
+  const t = (flippedWeight - lower.stop) / range;
 
-  const range = upper.stop - lower.stop;
-  const normalizedWeight = range === 0 ? 0 : (flippedWeight - lower.stop) / range;
-
-  const r = Math.round(lower.color.r + (upper.color.r - lower.color.r) * normalizedWeight);
-  const g = Math.round(lower.color.g + (upper.color.g - lower.color.g) * normalizedWeight);
-  const b = Math.round(lower.color.b + (upper.color.b - lower.color.b) * normalizedWeight);
+  const r = Math.round(lower.color.r + (upper.color.r - lower.color.r) * t);
+  const g = Math.round(lower.color.g + (upper.color.g - lower.color.g) * t);
+  const b = Math.round(lower.color.b + (upper.color.b - lower.color.b) * t);
 
   return `rgb(${r}, ${g}, ${b})`;
 };
-// Color pop! 
+
 const calculateFinalColor = (answers) => {
   const weights = [];
-  
+
   Object.keys(answers).forEach((question) => {
-    const answer = answers[question];
-    if (answer && answerRewiring[question]) {
-      weights.push(answerRewiring[question][answer]);
-    }
+    const ans = answers[question];
+    const w = answerRewiring[question]?.[ans];
+    // push only valid numbers; otherwise use neutral 0.5
+    weights.push(typeof w === 'number' ? w : 0.5);
   });
 
-  if (weights.length === 0) return interpolateColor(0); 
+  const avgWeight = weights.length
+    ? weights.reduce((s, w) => s + w, 0) / weights.length
+    : 0.5;
 
-  const avgWeight = weights.reduce((sum, w) => sum + w, 0) / weights.length;
   return interpolateColor(avgWeight);
 };
 
@@ -172,34 +172,34 @@ const extractRGB = (rgbString) => {
 };
 
 // Color transitioning system 1
+const parseRgb = (c) => {
+  if (c && typeof c === 'object' && 'r' in c) return [c.r, c.g, c.b];
+  if (typeof c === 'string') {
+    const m = c.match(/\d+/g);
+    if (m && m.length >= 3) return m.slice(0,3).map(Number);
+  }
+  return null;
+};
+
 const lerpColor = (color1, color2, t) => {
-  // Ensure colors are in "rgb(r, g, b)" format before proceeding
-  const c1 = typeof color1 === "string" ? color1.match(/\d+/g).map(Number) : [color1.r, color1.g, color1.b];
-  const c2 = typeof color2 === "string" ? color2.match(/\d+/g).map(Number) : [color2.r, color2.g, color2.b];
-
-  const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
-  const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
-  const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
-
-  return `rgb(${r}, ${g}, ${b})`; // Return valid "rgb(r, g, b)" format
+  const c1 = parseRgb(color1) ?? [150,150,150]; // neutral fallback
+  const c2 = parseRgb(color2) ?? c1;
+  const tt = Math.min(1, Math.max(0, t ?? 0)); // clamp
+  const r = Math.round(c1[0] + (c2[0] - c1[0]) * tt);
+  const g = Math.round(c1[1] + (c2[1] - c1[1]) * tt);
+  const b = Math.round(c1[2] + (c2[2] - c1[2]) * tt);
+  return `rgb(${r}, ${g}, ${b})`;
 };
 
 // Computes average behavior score (0–1) from survey answers
 const computeBehaviorScore = (answers) => {
-  let totalWeight = 0;
-  let count = 0;
-
-  Object.keys(answers).forEach((question) => {
-    const answer = answers[question];
-    if (answer && answerRewiring[question]) {
-      totalWeight += answerRewiring[question][answer]; // Sum up weights
-      count++;
-    }
+  let total = 0, count = 0;
+  Object.keys(answers).forEach((q) => {
+    const w = answerRewiring[q]?.[answers[q]];
+    total += (typeof w === 'number' ? w : 0.5);
+    count++;
   });
-
-  if (count === 0) return 0.5; // Neutral default if no answers
-
-  return totalWeight / count; // Average weight
+  return count ? total / count : 0.5;
 };
 
 // Opacity bump toggle behavior (now varied smoothly between min/max)

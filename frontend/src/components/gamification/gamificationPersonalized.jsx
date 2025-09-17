@@ -9,7 +9,7 @@ const FADE_MS = 200;
 const PROX_THRESHOLD = 0.02;
 const CLOSE_GRACE_MS = 1000; // keep wrapper visible this long after close
 
-const GamificationPersonalized = ({ userData, percentage, color }) => {
+const GamificationPersonalized = ({ userData, percentage, color, onOpenChange }) => {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
   const [open, setOpen] = useState(true);
@@ -27,6 +27,11 @@ const GamificationPersonalized = ({ userData, percentage, color }) => {
   const { css: skewedColor } = useSkewedPercentColor(safePct);
   const { pick } = usePersonalizedPools();
 
+  // inform parent when panel open/closed changes
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+  
   // --- proximity check for the toggle button ---
   useEffect(() => {
     const onMouseMove = (e) => {

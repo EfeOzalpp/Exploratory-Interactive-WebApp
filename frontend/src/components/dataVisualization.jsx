@@ -7,7 +7,7 @@ const Graph = React.lazy(() =>
   import(/* webpackChunkName: "graph", webpackPrefetch: true */ './dotGraph/graph')
 );
 const BarGraph = React.lazy(() =>
-  import(/* webpackChunkName: "bar-graph" */ './dragGraphs/barGraph')
+  import(/* webpackChunkName: "bar-graph" */ './dragGraph/barGraph')
 );
 
 const getPositionByViewport = (customX = null, customY = null) => {
