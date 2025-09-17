@@ -23,7 +23,17 @@ export default function useOrbit(params = {}) {
     minRadius = params.bounds?.minRadius ?? params.minRadius ?? (isSmallScreen ? 2 : 20),
     maxRadius = params.bounds?.maxRadius ?? params.maxRadius ?? 400,
     dataCount = params.dataCount ?? (Array.isArray(params.data) ? params.data.length : 0),
+
+    // Idle drift options
+    idle = {},
   } = params;
+
+  const {
+    startOnLoad   = idle.startOnLoad ?? true,   // drift on load until first interaction
+    delayMs       = idle.delayMs ?? 10000,      // inactivity threshold
+    speed         = idle.speed ?? 0.15,         // rad/s yaw
+    horizontalOnly= idle.horizontalOnly ?? true // if false adds tiny pitch sway
+  } = idle;
 
   const { camera } = useThree();
   const groupRef = useRef();
@@ -54,6 +64,11 @@ export default function useOrbit(params = {}) {
   const dragEndRef   = useRef({ x: 0, y: 0 });
   const dragOffset   = useRef({ x: 0, y: 0 });
 
+  // --- Rotation handoff bias (idle → active) ---
+  const rotBiasRef        = useRef({ x: 0, y: 0 }); // radians to add to cursor target
+  const rotBiasDecayRef   = useRef(0);              // seconds remaining to decay
+  const wasIdleRef        = useRef(false);          // previous idle state for edge detect
+
   // unified zoom (spring target)
   const zoomTargetRef = useRef(null);
   const zoomVelRef    = useRef(0);
@@ -61,19 +76,29 @@ export default function useOrbit(params = {}) {
   // helper
   const isMovingRef = useRef(false);
 
+  // --- Idle bookkeeping ---
+  const hasInteractedRef = useRef(false);           // flips true on first user interaction
+  const lastActivityRef  = useRef(performance.now());
+
+  const markActivity = () => {
+    hasInteractedRef.current = true;
+    lastActivityRef.current = performance.now();
+  };
+
   const count = useMemo(() => (typeof dataCount === 'number' ? dataCount : 0), [dataCount]);
 
   // starting zoom based on count
   useEffect(() => {
-    const THRESH = 300;
-    const near   = isSmallScreen ? 120 : 90;
-    const far    = maxRadius;
-    const tRaw   = Math.min(1, count / THRESH);
-    const t      = 1 - Math.pow(1 - tRaw, 0.6);
+    const thresholds = params.thresholds ?? { mobile: 120, tablet: 75, desktop: 300 };
+    const THRESH = isSmallScreen ? thresholds.mobile : isTabletLike ? thresholds.tablet : thresholds.desktop;
+    const near = isSmallScreen ? 120 : 90; // keep current near behavior
+    const far  = maxRadius;
+    const tRaw = Math.min(1, count / THRESH);
+    const t    = 1 - Math.pow(1 - tRaw, 0.6); // gentle ease
     zoomTargetRef.current = Math.max(minRadius, Math.min(far, near + (far - near) * t));
-  }, [count, isSmallScreen, minRadius, maxRadius]);
+  }, [count, isSmallScreen, isTabletLike, minRadius, maxRadius]);
 
-  // Inputs: wheel (zoom), mousemove (cursor-follow), touch (rotate & pinch)
+  // Inputs: wheel (zoom), mousemove (cursor-follow), touch (rotate & pinch), keypress
   useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
     const DEADZONE_PX = 2.5 * dpr;
@@ -89,6 +114,7 @@ export default function useOrbit(params = {}) {
     const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
 
     const handleScroll = (event) => {
+      markActivity();
       const current = zoomTargetRef.current ?? radius;
       const gain = event.ctrlKey ? CTRL_ZOOM_GAIN : WHEEL_SENSITIVITY;
       const next = clamp(current - event.deltaY * gain, minRadius, maxRadius);
@@ -96,6 +122,7 @@ export default function useOrbit(params = {}) {
     };
 
     const handleMouseMove = (event) => {
+      markActivity();
       const nx = (event.clientX / window.innerWidth)  * 2 - 1;   // -1..1
       const ny = -(event.clientY / window.innerHeight) * 2 + 1;  // -1..1 (top=+1)
       lastCursorPositionRef.current = { x: nx, y: ny };
@@ -103,6 +130,7 @@ export default function useOrbit(params = {}) {
 
     // Touch
     const handleTouchStart = (event) => {
+      markActivity();
       if (event.touches.length === 1) {
         const t = event.touches[0];
         isTouchRotatingRef.current = true; // finger down → keep velocity alive
@@ -114,6 +142,8 @@ export default function useOrbit(params = {}) {
     const handleTouchMove = (event) => {
       event.preventDefault();
       if (isDragging) return;
+
+      markActivity();
 
       if (event.touches.length === 1 && !isPinchingRef.current) {
         const t   = event.touches[0];
@@ -162,6 +192,7 @@ export default function useOrbit(params = {}) {
     };
 
     const handleTouchEnd = (e) => {
+      markActivity();
       if (e.touches.length === 0) {
         isTouchRotatingRef.current = false; // now allow decay
         isMovingRef.current = false;
@@ -181,11 +212,14 @@ export default function useOrbit(params = {}) {
       }
     };
 
+    const handleKey = () => { markActivity(); };
+
     window.addEventListener('wheel',      handleScroll,     { passive: true });
     window.addEventListener('mousemove',  handleMouseMove);
     window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove',  handleTouchMove,  { passive: false });
     window.addEventListener('touchend',   handleTouchEnd);
+    window.addEventListener('keydown',    handleKey);
 
     return () => {
       window.removeEventListener('wheel',      handleScroll);
@@ -193,6 +227,7 @@ export default function useOrbit(params = {}) {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove',  handleTouchMove);
       window.removeEventListener('touchend',   handleTouchEnd);
+      window.removeEventListener('keydown',    handleKey);
     };
   }, [isDragging, isSmallScreen, isTabletLike, minRadius, maxRadius, radius]);
 
@@ -204,6 +239,7 @@ export default function useOrbit(params = {}) {
         y: lastCursorPositionRef.current.y - (dragOffset.current?.y || 0),
       };
       dragStartRef.current = { ...lastCursorPositionRef.current };
+      markActivity();
     } else {
       dragEndRef.current = { ...lastCursorPositionRef.current };
       dragOffset.current = {
@@ -213,19 +249,68 @@ export default function useOrbit(params = {}) {
     }
   }, [isDragging]);
 
+  // Desktop target helper (mirrors desktop math)
+  const getDesktopCursorTarget = () => {
+    const tx =
+      (lastCursorPositionRef.current.y - (dragOffset.current?.y || 0)) * Math.PI * 0.25;
+    const ty =
+      (lastCursorPositionRef.current.x - (dragOffset.current?.x || 0)) * Math.PI * 0.5;
+    // y sign matches the easing below (no extra negation later)
+    return { x: tx, y: -ty };
+  };
+
   useFrame((_, delta) => {
+    const now = performance.now();
+
+    const userInteracting =
+      isDragging || isTouchRotatingRef.current || isPinchingRef.current;
+
+    const timeSinceActivity = now - lastActivityRef.current;
+
+    // Idle is active on load (if enabled) or after delay with no interaction
+    const idleActive =
+      (!hasInteractedRef.current && startOnLoad && !userInteracting) ||
+      (hasInteractedRef.current && !userInteracting && timeSinceActivity >= delayMs);
+
+    // Edge-detect idle → active: capture rotation bias so there's no jump
+    if (wasIdleRef.current && !idleActive) {
+      if (useDesktopLayout && groupRef.current) {
+        const tgt = getDesktopCursorTarget();
+        rotBiasRef.current.x = groupRef.current.rotation.x - tgt.x;
+        rotBiasRef.current.y = groupRef.current.rotation.y - tgt.y;
+        rotBiasDecayRef.current = 0.25; // seconds to fade out bias
+      } else {
+        rotBiasRef.current.x = 0;
+        rotBiasRef.current.y = 0;
+        rotBiasDecayRef.current = 0;
+      }
+    }
+    wasIdleRef.current = idleActive;
+
     if (!isDragging && groupRef.current) {
-      if (useDesktopLayout) {
-        // Desktop: cursor-follow (smooth)
-        const targetX =
-          (lastCursorPositionRef.current.y - (dragOffset.current?.y || 0)) * Math.PI * 0.25;
-        const targetY =
-          (lastCursorPositionRef.current.x - (dragOffset.current?.x || 0)) * Math.PI * 0.5;
+      if (useDesktopLayout && !idleActive) {
+        // Desktop: cursor-follow (smooth) + bias blending
+        const { x: baseX, y: baseY } = getDesktopCursorTarget();
+
+        // exponential decay of bias
+        if (rotBiasDecayRef.current > 0) {
+          const tau = 0.18; // smaller = faster fade
+          const k = 1 - Math.exp(-delta / tau);
+          rotBiasRef.current.x -= rotBiasRef.current.x * k;
+          rotBiasRef.current.y -= rotBiasRef.current.y * k;
+          rotBiasDecayRef.current = Math.max(0, rotBiasDecayRef.current - delta);
+        } else {
+          rotBiasRef.current.x = 0;
+          rotBiasRef.current.y = 0;
+        }
+
+        const targetX = baseX + rotBiasRef.current.x;
+        const targetY = baseY + rotBiasRef.current.y;
 
         const EASE = 0.10;
         groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * EASE;
-        groupRef.current.rotation.y += (-(targetY) - groupRef.current.rotation.y) * EASE;
-      } else {
+        groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * EASE;
+      } else if (!useDesktopLayout && !idleActive) {
         // Touch / tablet: velocity integration with zoom-based scaling
         const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius) || 0));
         const zoomMul   = 0.9 + 0.8 * zf;
@@ -235,10 +320,9 @@ export default function useOrbit(params = {}) {
         const movingBoost = MOVING_BOOST_MIN + (MOVING_BOOST_MAX - MOVING_BOOST_MIN) * zf;
         const motionMul   = isMovingRef.current ? movingBoost : 1.0;
 
-        // 🔑 keep spinning indefinitely while a finger is held (no decay),
-        // and only decay after release for smooth easing out.
+        // 🔑 keep spinning while a finger is held; only decay after release
         const holdingTouch = isTouchRotatingRef.current && !isPinchingRef.current;
-        const DECAY = holdingTouch ? 1.0 : 0.92; // <- was 0.85 always; this was killing it
+        const DECAY = holdingTouch ? 1.0 : 0.92;
 
         spinVelRef.current.x *= DECAY;
         spinVelRef.current.y *= DECAY;
@@ -246,6 +330,16 @@ export default function useOrbit(params = {}) {
         const mul = zoomMul * tabletMul * motionMul;
         groupRef.current.rotation.x += spinVelRef.current.x * delta * mul;
         groupRef.current.rotation.y += spinVelRef.current.y * delta * mul;
+      }
+
+      // Idle drift (applied last). Keep bias neutral during idle.
+      if (idleActive) {
+        rotBiasRef.current.x = 0;
+        rotBiasRef.current.y = 0;
+        if (!horizontalOnly) {
+          groupRef.current.rotation.x += (speed * 0.25) * delta;
+        }
+        groupRef.current.rotation.y += speed * delta;
       }
     }
 
@@ -272,12 +366,12 @@ export default function useOrbit(params = {}) {
 
     // rotation event (throttled)
     if (groupRef.current) {
-      const now = performance.now();
+      const now2 = performance.now();
       const rx = groupRef.current.rotation.x;
       const ry = groupRef.current.rotation.y;
       const d  = Math.abs(rx - lastRotEvtRef.current.x) + Math.abs(ry - lastRotEvtRef.current.y);
-      if (d > 0.002 && (now - lastRotEvtRef.current.t) > 120) {
-        lastRotEvtRef.current = { x: rx, y: ry, t: now };
+      if (d > 0.002 && (now2 - lastRotEvtRef.current.t) > 120) {
+        lastRotEvtRef.current = { x: rx, y: ry, t: now2 };
         window.dispatchEvent(new CustomEvent(ROTATE_EVT, {
           detail: { rx, ry, source: useDesktopLayout ? 'desktop' : 'touch' }
         }));

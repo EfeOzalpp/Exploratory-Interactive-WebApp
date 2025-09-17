@@ -31,7 +31,7 @@
 .bar-graph-bar:nth-child(3)::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(to bottom, transparent 0%, rgba(50, 50, 50, 0) 6%, rgba(108, 121, 122, 0.3) 15%, rgba(30, 30, 30, 0) 40%, transparent 100%); }
 
 /* Mobile */
-@media screen and (max-width: 767px) {
+@media screen and (max-width: 768px) {
   .draggable-container { height: 375px; width: 225px; pointer-events: none; }
   .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
   .bar-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
@@ -60,7 +60,7 @@
 /* Tablet */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
   .draggable-container { height: 475px; width: 250px; pointer-events: none; }
-  .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
+  .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 32px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
   .bar-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
   .bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 250px; height: 100%; box-sizing: border-box; padding: 0 1.2em; }
   .bar-graph-icons { display: flex; justify-content: space-around; width: 85%; margin-top: 8px; padding-bottom: 1em; }
