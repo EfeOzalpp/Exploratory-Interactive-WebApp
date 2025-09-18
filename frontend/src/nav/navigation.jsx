@@ -14,6 +14,33 @@ const Navigation = () => {
   const [open, setOpen] = useState(false);
   const [burgerOpen, setBurgerOpen] = useState(true);
 
+  // Track GraphPicker open + whether we’re on phone (<=768px)
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [isPhone, setIsPhone] = useState(
+    typeof window !== "undefined"
+      ? window.matchMedia?.("(max-width: 768px)")?.matches
+      : false
+  );
+
+  useEffect(() => {
+    const onMenuOpen = (e) => setPickerOpen(!!e?.detail?.open);
+    window.addEventListener("gp:menu-open", onMenuOpen);
+    return () => window.removeEventListener("gp:menu-open", onMenuOpen);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(max-width: 768px)");
+    const handler = (ev) => setIsPhone(ev.matches);
+    setIsPhone(mql.matches);
+    if (mql.addEventListener) mql.addEventListener("change", handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", handler);
+      else mql.removeListener(handler);
+    };
+  }, []);
+
   const {
     section,
     setSection,
@@ -55,12 +82,20 @@ const Navigation = () => {
   const showObserverButton = !hasCompletedSurvey || observerMode;
 
   // class modifiers
-  const isDark = observerMode || hasCompletedSurvey; // dark if either is true
-  const postCompleteOnly = hasCompletedSurvey && !observerMode; // completed, but not observing
+  const isDark = observerMode || hasCompletedSurvey;
+  const postCompleteOnly = hasCompletedSurvey && !observerMode;
+
+  // IMPORTANT: fade only when picker is open on phone AND the info panel is NOT open
+  const navClassName = [
+    "navigation",
+    isPhone && pickerOpen && !open ? "picker-open-mobile" : "",
+  ]
+    .join(" ")
+    .trim();
 
   return (
     <>
-      <nav className="navigation">
+      <nav className={navClassName}>
         <div className="left">
           <Logo />
         </div>
@@ -114,9 +149,7 @@ const Navigation = () => {
             </button>
 
             <button
-              className={["feedback", isDark ? "is-dark" : ""]
-                .join(" ")
-                .trim()}
+              className={["feedback", isDark ? "is-dark" : ""].join(" ").trim()}
               onClick={handleFeedbackClick}
             >
               Leave Your Thoughts
@@ -173,34 +206,16 @@ const Navigation = () => {
               aria-controls="nav-tools"
               aria-label={burgerOpen ? "Hide options" : "Show options"}
             >
-              <span
-                className={`burger-icon ${burgerOpen ? "is-closed" : "is-open"}`}
-                aria-hidden
-              >
-                {/* plus */}
-                <svg
-                  className="icon-plus"
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                >
+              {burgerOpen ? (
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
                   <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
                   <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
                 </svg>
-                {/* minus */}
-                <svg
-                  className="icon-minus"
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                >
+              ) : (
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
                   <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
                 </svg>
-              </span>
+              )}
             </button>
           </div>
         </div>

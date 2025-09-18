@@ -89,7 +89,7 @@ export default function useOrbit(params = {}) {
 
   // starting zoom based on count
   useEffect(() => {
-    const thresholds = params.thresholds ?? { mobile: 120, tablet: 75, desktop: 300 };
+    const thresholds = params.thresholds ?? { mobile: 120, tablet: 60, desktop: 300 };
     const THRESH = isSmallScreen ? thresholds.mobile : isTabletLike ? thresholds.tablet : thresholds.desktop;
     const near = isSmallScreen ? 120 : 90; // keep current near behavior
     const far  = maxRadius;
@@ -102,7 +102,7 @@ export default function useOrbit(params = {}) {
   useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
     const DEADZONE_PX = 2.5 * dpr;
-    const PX_TO_RAD   = (isTabletLike ? 0.0135 : 0.0125) / dpr; // sensitivity
+    const PX_TO_RAD   = (isTabletLike ? 0.009 : 0.0125) / dpr; // sensitivity
     const LERP_GAIN   = 0.8;  // while held smoothing
     const FRICTION_WHILE_HELD = 1.0;
 

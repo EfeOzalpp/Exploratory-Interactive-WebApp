@@ -56,6 +56,7 @@
   .is-left .generalized-result { top: 0px; width: 180px; max-width: 180px; min-width: 180px; }
   .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
   .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; }
+  .toggle-button.gp-toggle {position: absolute;top: -44px;right: 49px;z-index: 3;pointer-events: all; }
 }
 
 /* Tablet */
@@ -100,7 +101,7 @@
   .is-left .generalized-result { top: 0px; }
   .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
   .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
-  .toggle-button.gp-toggle { position: absolute; top: -43px; right: 76px; z-index: 3; pointer-events: all; }
+  .toggle-button.gp-toggle { position: absolute; top: -62px; right: 47px; z-index: 3; pointer-events: all; }
   .toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }
   .toggle-button.gp-toggle:active, .toggle-button:active { transform: translateY(0); }
   .toggle-button.gp-toggle[aria-expanded="false"] { top: -2px; right: -12px; position: relative; }

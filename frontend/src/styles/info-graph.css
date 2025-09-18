@@ -85,7 +85,7 @@
   .dot-text { width: 80%; }
   .dot-text p { padding-right: 20%; }
   .title-divider { padding-left: 0.1em; padding-bottom: 0.0935em; }
-  .text-divider { padding: 120px 6px 0 48px; }
+  .text-divider { padding: 168px 6px 0 48px; }
   .info-body { padding-left: 8px; padding-top: 12em; }
 
   .main-graph-divider { padding-top: 16px; padding-bottom: 24px; margin-top: 48px; margin-bottom: 64px; background-color: rgba(255,255,255,.22); backdrop-filter: blur(8px) saturate(120%); -webkit-backdrop-filter: blur(8px) saturate(120%); border-radius: 36px; position: relative; overflow: visible; border: 1px solid rgba(255,255,255,.35); box-shadow: 0 12px 30px rgba(17,27,39,.12), 0 2px 8px rgba(17,27,39,.06), inset 0 1px 0 rgba(255,255,255,.65), inset 0 -1px 0 rgba(17,27,39,.06); }

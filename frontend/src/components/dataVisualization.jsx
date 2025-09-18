@@ -4,7 +4,7 @@ import '../styles/global-styles.css';
 import '../styles/graph.css';
 
 const Graph = React.lazy(() =>
-  import(/* webpackChunkName: "graph", webpackPrefetch: true */ './dotGraph/graph')
+  import(/* webpackChunkName: "graph" */ './dotGraph/graph')
 );
 const BarGraph = React.lazy(() =>
   import(/* webpackChunkName: "bar-graph" */ './dragGraph/barGraph')
@@ -16,8 +16,8 @@ const getPositionByViewport = (customX = null, customY = null) => {
 
   if (width < 768) {
     bar1Position = { x: window.innerWidth * 0, y: window.innerHeight * 0.35 };
-  } else if (width >= 768 && width < 1024) {
-    bar1Position = { x: window.innerWidth * 0.1, y: window.innerHeight * 0.25 };
+  } else if (width >= 768 && width <= 1024) {
+    bar1Position = { x: window.innerWidth * 0.05, y: window.innerHeight * 0.2 };
   } else {
     bar1Position = { x: window.innerWidth * 0.05, y: window.innerHeight * 0.16 };
   }

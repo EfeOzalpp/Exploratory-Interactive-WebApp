@@ -59,8 +59,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       isTabletLike,
       xOffset: 0,
       yOffset: 0,
-      xOffsetPx: wantsSkew ? -72 : 0,   // ~72px to the left
-      yOffsetPx: wantsSkew ?  12 : 0,   // small downward nudge; set 0 if you don’t want it
+      xOffsetPx: wantsSkew ? -96 : 0,   // ~72px to the left
+      yOffsetPx: wantsSkew ?  90 : 0,   // small downward nudge; set 0 if you don’t want it
     },
     bounds: { minRadius: isSmallScreen ? 2 : 20, maxRadius: 400 },
     dataCount: safeData.length,

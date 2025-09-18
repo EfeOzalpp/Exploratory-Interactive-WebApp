@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import RadialBackground from '../components/static/radialBackground';
 import Survey from '../components/survey/survey.jsx';
 import Navigation from '../nav/navigation.jsx';
-import Canvas from '../components/Canvas';
+import Canvas from '../components/decoy';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider, useGraph } from "../context/graphContext.tsx";

@@ -1,0 +1,88 @@
+/* ----- Reusable hint bubble placement helpers ----- */
+.hint-bubble {
+  position: absolute;
+  pointer-events: none;
+  /* you likely already style .question-hint-bubble for colors, padding, etc. */
+  transition: opacity 160ms ease, transform 160ms ease;
+  opacity: 1;
+  --gap: 12px;
+  --offset-x: 0px;
+  --offset-y: 0px;
+  --hint-bg: rgba(20,20,20,0.92); /* used for the arrow tip color */
+}
+
+/* fade helpers to match your previous behavior */
+.hint-bubble.hide { opacity: 0; transform: translateY(4px); }
+.hint-bubble.show { opacity: 1; transform: translateY(0); }
+
+/* placement: LEFT (default) — bubble sits to the left of the anchor; arrow on right */
+.hint-bubble.is-left {
+  right: calc(100% + var(--gap));
+  top: 50%;
+  transform: translate(var(--offset-x), calc(-50% + var(--offset-y)));
+}
+.hint-bubble.is-left::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid var(--hint-bg);
+}
+
+/* placement: RIGHT — bubble sits to the right of the anchor; arrow on left */
+.hint-bubble.is-right {
+  left: calc(100% + var(--gap));
+  top: 50%;
+  transform: translate(var(--offset-x), calc(-50% + var(--offset-y)));
+}
+.hint-bubble.is-right::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid var(--hint-bg);
+}
+
+/* placement: TOP — bubble sits above the anchor; arrow on bottom */
+.hint-bubble.is-top {
+  left: 50%;
+  bottom: calc(100% + var(--gap));
+  transform: translate(calc(-50% + var(--offset-x)), var(--offset-y));
+}
+.hint-bubble.is-top::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--hint-bg);
+}
+
+/* placement: BOTTOM — bubble sits below the anchor; arrow on top */
+.hint-bubble.is-bottom {
+  left: 50%;
+  top: calc(100% + var(--gap));
+  transform: translate(calc(-50% + var(--offset-x)), var(--offset-y));
+}
+.hint-bubble.is-bottom::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--hint-bg);
+}

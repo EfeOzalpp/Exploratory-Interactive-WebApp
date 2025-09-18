@@ -3,7 +3,7 @@ import q5 from 'q5';
 
 // Canvas Background style extracted
 const drawBackground = (p) => {
-  p.background('#90d6ffff');
+  p.background('#b4e4fdff');
   let innerRadius, outerRadius;
   
   if (p.width < 768) {
@@ -21,9 +21,9 @@ const drawBackground = (p) => {
     p.width / 2, p.height / 2, innerRadius,
     p.width / 2, p.height / 2, outerRadius
   );
-  gradient.addColorStop(0.1, 'rgba(246, 246, 246, 0.86)');
-  gradient.addColorStop(0.35, 'rgba(224, 224, 224, 0.6)');
-  gradient.addColorStop(0.7, 'rgba(235, 235, 235, 0.3)');
+  gradient.addColorStop(0.1, 'rgba(230, 230, 230, 0.82)');
+  gradient.addColorStop(0.35, 'rgba(211, 211, 211, 0.6)');
+  gradient.addColorStop(0.7, 'rgba(197,197,197,0.3)');
   gradient.addColorStop(1, 'transparent');
   
   p.drawingContext.fillStyle = gradient;
@@ -32,11 +32,11 @@ const drawBackground = (p) => {
 
 // each option has different weight values for corresponding answers
 const answerRewiring = {
-  question1: { A: 0, B: 0.3, C: 1, D: 0.7 },
-  question2: { C: 0, A: 0.3, B: 1, D: 0.7 },
-  question3: { C: 0, A: 0.3, B: 1, D: 0.7 },
-  question4: { A: 0, B: 0.3, C: 1, D: 0.7 },
-  question5: { A: 0, B: 0.3, C: 1, D: 0.7 },
+  question1: { A: 0, B: 0.5, C: 1, D: 0.5 },
+  question2: { C: 0, A: 0.5, B: 1, D: 0.5 },
+  question3: { C: 0, A: 0.5, B: 1, D: 0.5 },
+  question4: { A: 0, B: 0.5, C: 1, D: 0.5 },
+  question5: { A: 0, B: 0.5, C: 1, D: 0.5 },
 };
 
 // Generate base-color theme
@@ -190,6 +190,7 @@ const lerpColor = (color1, color2, t) => {
   const b = Math.round(c1[2] + (c2[2] - c1[2]) * tt);
   return `rgb(${r}, ${g}, ${b})`;
 };
+
 
 // Computes average behavior score (0–1) from survey answers
 const computeBehaviorScore = (answers) => {
