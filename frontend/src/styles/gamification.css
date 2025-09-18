@@ -57,6 +57,7 @@
   .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
   .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(0deg) !important; }
   .toggle-button.gp-toggle {position: absolute;top: -44px;right: 49px;z-index: 3;pointer-events: all; }
+  .toggle-button.gp-toggle[aria-expanded="false"] {top: 0px;right: -12px; position: relative; }
 }
 
 /* Tablet */

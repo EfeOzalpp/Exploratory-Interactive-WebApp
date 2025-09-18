@@ -33,11 +33,12 @@
 /* Mobile */
 @media screen and (max-width: 768px) {
   .draggable-container { height: 375px; width: 225px; pointer-events: none; }
-  .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
+  .draggable-bar-graph { width: 180px; height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
+  .bar-graph-divider { width: 120%; }
   .bar-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
-  .bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 239px; height: 100%; box-sizing: border-box; padding: 0 0.8em; }
-  .bar-graph-icons { display: flex; justify-content: space-around; width: 88%; margin-top: 6px; padding-bottom: 0.5em; }
-  .bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 9%; }
+  .bar-graph-container { width: 162px; display: flex; justify-content: center; align-items: flex-end; height: 85%; box-sizing: border-box; padding: 0 0.8em; }
+  .bar-graph-icons { height: 15%; display: flex; justify-content: space-around; width: 88%; margin-top: 6px; padding-bottom: 0.5em; }
+  .bar-icon { display: flex; justify-content: center; align-items: center; width: 33%; padding: 0 6%; }
   .bar-graph-bar { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 28%; height: 100%; padding: 0 0.4em; }
   .bar-graph-fill { width: 100%; height: 0; transition: height 0.1s ease; animation-duration: 3.6s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; border-radius: 6px; border: 0.2px solid rgb(212, 212, 212); }
   .bar-graph-label { position: relative; top: 24px; color: #333; text-align: center; padding-bottom: 8px; }
@@ -77,7 +78,7 @@
 
 /* Desktop */
 @media screen and (min-width: 1025px) {
-  .draggable-bar-graph { height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 42px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
+  .draggable-bar-graph {width: 240px; height: 100%; pointer-events: auto; user-select: text; cursor: grab; display: flex; flex-direction: column; align-items: center; margin-top: 0.4em; border-radius: 24px; background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-image: linear-gradient(to right, #cae7f0, #4682b4); border-image-slice: 1; overflow: visible; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.2); }
   .draggable-graph-overlay::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(to bottom, #cae7f0, #cedbe5); opacity: 0.45; z-index: -1; border-radius: 60px; }
   .bar-graph-container { display: flex; justify-content: space-around; align-items: flex-end; width: 250px; height: 100%; box-sizing: border-box; padding: 0 1.2em; }
   .bar-graph-icons { display: flex; justify-content: space-around; width: 85%; margin-top: 8px; padding-bottom: 1em; }
@@ -91,8 +92,9 @@
   .percentage-section { position: absolute; width: 56px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
   .percentage-indicator { position: absolute; top: calc(-1.1vw - 14px); left: -25%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.941); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
   .percentage-indicator::before { content: ""; position: absolute; bottom: -5px; left: 100%; top: 50%; transform: translateX(-32%) rotate(-90deg); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
+  .bar-graph-divider {width: 106%;}
 }
-
+.bar-graph-label {width: 90%;}
 @media screen and (min-width: 1025px) and (max-width: 1320px) {
   .draggable-container { height: 440px; width: 250px; pointer-events: none; }
 }

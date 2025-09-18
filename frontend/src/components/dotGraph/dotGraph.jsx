@@ -1,4 +1,3 @@
-// src/components/dotGraph/DotGraph.jsx
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { Html } from '@react-three/drei';
 
@@ -59,8 +58,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       isTabletLike,
       xOffset: 0,
       yOffset: 0,
-      xOffsetPx: wantsSkew ? -96 : 0,   // ~72px to the left
-      yOffsetPx: wantsSkew ?  90 : 0,   // small downward nudge; set 0 if you don’t want it
+      xOffsetPx: wantsSkew ? -96 : 0,
+      yOffsetPx: wantsSkew ?  90 : 0,
     },
     bounds: { minRadius: isSmallScreen ? 2 : 20, maxRadius: 400 },
     dataCount: safeData.length,
@@ -69,34 +68,31 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   // 0 = zoomed in, 1 = zoomed out (still used for tooltip offset ease)
   const zoomFactor = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius)));
 
-  // 🔑 ADAPTIVE SPREAD: few dots = tight; many dots = wider
+  // ADAPTIVE SPREAD
   const spread = useMemo(() => {
     const n = safeData.length;
-
-    // TWEAK THESE KNOBS:
-    const MIN_SPREAD = 28;   // how tight 1–3 dots feel (smaller = tighter)
-    const MAX_SPREAD = 220;  // how wide many dots feel (bigger = more spread)
-    const REF_N      = 50;   // n where you’re ~near MAX_SPREAD
-    const CURVE      = 0.5;  // 0.5 = sqrt (gentle), 1 = linear, 0.33 ~ cbrt
-
+    const MIN_SPREAD = 28;
+    const MAX_SPREAD = 220;
+    const REF_N      = 50;
+    const CURVE      = 0.5;
     const t = n <= 1 ? 0 : Math.min(1, Math.pow(n / REF_N, CURVE));
     return MIN_SPREAD + (MAX_SPREAD - MIN_SPREAD) * t;
   }, [safeData.length]);
 
   const colorForAverage = useMemo(
-    () => (avg /* 0..1 */) => rgbString(sampleStops(1 - avg)),
+    () => (avg /* 0..1 */) => rgbString(sampleStops(avg)),
     []
   );
 
   const points = useDotPoints(safeData, {
-    spread,                // ← use the adaptive spread
-    minDistance: 2,        // spacing guard (raise to separate more)
-    seed: 1337,            // optional: stable layout
-    relaxPasses: 1,        // slight de-jitter
+    spread,
+    minDistance: 2,
+    seed: 1337,
+    relaxPasses: 1,
     relaxStrength: 0.25,
     centerBias: 0.35,
 
-    colorForAverage,
+    colorForAverage, 
     personalizedEntryId,
     showPersonalized:
       showCompleteUI && !!personalizedEntryId && safeData.some(d => d._id === personalizedEntryId),
@@ -144,41 +140,37 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     calcPercentForAvg,
   });
 
-    // --- Auto-dismiss tooltip after rotate, with grace + fade-out ---
-    const [isClosing, setIsClosing] = useState(false);
-    const closeTimerRef = useRef(null);
-    const fadeTimerRef = useRef(null);
-  
-    const clearCloseTimers = () => {
-      if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
-      if (fadeTimerRef.current)  { clearTimeout(fadeTimerRef.current);  fadeTimerRef.current  = null; }
+  // --- Auto-dismiss tooltip after rotate, with grace + fade-out ---
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimerRef = useRef(null);
+  const fadeTimerRef = useRef(null);
+
+  const clearCloseTimers = () => {
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+    if (fadeTimerRef.current)  { clearTimeout(fadeTimerRef.current);  fadeTimerRef.current  = null; }
+  };
+
+  useEffect(() => {
+    clearCloseTimers();
+    setIsClosing(false);
+  }, [hoveredDot?.dotId]);
+
+  useEffect(() => {
+    const onRotate = () => {
+      if (!hoveredDot) return;
+      if (closeTimerRef.current) return;
+      closeTimerRef.current = setTimeout(() => {
+        setIsClosing(true);
+        fadeTimerRef.current = setTimeout(() => {
+          onHoverEnd();
+          setIsClosing(false);
+          clearCloseTimers();
+        }, 180);
+      }, 2000);
     };
-  
-    // Reset pending timers and closing state when the hovered item changes (open/new)
-    useEffect(() => {
-      clearCloseTimers();
-      setIsClosing(false);
-    }, [hoveredDot?.dotId]);
-  
-    // Listen for rotation while a tooltip is open
-    useEffect(() => {
-      const onRotate = () => {
-        if (!hoveredDot) return;
-        // Already scheduled? keep the first grace window
-       if (closeTimerRef.current) return;
-        // 2s grace, then 180ms fade, then unmount
-        closeTimerRef.current = setTimeout(() => {
-          setIsClosing(true);
-          fadeTimerRef.current = setTimeout(() => {
-            onHoverEnd();
-            setIsClosing(false);
-            clearCloseTimers();
-          }, 180);
-        }, 2000);
-      };
-      window.addEventListener('gp:orbit-rot', onRotate);
-      return () => window.removeEventListener('gp:orbit-rot', onRotate);
-    }, [hoveredDot, onHoverEnd]);
+    window.addEventListener('gp:orbit-rot', onRotate);
+    return () => window.removeEventListener('gp:orbit-rot', onRotate);
+  }, [hoveredDot, onHoverEnd]);
 
   const isPortrait = typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
   const offsetBase = isPortrait ? 160 : 120;

@@ -1,0 +1,139 @@
+.cp-scale {
+  width: 100%;
+  padding: 28px 0;              /* generous grab area */
+  user-select: none;
+}
+
+.cp-rail {
+  position: relative;
+  height: 6px;
+  background: black;
+  border-radius: 3px;
+}
+
+/* Checkpoints: hollow vertical rectangles */
+.cp-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 36px;
+  border-radius: 5px;
+  border: 2px solid black;
+  pointer-events: auto;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+/* Illuminated when "selected" (thumb snapped onto it) */
+.cp-dot.active {
+  /* light, diffused glow; looks like it’s illuminated */
+  box-shadow:
+    0 0 0 2px #fff inset,            /* crisp inner edge */
+    0 4px 14px rgba(0,0,0,0.14),     /* soft drop */
+    0 0 18px rgba(0,0,0,0.08);       /* extra diffusion */
+  background: rgba(255,255,255,0.6); /* subtle fill so the inner-rect thumb reads */
+}
+
+.cp-thumb-hitbox {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;   /* comfy finger size */
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+/* Base: black circle */
+.cp-thumb {
+  width: 20px;
+  height: 20px;
+  background: black;
+  border-radius: 50%;
+  pointer-events: none; /* all input goes to hitbox */
+  transition:
+    width 0.14s ease,
+    height 0.14s ease,
+    border-radius 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+/* Morph into rectangular "plug" when sitting on a checkpoint */
+.cp-thumb-hitbox.is-rect .cp-thumb {
+  width: 16px;
+  height: 36px;
+  border-radius: 2px;
+  background: black;
+  box-shadow:
+    0 0 12px rgba(255, 220, 80, 0.6),   /* diffuse glow */
+    0 2px 4px rgba(0, 0, 0, 0.25);      /* subtle depth */
+}
+
+/* When exactly on a checkpoint, morph into an inner rectangle that fits inside the hollow tick */
+.cp-thumb.is-rect {
+  width: 10px;          /* a bit smaller than the tick's inner space */
+  height: 24px;
+  border-radius: 3px;
+  background: black;    /* solid “insert” */
+  /* slight inner highlight so it feels inset */
+  box-shadow:
+    0 0 0 1px rgb(255, 255, 255) inset,
+    0 1px 3px rgba(0,0,0,0.22);
+}
+
+/* Make the whole rail easier to grab without changing visuals */
+.cp-rail::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: -16px;
+  bottom: -16px;
+  /* no background, just a bigger hit area */
+}
+
+/* stage is where items stack, give enough height for the vertical orbit */
+.qm-stage {
+  position: relative;
+  height: 110px; /* bumped to allow ±22px travel; tweak as needed */
+  margin: 2px 0 10px;
+  width: 960px;
+}
+
+/* stacked answers */
+.qm-answer-abs {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  opacity: 0;
+  transition:
+    opacity 140ms ease,
+    transform 200ms ease,
+    filter 200ms ease,
+    box-shadow 220ms ease;
+  pointer-events: none;
+  text-align: center;
+  max-width: min(780px, 90vw);
+}
+
+.qm-answer-chip {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: #000000;
+  line-height: 1.25;
+}
+.qm-title {text-align: center; padding-bottom: 12px;}
+
+/* subtle glow when snapped */
+.qm-answer-abs.is-selected .qm-answer-chip {
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qm-answer-abs { transition: none; }
+}

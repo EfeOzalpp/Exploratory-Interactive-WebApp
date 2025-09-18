@@ -14,6 +14,7 @@ button.nav-toggle.active { text-align: left; text-decoration: none; }
 .observe-results:hover { transition: transform 0.1s ease, box-shadow 0.2s ease; box-shadow: 0 4px 10px rgba(214, 214, 214, 0.107); }
 .nav-divider { display: flex; }
 div.level-one, .observe-results { z-index: 10; }
+.gp-you{color:#000000; font-weight: 600;}
 /* Dark theme while in observer mode */
 .level-one.is-dark .nav-toggle, .level-one.is-dark .feedback, .level-two.is-dark .observe-results, .level-two.is-dark .burger-toggle { background-color: #292929; color: #fff; border-color: #444; }
 .level-one.is-dark .nav-toggle:hover, .level-one.is-dark .feedback:hover, .level-two.is-dark .observe-results:hover, .level-two.is-dark .burger-toggle:hover { background-color: #333333; border-color: #555; }
@@ -138,11 +139,11 @@ div.level-one, .observe-results { z-index: 10; }
   .logo-divider { width: 56px; height: 56px; }
   .nav-right { flex-direction: column-reverse; }
   .feedback, .nav-toggle { padding: 12px 6px 6px 12px; }
-  div.level-one { display: flex; gap: 0.6rem; position: relative; transform: translateY(0); opacity: 1; transition: transform 400ms ease, opacity 400ms ease; will-change: transform, opacity; flex-direction: column; align-items: flex-end; }
+  div.level-one { display: flex; gap: 16px; position: relative; transform: translateY(0); opacity: 1; transition: transform 400ms ease, opacity 400ms ease; will-change: transform, opacity; flex-direction: column; align-items: flex-end; }
   div.level-one.burger-closed { transform: translateY(14px); opacity: 0; pointer-events: none; }
   div.level-one.burger-closed .feedback, div.level-one.burger-closed .nav-toggle { pointer-events: none; }
   .burger-toggle { width: 40px; height: 40px; border-radius: 6px; margin-top: 1.2rem; }
-  .level-two { margin-bottom: 0.6rem; }
+  .level-two { margin-bottom: 16px; }
   .level-two.is-dark.is-post-complete { flex-direction: row; align-items: center; }
   .level-two.is-dark.is-post-complete .burger-toggle { margin-top: 0px; }
   button.observe-results { padding-bottom: 1.4em; padding-top: 1.4em; width: 14vw; }

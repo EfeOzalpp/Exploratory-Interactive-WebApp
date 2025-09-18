@@ -1,28 +1,7 @@
 // utils/sanityAPI.js
 import { cdnClient, liveClient } from './sanityClient';
 
-// --- scoring map ---
-const answerRewiring = {
-  question1: { A: 0,   B: 0.5, C: 1,   D: 0.5 },
-  question2: { C: 0,   A: 0.5, B: 1,   D: 0.5 },
-  question3: { C: 0,   A: 0.5, B: 1,   D: 0.5 },
-  question4: { A: 0,   B: 0.5, C: 1,   D: 0.5 },
-  question5: { A: 0,   B: 0.5, C: 1,   D: 0.5 },
-};
-
-
-const normalizeAnswers = (response) => {
-  const normalized = {};
-  for (const q in answerRewiring) {
-    const ans = response?.[q];
-    normalized[q] = answerRewiring[q]?.[ans] ?? 0.5; 
-  }
-  return normalized;
-};
-
-// --- current section ids (from ROLE_SECTIONS) ---
-// NOTE: legacy umbrella ids ('fine-arts', 'digital-media', 'design', 'foundations')
-// are now INCLUDED here per your request.
+// --- section ids (unchanged) ---
 const STUDENT_IDS = [
   '3d-arts','animation','architecture','art-education','ceramics',
   'communication-design','creative-writing','design-innovation','digital-media',
@@ -32,7 +11,6 @@ const STUDENT_IDS = [
   'mfa-low-residency','mfa-low-residency-foundation','mfa-studio-arts',
   'painting','photography','printmaking','sculpture','studio-arts',
   'studio-interrelated-media','studio-foundation','visual-storytelling',
-  // legacy umbrellas folded into student bucket:
   'fine-arts','design','foundations'
 ];
 
@@ -49,237 +27,126 @@ const STAFF_IDS = [
   'sustainability','technology','woodshop','youth-programs'
 ];
 
-// everything non-visitor that “belongs” to MassArt (students + staff)
 const NON_VISITOR_MASSART = Array.from(new Set([...STUDENT_IDS, ...STAFF_IDS]));
 
-// --- Build query/params for each picker value ---
+const round2 = (v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : undefined);
+
+// normalize to the shape your viz uses (also 2dp)
+const normalizeRow = (r) => {
+  const q1 = round2(r.q1), q2 = round2(r.q2), q3 = round2(r.q3), q4 = round2(r.q4), q5 = round2(r.q5);
+  const avgWeight = round2(r.avgWeight);
+  return {
+    ...r,
+    q1, q2, q3, q4, q5, avgWeight,
+    weights: {
+      question1: q1 ?? 0.5,
+      question2: q2 ?? 0.5,
+      question3: q3 ?? 0.5,
+      question4: q4 ?? 0.5,
+      question5: q5 ?? 0.5,
+    },
+  };
+};
+
+const PROJECTION = `
+  _id, section,
+  q1, q2, q3, q4, q5,
+  avgWeight,
+  submittedAt
+`;
+
 function buildQueryAndParams(section, limit) {
-  const BASE = "*[!(_id in path('drafts.**')) && _type == 'userResponseV2'";
+  const BASE = "*[!(_id in path('drafts.**')) && _type == 'userResponseV3'";
 
   if (!section || section === 'all') {
-    // everyone
-    return {
-      query: `
-        ${BASE}]
-          | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{
-            _id, section,
-            question1, question2, question3, question4, question5,
-            submittedAt
-          }
-      `,
-      params: { limit },
-    };
+    return { query: `${BASE}] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { limit } };
   }
-
   if (section === 'all-massart') {
-    // students + staff (exclude visitors)
-    return {
-      query: `
-        ${BASE} && section in $sections]
-          | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{
-            _id, section,
-            question1, question2, question3, question4, question5,
-            submittedAt
-          }
-      `,
-      params: { sections: NON_VISITOR_MASSART, limit },
-    };
+    return { query: `${BASE} && section in $sections] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { sections: NON_VISITOR_MASSART, limit } };
   }
-
   if (section === 'all-students') {
-    return {
-      query: `
-        ${BASE} && section in $sections]
-          | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{
-            _id, section,
-            question1, question2, question3, question4, question5,
-            submittedAt
-          }
-      `,
-      params: { sections: STUDENT_IDS, limit },
-    };
+    return { query: `${BASE} && section in $sections] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { sections: STUDENT_IDS, limit } };
   }
-
   if (section === 'all-staff') {
-    return {
-      query: `
-        ${BASE} && section in $sections]
-          | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{
-            _id, section,
-            question1, question2, question3, question4, question5,
-            submittedAt
-          }
-      `,
-      params: { sections: STAFF_IDS, limit },
-    };
+    return { query: `${BASE} && section in $sections] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { sections: STAFF_IDS, limit } };
   }
-
-  // specific section (incl. 'visitor')
-  return {
-    query: `
-      ${BASE} && section == $section]
-        | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{
-          _id, section,
-          question1, question2, question3, question4, question5,
-          submittedAt
-        }
-    `,
-    params: { section, limit },
-  };
+  return { query: `${BASE} && section == $section] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { section, limit } };
 }
 
-/**
- * Live, section-filtered subscription (with special groups).
- * - "all" → no filter
- * - "all-massart" → students + staff (no visitors)
- * - "all-students" → student ids (incl. legacy umbrellas you asked to include)
- * - "all-staff" → staff ids
- * - anything else → exact section match (incl. "visitor")
- * - Excludes drafts
- */
 export const subscribeSurveyData = ({ section, limit = 300, onData }) => {
   const { query, params } = buildQueryAndParams(section, limit);
+  const pump = (rows) => onData(rows.map(normalizeRow));
 
-  const pump = (rows) =>
-    onData(rows.map((r) => ({ ...r, weights: normalizeAnswers(r) })));
+  let refreshTimeout, sub;
 
-  let refreshTimeout;
-  let sub;
+  liveClient.fetch(query, params).then(pump).catch((e)=>console.error('[sanityAPI] initial fetch', e));
+  sub = cdnClient.listen(query, params, { visibility: 'query' }).subscribe({
+    next: () => {
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        liveClient.fetch(query, params).then(pump).catch((e)=>console.error('[sanityAPI] refresh fetch', e));
+      }, 100);
+    },
+    error: (e) => console.error('[sanityAPI] listen', e),
+  });
 
-  // Initial fetch: bypass CDN
-  liveClient
-    .fetch(query, params)
-    .then(pump)
-    .catch((err) => console.error('[sanityAPI] initial fetch error', err));
-
-  // Listen (real-time), then refresh with live fetch
-  sub = cdnClient
-    .listen(query, params, { visibility: 'query' })
-    .subscribe({
-      next: () => {
-        clearTimeout(refreshTimeout);
-        refreshTimeout = setTimeout(() => {
-          liveClient
-            .fetch(query, params)
-            .then(pump)
-            .catch((err) => console.error('[sanityAPI] refresh fetch error', err));
-        }, 100);
-      },
-      error: (err) => console.error('[sanityAPI] listen error', err),
-    });
-
-  return () => {
-    clearTimeout(refreshTimeout);
-    sub?.unsubscribe?.();
-  };
+  return () => { clearTimeout(refreshTimeout); sub?.unsubscribe?.(); };
 };
 
-// Unfiltered legacy helper (excludes drafts)
 export const fetchSurveyData = (callback, { limit = 300 } = {}) => {
   const query = `
-    *[!(_id in path('drafts.**')) && _type == "userResponseV2"]
-      | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{
-        _id, section,
-        question1, question2, question3, question4, question5,
-        submittedAt
-      }
+    *[!(_id in path('drafts.**')) && _type == "userResponseV3"]
+      | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }
   `;
+  const pump = (rows) => callback(rows.map(normalizeRow));
 
-  const pump = (rows) =>
-    callback(rows.map((r) => ({ ...r, weights: normalizeAnswers(r) })));
+  let refreshTimeout, sub;
+  liveClient.fetch(query, { limit }).then(pump).catch((e)=>console.error('[sanityAPI] initial fetch', e));
+  sub = cdnClient.listen(query, { limit }, { visibility: 'query' }).subscribe({
+    next: () => {
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        liveClient.fetch(query, { limit }).then(pump).catch((e)=>console.error('[sanityAPI] refresh fetch', e));
+      }, 100);
+    },
+    error: (e) => console.error('[sanityAPI] listen', e),
+  });
 
-  let refreshTimeout;
-  let sub;
-
-  liveClient
-    .fetch(query, { limit })
-    .then(pump)
-    .catch((err) => console.error('[sanityAPI] legacy initial fetch error', err));
-
-  sub = cdnClient
-    .listen(query, { limit }, { visibility: 'query' })
-    .subscribe({
-      next: () => {
-        clearTimeout(refreshTimeout);
-        refreshTimeout = setTimeout(() => {
-          liveClient
-            .fetch(query, { limit })
-            .then(pump)
-            .catch((err) => console.error('[sanityAPI] legacy refresh fetch error', err));
-        }, 100);
-      },
-      error: (err) => console.error('[sanityAPI] legacy listen error', err),
-    });
-
-  return () => {
-    clearTimeout(refreshTimeout);
-    sub?.unsubscribe?.();
-  };
+  return () => { clearTimeout(refreshTimeout); sub?.unsubscribe?.(); };
 };
 
-// ---- Counts subscription: live counts for every section + special groups ----
 export const subscribeSectionCounts = ({ onData }) => {
-  const query = `
-    *[!(_id in path('drafts.**')) && _type == "userResponseV2"]{
-      section
-    }
-  `;
+  const query = `*[!(_id in path('drafts.**')) && _type == "userResponseV3"]{ section }`;
 
   const pump = (rows) => {
-    // rows: [{section: 'animation'}, {section: 'visitor'}, ...]
     const counts = new Map();
-    for (const r of rows || []) {
-      const key = r?.section || '';
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
-
+    for (const r of rows || []) counts.set(r?.section || '', (counts.get(r?.section || '') || 0) + 1);
     const bySection = Object.fromEntries(counts);
-
     const sum = (ids) => ids.reduce((acc, id) => acc + (bySection[id] || 0), 0);
 
-    const visitorCount = bySection['visitor'] || 0;
-    const allStudents = sum(STUDENT_IDS);
-    const allStaff = sum(STAFF_IDS);
-    const allMassArt = sum(NON_VISITOR_MASSART);
-    const ALL = rows?.length || 0; // everything including visitors
-
     onData({
-      all: ALL,
-      'all-massart': allMassArt,
-      'all-students': allStudents,
-      'all-staff': allStaff,
-      visitor: visitorCount,
+      all: rows?.length || 0,
+      'all-massart': sum(NON_VISITOR_MASSART),
+      'all-students': sum(STUDENT_IDS),
+      'all-staff': sum(STAFF_IDS),
+      visitor: bySection['visitor'] || 0,
       ...bySection,
     });
   };
 
-  let refreshTimeout;
-  let sub;
+  let refreshTimeout, sub;
+  liveClient.fetch(query, {}).then(pump).catch((e)=>console.error('[sanityAPI] counts initial', e));
+  sub = cdnClient.listen(query, {}, { visibility: 'query' }).subscribe({
+    next: () => {
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        liveClient.fetch(query, {}).then(pump).catch((e)=>console.error('[sanityAPI] counts refresh', e));
+      }, 100);
+    },
+    error: (e) => console.error('[sanityAPI] counts listen', e),
+  });
 
-  // initial fetch (live)
-  liveClient
-    .fetch(query, {})
-    .then(pump)
-    .catch((err) => console.error('[sanityAPI] counts initial fetch error', err));
-
-  // listen then refresh (cdn + live refresh)
-  sub = cdnClient
-    .listen(query, {}, { visibility: 'query' })
-    .subscribe({
-      next: () => {
-        clearTimeout(refreshTimeout);
-        refreshTimeout = setTimeout(() => {
-          liveClient
-            .fetch(query, {})
-            .then(pump)
-            .catch((err) => console.error('[sanityAPI] counts refresh fetch error', err));
-        }, 100);
-      },
-      error: (err) => console.error('[sanityAPI] counts listen error', err),
-    });
-
-  return () => {
-    clearTimeout(refreshTimeout);
-    sub?.unsubscribe?.();
-  };
+  return () => { clearTimeout(refreshTimeout); sub?.unsubscribe?.(); };
 };
+
+export { STUDENT_IDS, STAFF_IDS, NON_VISITOR_MASSART };

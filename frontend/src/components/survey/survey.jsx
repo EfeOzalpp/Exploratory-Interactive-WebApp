@@ -1,15 +1,17 @@
 // src/components/survey/Survey.jsx
 import React, { useState, Suspense, useEffect, useMemo } from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
+// we'll dynamically import and prefer `saveUserResponseWeights` if it exists.
 import { saveUserResponse } from '../../utils/saveUserResponse.ts';
-import RoleStep from './roleStep';
-import SectionPickerIntro from './sectionPicker';
-import QuestionFlow from './questionFlow';
+
+import RoleStep from './rolePicker/roleStep';
+import SectionPickerIntro from './sectionPicker/sectionPicker.jsx';
+import QuestionFlow from './questions/questionFlow'; 
 import '../../styles/survey.css';
-import { ROLE_SECTIONS } from './sections';
+import { ROLE_SECTIONS } from './sectionPicker/sections.js';
 
 const DoneOverlayR3F = React.lazy(() =>
-  import(/* webpackChunkName: "survey-3d-overlay" */ './DoneOverlayR3F')
+  import(/* webpackChunkName: "survey-3d-overlay" */ './buttonLoader/DoneOverlayR3F.jsx')
 );
 
 const Survey = ({
@@ -25,7 +27,7 @@ const Survey = ({
   const [showCompleteButton, setShowCompleteButton] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // NEW: fade state (same as QuestionFlow)
+  // fade (kept in sync with QuestionFlow)
   const [fadeState, setFadeState] = useState('fade-in');
 
   const {
@@ -56,7 +58,7 @@ const Survey = ({
 
   if (observerMode) return null;
 
-  // NEW: small helper to orchestrate fade-out -> stage change -> fade-in
+  // helper: fade-out → stage change → fade-in
   const transitionTo = (nextStage, sideEffects = () => {}) => {
     setFadeState('fade-out');
     setTimeout(() => {
@@ -101,8 +103,13 @@ const Survey = ({
     });
   };
 
-  // Step 3: submit answers — optimistic reveal
-  const handleSubmitFromQuestions = (answers) => {
+  /**
+   * Step 3: submit payload
+   * Supports BOTH legacy answer letters and new numeric weight payloads.
+   * - If ../../utils/saveUserResponse.ts exports saveUserResponseWeights, we use it.
+   * - Otherwise we fall back to saveUserResponse (letters).
+   */
+  const handleSubmitFromQuestions = async (payload) => {
     if (submitting) return;
     setSubmitting(true);
     setError('');
@@ -117,17 +124,34 @@ const Survey = ({
     setSurveyWrapperClass('complete-active');
     setShowCompleteButton(true);
 
-    saveUserResponse(surveySection, { ...answers })
-      .then((created) => {
-        const id = created?._id || null;
-        setMyEntryId(id);
-        if (id && typeof window !== 'undefined') {
-          sessionStorage.setItem('gp.myEntryId', id);
-          sessionStorage.setItem('gp.mySection', surveySection);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setSubmitting(false));
+    try {
+      // Prefer the weights-first saver if present (supports V3 schema).
+      const mod = await import('../../utils/saveUserResponse.ts');
+      const saver =
+        typeof mod.saveUserResponseWeights === 'function'
+          ? mod.saveUserResponseWeights
+          : (typeof mod.saveUserResponse === 'function' ? mod.saveUserResponse : saveUserResponse);
+
+      // Heuristic: if payload looks like weights (numbers), send as-is.
+      // Else assume legacy answers map (letters).
+      const looksLikeWeights =
+        payload &&
+        typeof payload === 'object' &&
+        Object.values(payload).some((v) => typeof v === 'number');
+
+      const created = await saver(surveySection, looksLikeWeights ? { ...payload } : { ...payload });
+
+      const id = created?._id || null;
+      setMyEntryId(id);
+      if (id && typeof window !== 'undefined') {
+        sessionStorage.setItem('gp.myEntryId', id);
+        sessionStorage.setItem('gp.mySection', surveySection);
+      }
+    } catch (e) {
+      console.error('[Survey] submit error:', e);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Done viewing overlay — resets state so user can take again
@@ -163,7 +187,9 @@ const Survey = ({
 
     // If switching roles, clear invalid section selections
     const allowed = (ROLE_SECTIONS[role] || []).map((s) => s.value);
-    setSurveySection((prev) => (allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''));
+    setSurveySection((prev) =>
+      allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''
+    );
   };
 
   const handleSectionChange = (val) => {
@@ -238,8 +264,8 @@ const Survey = ({
   return (
     <div className={`survey-section ${fadeState}`}>
       <QuestionFlow
-        onAnswersUpdate={onAnswersUpdate}
-        onSubmit={handleSubmitFromQuestions}
+        onAnswersUpdate={onAnswersUpdate}         // works for both letters or numeric weights
+        onSubmit={handleSubmitFromQuestions}      // accepts either shape
         submitting={submitting}
         error={error}
       />

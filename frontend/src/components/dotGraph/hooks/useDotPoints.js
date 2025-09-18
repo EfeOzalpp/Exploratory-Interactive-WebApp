@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { generatePositions } from '../utils/positions';
 import { sampleStops, rgbString } from '../../../utils/hooks.ts';
 
-const defaultColorForAverage = (avg) => rgbString(sampleStops(1 - avg));
+const defaultColorForAverage = (avg) => rgbString(sampleStops(avg));
 
 export default function useDotPoints(arg1, arg2 = {}) {
   const isArrayCall = Array.isArray(arg1);
@@ -44,7 +44,7 @@ export default function useDotPoints(arg1, arg2 = {}) {
         maxRadiusCap,
         yaw, pitch, roll,
         jitterAmp,
-        relaxPasses,       // auto behavior happens inside generatePositions
+        relaxPasses,      
         relaxStrength,
         seed,
       }
@@ -57,7 +57,7 @@ export default function useDotPoints(arg1, arg2 = {}) {
       return {
         position: pos,
         originalPosition: pos,
-        color: colorForAverage(avg),
+        color: colorForAverage(avg), 
         averageWeight: avg,
         _id: response?._id,
       };

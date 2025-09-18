@@ -5,7 +5,7 @@ import { Html } from '@react-three/drei';
 
 export default function DoneOverlayR3F({ onComplete }) {
   return (
-    <Canvas style={{ position: 'fixed', inset: 0, zIndex: 22, pointerEvents: 'none' }}>
+    <Canvas style={{ position: 'fixed', inset: 0, zIndex: 500, pointerEvents: 'none' }}>
       <Html zIndexRange={[22, 22]}>
         <div
           className="z-index-respective"

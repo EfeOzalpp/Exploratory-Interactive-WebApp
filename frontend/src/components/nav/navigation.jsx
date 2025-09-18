@@ -1,12 +1,12 @@
 // nav/Navigation.jsx
 import React, { useState, useEffect } from "react";
-import Logo from "../components/static/left";
+import Logo from "../static/left";
 import InfoPanel from "./infoPanel.jsx";
 import InfoGraph from "./infoGraph.jsx";
 import GraphPicker from "./graphPicker";
-import { useGraph } from "../context/graphContext.tsx";
-import "../styles/navigation.css";
-import "../styles/info-graph.css";
+import { useGraph } from "../../context/graphContext.tsx";
+import "../../styles/navigation.css";
+import "../../styles/info-graph.css";
 
 const DEFAULT_SECTION = "fine-arts";
 

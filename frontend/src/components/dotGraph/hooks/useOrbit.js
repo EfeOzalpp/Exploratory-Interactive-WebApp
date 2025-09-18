@@ -79,17 +79,20 @@ export default function useOrbit(params = {}) {
   // --- Idle bookkeeping ---
   const hasInteractedRef = useRef(false);           // flips true on first user interaction
   const lastActivityRef  = useRef(performance.now());
-
   const markActivity = () => {
     hasInteractedRef.current = true;
     lastActivityRef.current = performance.now();
   };
 
+  // 🔧 NEW: mirror isDragging into a ref so handlers bound once can see updates
+  const isDraggingRef = useRef(isDragging);
+  useEffect(() => { isDraggingRef.current = isDragging; }, [isDragging]);
+
   const count = useMemo(() => (typeof dataCount === 'number' ? dataCount : 0), [dataCount]);
 
   // starting zoom based on count
   useEffect(() => {
-    const thresholds = params.thresholds ?? { mobile: 120, tablet: 60, desktop: 300 };
+    const thresholds = params.thresholds ?? { mobile: 150, tablet: 60, desktop: 300 };
     const THRESH = isSmallScreen ? thresholds.mobile : isTabletLike ? thresholds.tablet : thresholds.desktop;
     const near = isSmallScreen ? 120 : 90; // keep current near behavior
     const far  = maxRadius;
@@ -101,16 +104,13 @@ export default function useOrbit(params = {}) {
   // Inputs: wheel (zoom), mousemove (cursor-follow), touch (rotate & pinch), keypress
   useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
-    const DEADZONE_PX = 2.5 * dpr;
-    const PX_TO_RAD   = (isTabletLike ? 0.009 : 0.0125) / dpr; // sensitivity
-    const LERP_GAIN   = 0.8;  // while held smoothing
-    const FRICTION_WHILE_HELD = 1.0;
+    const DEADZONE_PX = 2.0 * dpr;
+    const PX_TO_RAD   = (isTabletLike ? 0.009 : 0.005) / dpr; // sensitivity
 
     const WHEEL_SENSITIVITY = 0.85;
     const CTRL_ZOOM_GAIN    = 3.0;
     const PINCH_GAIN        = 1.25;
 
-    const lerp  = (a, b, t) => a + (b - a) * t;
     const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
 
     const handleScroll = (event) => {
@@ -133,18 +133,22 @@ export default function useOrbit(params = {}) {
       markActivity();
       if (event.touches.length === 1) {
         const t = event.touches[0];
-        isTouchRotatingRef.current = true; // finger down → keep velocity alive
+        isTouchRotatingRef.current = true;
         isMovingRef.current = false;
         lastTouchRef.current = { x: t.clientX, y: t.clientY, t: performance.now() };
+        // kill residual spin for immediate control
+        spinVelRef.current = { x: 0, y: 0 };
       }
     };
 
     const handleTouchMove = (event) => {
       event.preventDefault();
-      if (isDragging) return;
+      // 🔧 use ref so drag-freeze works on mobile
+      if (isDraggingRef.current) return;
 
       markActivity();
 
+      // single-finger rotate
       if (event.touches.length === 1 && !isPinchingRef.current) {
         const t   = event.touches[0];
         const now = performance.now();
@@ -161,15 +165,25 @@ export default function useOrbit(params = {}) {
           return;
         }
 
+        // zero-latency: apply deltas directly to rotation
+        if (groupRef.current) {
+          groupRef.current.rotation.x += (-dy) * PX_TO_RAD;
+          groupRef.current.rotation.y += (-dx) * PX_TO_RAD;
+        }
+
+        // instantaneous velocity for post-release inertia
         const vx = (-dy / dt) * 1000 * PX_TO_RAD;
         const vy = (-dx / dt) * 1000 * PX_TO_RAD;
-
-        const nextVx = lerp(spinVelRef.current.x * FRICTION_WHILE_HELD, vx, LERP_GAIN);
-        const nextVy = lerp(spinVelRef.current.y * FRICTION_WHILE_HELD, vy, LERP_GAIN);
-        spinVelRef.current = { x: nextVx, y: nextVy };
+        // small blend to smooth sensor noise, but no lag
+        spinVelRef.current = {
+          x: (spinVelRef.current.x + vx) * 0.5,
+          y: (spinVelRef.current.y + vy) * 0.5,
+        };
 
         lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now };
-      } else if (event.touches.length === 2) {
+      }
+      // pinch zoom
+      else if (event.touches.length === 2) {
         if (pinchCooldownRef.current) return;
 
         isPinchingRef.current = true;
@@ -180,11 +194,10 @@ export default function useOrbit(params = {}) {
         const [t1, t2] = event.touches;
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
-        const clamp2 = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
         const current = zoomTargetRef.current ?? radius;
         if (touchStartDistance.current != null) {
           const pinchDelta = dist - touchStartDistance.current;
-          const next = clamp2(current - pinchDelta * PINCH_GAIN, minRadius, maxRadius);
+          const next = clamp(current - pinchDelta * PINCH_GAIN, minRadius, maxRadius);
           zoomTargetRef.current = next;
         }
         touchStartDistance.current = dist;
@@ -194,20 +207,19 @@ export default function useOrbit(params = {}) {
     const handleTouchEnd = (e) => {
       markActivity();
       if (e.touches.length === 0) {
-        isTouchRotatingRef.current = false; // now allow decay
+        isTouchRotatingRef.current = false; // allow velocity decay
         isMovingRef.current = false;
-        // keep spinVelRef → will decay after release for smoothness
       }
       if (e.touches.length < 2) {
         if (isPinchingRef.current) {
-          clearTimeout(pinchTimeoutRef.current);
+          if (pinchTimeoutRef.current) clearTimeout(pinchTimeoutRef.current);
           pinchTimeoutRef.current = setTimeout(() => {
             isPinchingRef.current = false;
             touchStartDistance.current = null;
-          }, 150);
+          }, 120);
         }
         pinchCooldownRef.current = true;
-        setTimeout(() => (pinchCooldownRef.current = false), 200);
+        setTimeout(() => (pinchCooldownRef.current = false), 160);
         touchStartDistance.current = null;
       }
     };
@@ -222,6 +234,7 @@ export default function useOrbit(params = {}) {
     window.addEventListener('keydown',    handleKey);
 
     return () => {
+      if (pinchTimeoutRef.current) clearTimeout(pinchTimeoutRef.current);
       window.removeEventListener('wheel',      handleScroll);
       window.removeEventListener('mousemove',  handleMouseMove);
       window.removeEventListener('touchstart', handleTouchStart);
@@ -229,10 +242,14 @@ export default function useOrbit(params = {}) {
       window.removeEventListener('touchend',   handleTouchEnd);
       window.removeEventListener('keydown',    handleKey);
     };
-  }, [isDragging, isSmallScreen, isTabletLike, minRadius, maxRadius, radius]);
+    // Bind once; use refs for changing values
+  }, []); 
 
-  // reconcile drag offset (freeze while dragging)
+  // 🔧 Drag reconciliation:
+  // - Keep as-is for desktop (cursor-follow UI needs it)
+  // - Skip entirely on mobile/touch layouts per request (no delta-offset math)
   useEffect(() => {
+    if (!useDesktopLayout) return; // <-- skip for mobile/tablet
     if (isDragging) {
       lastCursorPositionRef.current = {
         x: lastCursorPositionRef.current.x - (dragOffset.current?.x || 0),
@@ -247,7 +264,7 @@ export default function useOrbit(params = {}) {
         y: dragEndRef.current.y - dragStartRef.current.y,
       };
     }
-  }, [isDragging]);
+  }, [isDragging, useDesktopLayout]);
 
   // Desktop target helper (mirrors desktop math)
   const getDesktopCursorTarget = () => {
@@ -259,11 +276,20 @@ export default function useOrbit(params = {}) {
     return { x: tx, y: -ty };
   };
 
+  // ----- Tunables for snap/stop feel -----
+  // Rotation inertia time-constant after release (seconds): smaller = stops faster
+  const ROT_RELEASE_TAU = 0.09;
+  const ROT_MIN_SPEED   = 0.02; // rad/s cutoff to zero tiny residuals
+
+  // Zoom spring (critically damped): higher omega = faster to target
+  const ZOOM_OMEGA      = 18.0;
+  const ZOOM_SNAP_EPS   = 0.0015; // tighter snap to kill the last bit of coast
+
   useFrame((_, delta) => {
     const now = performance.now();
 
     const userInteracting =
-      isDragging || isTouchRotatingRef.current || isPinchingRef.current;
+      isDraggingRef.current || isTouchRotatingRef.current || isPinchingRef.current;
 
     const timeSinceActivity = now - lastActivityRef.current;
 
@@ -287,7 +313,7 @@ export default function useOrbit(params = {}) {
     }
     wasIdleRef.current = idleActive;
 
-    if (!isDragging && groupRef.current) {
+    if (!isDraggingRef.current && groupRef.current) {
       if (useDesktopLayout && !idleActive) {
         // Desktop: cursor-follow (smooth) + bias blending
         const { x: baseX, y: baseY } = getDesktopCursorTarget();
@@ -311,7 +337,7 @@ export default function useOrbit(params = {}) {
         groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * EASE;
         groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * EASE;
       } else if (!useDesktopLayout && !idleActive) {
-        // Touch / tablet: velocity integration with zoom-based scaling
+        // Touch / tablet: inertia only (immediate motion is applied in handler)
         const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius) || 0));
         const zoomMul   = 0.9 + 0.8 * zf;
         const tabletMul = isTabletLike ? 1.6 : 1.25;
@@ -320,12 +346,17 @@ export default function useOrbit(params = {}) {
         const movingBoost = MOVING_BOOST_MIN + (MOVING_BOOST_MAX - MOVING_BOOST_MIN) * zf;
         const motionMul   = isMovingRef.current ? movingBoost : 1.0;
 
-        // 🔑 keep spinning while a finger is held; only decay after release
+        // decay only after release, with fast time-constant
         const holdingTouch = isTouchRotatingRef.current && !isPinchingRef.current;
-        const DECAY = holdingTouch ? 1.0 : 0.92;
+        if (!holdingTouch) {
+          const k = Math.exp(-delta / ROT_RELEASE_TAU);
+          spinVelRef.current.x *= k;
+          spinVelRef.current.y *= k;
 
-        spinVelRef.current.x *= DECAY;
-        spinVelRef.current.y *= DECAY;
+          // deadband to zero-out tiny velocities
+          if (Math.abs(spinVelRef.current.x) < ROT_MIN_SPEED) spinVelRef.current.x = 0;
+          if (Math.abs(spinVelRef.current.y) < ROT_MIN_SPEED) spinVelRef.current.y = 0;
+        }
 
         const mul = zoomMul * tabletMul * motionMul;
         groupRef.current.rotation.x += spinVelRef.current.x * delta * mul;
@@ -378,20 +409,23 @@ export default function useOrbit(params = {}) {
       }
     }
 
-    // spring zoom toward target
+    // ----- Faster zoom spring toward target -----
     if (zoomTargetRef.current != null) {
-      const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
-      const omega = 10.5; // smooth
+      const clamp2 = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
       const r = radius;
-      const target = clamp(zoomTargetRef.current, minRadius, maxRadius);
+      const target = clamp2(zoomTargetRef.current, minRadius, maxRadius);
+
+      // critically damped second-order system: a = -2*omega*v - omega^2 * x
       let v = zoomVelRef.current;
       const x = r - target;
-      const a = -2 * omega * v - omega * omega * x;
+      const a = -2 * ZOOM_OMEGA * v - (ZOOM_OMEGA * ZOOM_OMEGA) * x;
+
       v += a * delta;
       let next = r + v * delta;
-      next = clamp(next, minRadius, maxRadius);
+      next = clamp2(next, minRadius, maxRadius);
 
-      if (Math.abs(next - r) > 0.0004) setRadius(next);
+      // tighter snap so it stops sooner
+      if (Math.abs(next - r) > ZOOM_SNAP_EPS) setRadius(next);
       else {
         setRadius(target);
         v = 0;

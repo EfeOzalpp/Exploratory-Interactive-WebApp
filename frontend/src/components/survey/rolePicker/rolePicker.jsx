@@ -1,5 +1,5 @@
 import React from "react";
-import LottieOption from "../../lottie-for-UI/lottieOption";
+import LottieOption from "../../../lottie-for-UI/lottieOption";
 
 const OPTIONS = [
   { val: "student", label: "Student" },

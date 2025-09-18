@@ -28,6 +28,48 @@ export default function RingHalo({
     if (matRef.current) matRef.current.uniforms.uOpacity.value = pulse;
   });
 
+  // Keep ONE uniforms object; mutate its values in effects.
+  const uniforms = useMemo(() => ({
+    uColor:     { value: new Color('#ffffff') },
+    uOpacity:   { value: opacityIdle },
+    uOuter:     { value: 0.9 },      // how far from center the ring lives
+    uThickness: { value: thickness },
+    uFeather:   { value: feather },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []); // stable object, we update fields below
+
+  // Update color on prop change (handles hex, named, and css rgb()/hsl())
+  useEffect(() => {
+    if (!matRef.current) return;
+    const c = matRef.current.uniforms.uColor.value;
+    if (typeof color === 'string') {
+      // setStyle parses css color strings (rgb(), hsl(), hex, named)
+      c.setStyle ? c.setStyle(color) : c.set(color);
+    } else if (color && typeof color === 'object') {
+      // support { r,g,b } in 0..255 or 0..1
+      const r = 'r' in color ? color.r : 1;
+      const g = 'g' in color ? color.g : 1;
+      const b = 'b' in color ? color.b : 1;
+      const norm = (v) => (v > 1 ? v / 255 : v);
+      c.setRGB(norm(r), norm(g), norm(b));
+    }
+  }, [color]);
+
+  // Update scalar uniforms when props change
+  useEffect(() => {
+    if (matRef.current) matRef.current.uniforms.uThickness.value = thickness;
+  }, [thickness]);
+
+  useEffect(() => {
+    if (matRef.current) matRef.current.uniforms.uFeather.value = feather;
+  }, [feather]);
+
+  useEffect(() => {
+    if (meshRef.current && typeof bloomLayer === 'number') {
+      meshRef.current.layers.disable(bloomLayer); // keep halo off bloom layer if desired
+    }
+  }, [bloomLayer]);
+
   const fragment = /* glsl */`
     uniform vec3  uColor;
     uniform float uOpacity;
@@ -37,24 +79,17 @@ export default function RingHalo({
     varying vec2 vUv;
 
     void main() {
-      // normalized radius from center
       vec2 p = (vUv - 0.5) * 2.0;
       float r = length(p);
 
-      // ring = band between (uOuter - uThickness) .. uOuter,
-      // with a feathered falloff after uOuter
       float innerEdge = smoothstep(uOuter - uThickness, uOuter, r);
       float outerFade = 1.0 - smoothstep(uOuter, uOuter + uFeather, r);
       float ring = innerEdge * outerFade;
 
-      // Only the rim — no inner "soft" body at all
       float alpha = ring * uOpacity;
 
-      // Hard reject pixels well outside or inside to prevent any fill
       if (r < (uOuter - uThickness*1.01)) discard;
       if (r > (uOuter + uFeather*0.99))  discard;
-
-      // Cull very faint fragments to avoid post FX ghosts
       if (alpha < 0.03) discard;
 
       gl_FragColor = vec4(uColor, alpha);
@@ -68,21 +103,6 @@ export default function RingHalo({
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `;
-
-  const uniforms = useMemo(() => ({
-    uColor:     { value: new Color(color) },
-    uOpacity:   { value: opacityIdle },
-    uOuter:     { value: 0.9},       // how far from center the ring lives
-    uThickness: { value: thickness },
-    uFeather:   { value: feather },
-  }), [color, opacityIdle, thickness, feather]);
-
-  useEffect(() => {
-    if (meshRef.current && typeof bloomLayer === 'number') {
-      // Keep the ring OFF your selective-bloom layer
-      meshRef.current.layers.disable(bloomLayer);
-    }
-  }, [bloomLayer]);
 
   return (
     <Billboard frustumCulled={false}>
@@ -101,7 +121,7 @@ export default function RingHalo({
           uniforms={uniforms}
           transparent
           depthWrite={false}
-          depthTest={true}
+          depthTest
           blending={NormalBlending}
           toneMapped={false}
           premultipliedAlpha
