@@ -5,19 +5,22 @@ import '../../styles/gamification.css';
 import { useSkewedPercentColor } from '../../utils/hooks.ts';
 import { useGeneralPools } from '../../utils/useGamificationPools.ts';
 
-const GamificationGeneral = ({ dotId, percentage, color }) => {
+const NEUTRAL = 'rgba(255,255,255,0.95)';
+
+const GamificationGeneral = ({ dotId, percentage, color, mode = 'relative' }) => {
   const [currentText, setCurrentText] = useState({ title: '', description: '' });
 
+  // Call hooks UNCONDITIONALLY
   const safePct = Number(percentage) || 0;
-  const { css: skewedColor } = useSkewedPercentColor(safePct);
-
-  // now we also receive `loaded`
+  const skewed = useSkewedPercentColor(safePct);
   const { pick, loaded } = useGeneralPools();
 
-  useEffect(() => {
-    if (!dotId || percentage === undefined) return;
-    if (!loaded) return; // <-- wait for first fetch to finish
+  // Choose gauge color by mode (no conditional hook call)
+  const knobColor = mode === 'absolute' ? skewed.css : NEUTRAL;
 
+  useEffect(() => {
+    if (!loaded) return;
+    // Fall back buckets (used/cached by the CMS pool hook)
     const fallbackBuckets = {
       '0-20': {
         titles: ['Climate Clueless', 'Eco-Absentee', 'Melting-Ice Enthusiast'],
@@ -61,11 +64,8 @@ const GamificationGeneral = ({ dotId, percentage, color }) => {
       },
     };
 
+    if (!dotId || percentage === undefined) return;
     const chosen = pick(safePct, 'gd', String(dotId), fallbackBuckets);
-
-    // debug: see where copy came from (CMS vs fallback); the hook caches your choice
-    console.log('[GamificationGeneral] loaded=%s pct=%d chosen=%o', loaded, safePct, chosen);
-
     if (chosen) {
       setCurrentText({ title: chosen.title, description: chosen.secondary });
     } else {
@@ -73,7 +73,25 @@ const GamificationGeneral = ({ dotId, percentage, color }) => {
     }
   }, [dotId, percentage, safePct, pick, loaded]);
 
+  // If inputs are missing, render nothing (hooks already ran above)
   if (!dotId || percentage === undefined || color === undefined) return null;
+
+  // Copy varies by mode (no useMemo needed)
+  const line =
+    mode === 'relative' ? (
+      <>
+        Ahead of <strong style={{ textShadow: `0 0 12px ${color}` }}>{safePct}%</strong> of
+        people.
+      </>
+    ) : (
+      <>
+        Score:{' '}
+        <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>
+          {safePct}
+        </strong>
+        /100
+      </>
+    );
 
   const { title, description } = currentText;
 
@@ -86,13 +104,7 @@ const GamificationGeneral = ({ dotId, percentage, color }) => {
             <h2>{title}</h2>
           </div>
           <div className="gam-description-text">
-            <p>
-              {description}{' '}
-              <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${skewedColor}` }}>
-                {safePct}%
-              </strong>{' '}
-              of other people.
-            </p>
+            <p>{line}</p>
           </div>
         </div>
 
@@ -100,7 +112,7 @@ const GamificationGeneral = ({ dotId, percentage, color }) => {
           <div className="gam-percentage-knob">
             <div
               className="gam-knob-arrow"
-              style={{ bottom: `${safePct}%`, borderBottom: `15px solid ${skewedColor}` }}
+              style={{ bottom: `${safePct}%`, borderBottom: `15px solid ${knobColor}` }}
             />
           </div>
           <div className="gam-percentage-bar" />

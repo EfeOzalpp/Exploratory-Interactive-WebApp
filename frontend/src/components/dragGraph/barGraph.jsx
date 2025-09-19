@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef, useLayoutEffect, Suspense } from 'react';
+// src/components/dragGraph/barGraph.jsx
+import React, { useState, useEffect, useRef, useLayoutEffect, Suspense, useMemo } from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
+import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
 import '../../styles/graph.css';
 
 // lazy-load the wrapper once
@@ -43,15 +45,24 @@ function TreeIcon({ jsonLoader, speed = 0.3, initialSegment = [5, 55] }) {
 }
 
 const BarGraph = () => {
-  // 🚩 Pull mySection + hasCompletedSurvey to gate the personalized “You” marker
-  const { data, loading, section, mySection, hasCompletedSurvey } = useGraph();
+  const {
+    data,
+    loading,
+    section,
+    mySection,
+    hasCompletedSurvey,
+    myEntryId,
+  } = useGraph();
+
+  // Percentile helper (self-excluding for getForId)
+  const { getForId } = useRelativePercentiles(data);
 
   const [animationState, setAnimationState] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
   const barRefs = useRef({});
 
-  // “You” should show only on the user’s own section and after first survey completion
-  const canShowYou = Boolean(hasCompletedSurvey && mySection && section === mySection);
+  // show "You" only on own section and after completing the survey
+  const canShowYou = Boolean(hasCompletedSurvey && mySection && section === mySection && myEntryId);
 
   // Kick bar grow animation once data is ready
   useEffect(() => {
@@ -63,34 +74,32 @@ const BarGraph = () => {
     }
   }, [loading, data]);
 
-  // Categorize data
-  const categories = { green: 0, yellow: 0, red: 0 };
+  // --- ABSOLUTE buckets for bar heights ---
+  // score = avgWeight * 100 → 0..33 red, 34..60 yellow, 61..100 green
+  const categories = useMemo(() => {
+    const out = { red: 0, yellow: 0, green: 0 };
+    for (const item of data) {
+      const score = Math.round((avgWeightOf(item) || 0) * 100);
+      if (score <= 33) out.red++;
+      else if (score <= 60) out.yellow++;
+      else out.green++;
+    }
+    return out;
+  }, [data]);
 
-  data.forEach((item) => {
-    const vals = Object.values(item.weights || {});
-    const avg = vals.length ? vals.reduce((s, w) => s + w, 0) / vals.length : 0.5;
+  // --- RELATIVE marker (“You”) ---
+  // position by percentile vs the whole pool
+  const youPercentile = useMemo(() => (canShowYou ? getForId(myEntryId) : 0), [canShowYou, getForId, myEntryId]);
 
-    if (avg <= 0.33) categories.green++;
-    else if (avg < 0.60) categories.yellow++;
-    else categories.red++;
-  });
-
-  // "You vs others" percentage — compute only when eligible
-  let percentage = 0;
-  if (canShowYou && data.length > 0) {
-    const latestVals = Object.values(data[0].weights || {});
-    const latestAvg = latestVals.length
-      ? latestVals.reduce((s, w) => s + w, 0) / latestVals.length
-      : 0.5;
-
-    const higher = data.filter((entry) => {
-      const v = Object.values(entry.weights || {});
-      const avg = v.length ? v.reduce((s, w) => s + w, 0) / v.length : 0.5;
-      return avg > latestAvg;
-    });
-
-    percentage = Math.round((higher.length / data.length) * 100);
-  }
+  // choose bar for marker by your ABSOLUTE score bucket
+  const youAbsoluteBar = useMemo(() => {
+    if (!canShowYou) return null;
+    const me = data.find(d => d._id === myEntryId);
+    const score = me ? Math.round((avgWeightOf(me) || 0) * 100) : 0;
+    if (score <= 33) return 'red';
+    if (score <= 60) return 'yellow';
+    return 'green';
+  }, [canShowYou, data, myEntryId]);
 
   const maxItems = Math.max(categories.green, categories.yellow, categories.red) + 15;
 
@@ -104,9 +113,10 @@ const BarGraph = () => {
       }
       const heightPercentage =
         (ref.offsetHeight / (ref.parentElement?.offsetHeight || 1)) * 100;
-      ref.style.setProperty('--user-percentage', `${(percentage / 100) * heightPercentage}%`);
+      // we map percentile (0..100) to bar height
+      ref.style.setProperty('--user-percentage', `${(youPercentile / 100) * heightPercentage}%`);
     });
-  }, [percentage, animateBars, canShowYou]);
+  }, [youPercentile, animateBars, canShowYou]);
 
   useEffect(() => {
     if (!animationState) {
@@ -119,29 +129,22 @@ const BarGraph = () => {
   if (!section) return <p className="graph-loading">Pick a section to begin.</p>;
   if (loading) return null;
 
+  // render order: Green (left) → Yellow (middle) → Red (right)
+  const orderedColors = ['green', 'yellow', 'red'];
+
   return (
     <>
       <div className="bar-graph-container">
-        {Object.entries(categories).map(([color, count]) => {
+        {orderedColors.map((color) => {
+          const count = categories[color];
           const heightPercentage = (count / maxItems) * 100;
 
-          // sectionTop defines which bar shows the "You" marker
-          let sectionTop = 100;
-          if (color === 'yellow') sectionTop = 60;
-          if (color === 'red') sectionTop = 33;
+          // Show marker only in the bar that matches your ABSOLUTE bucket
+          const showMarkerInThisBar = canShowYou && youAbsoluteBar === color;
 
-          const relativePercentage = (percentage / sectionTop) * 100;
-          let userPercentage = (relativePercentage / 100) * heightPercentage;
-          userPercentage = Math.min(userPercentage, heightPercentage);
-
-          // only show when eligible AND the marker belongs to this bar
-          const showPercentage =
-            canShowYou &&
-            (
-              (percentage <= 33 && color === 'red') ||
-              (percentage > 33 && percentage <= 60 && color === 'yellow') ||
-              (percentage > 60 && color === 'green')
-            );
+          // We still need a height for the wrapper that clips the marker;
+          // use percentile mapped into the bar's current fill height.
+          const userPercentage = (youPercentile / 100) * heightPercentage;
 
           return (
             <div
@@ -154,16 +157,16 @@ const BarGraph = () => {
               </span>
 
               <div className="bar-graph-divider">
-                {showPercentage && (
+                {showMarkerInThisBar && (
                   <div
                     className="percentage-section"
                     style={{
-                      height: animateBars ? `calc(${userPercentage}% - 4.1em)` : '0%',
+                      height: animateBars ? `${Math.min(userPercentage, heightPercentage)}%` : '0%',
                     }}
                   >
                     <div className="percentage-indicator">
                       <p>You</p>
-                      <p>{percentage}%</p>
+                      <p>{youPercentile}%</p>
                     </div>
                   </div>
                 )}

@@ -8,21 +8,19 @@ import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider, useGraph } from "../context/graphContext.tsx";
 import GamificationCopyPreloader from '../utils/gamificationCopyPreloader.tsx';
+import ModeToggle from '../components/nav-bottom/modeToggle';
 import '../styles/global-styles.css';
 
 function DeferredGamificationPreloader() {
   const [start, setStart] = useState(false);
-
   useEffect(() => {
     const cb = () => setStart(true);
-    // Don’t block first paint; wait for idle or next tick
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       window.requestIdleCallback(cb, { timeout: 1500 });
     } else {
       setTimeout(cb, 0);
     }
   }, []);
-
   return start ? <GamificationCopyPreloader /> : null;
 }
 
@@ -31,14 +29,15 @@ const FrontPageInner = () => {
 
   // local UI bits
   const [animationVisible, setAnimationVisible] = useState(false);
-  const [surveyWrapperClass, setSurveyWrapperClass] = useState(''); 
+  const [surveyWrapperClass, setSurveyWrapperClass] = useState('');
   const [answers, setAnswers] = useState({});
 
-  // global viz control from context
-  const { vizVisible, openGraph, closeGraph } = useGraph();
-
-  // keep Survey’s prop signature: proxy to context
+  // global viz control + gating
+  const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
+
+  // show toggle only when viz is visible AND (observer OR hasCompletedSurvey)
+  const showModeToggle = vizVisible && (observerMode || hasCompletedSurvey);
 
   useEffect(() => {
     // Allow pinch inside dot graph only
@@ -62,7 +61,6 @@ const FrontPageInner = () => {
     };
   }, []);
 
-  // reset the survey canvas when the overlay animation starts
   useEffect(() => {
     if (animationVisible) setAnswers({});
   }, [animationVisible]);
@@ -84,11 +82,14 @@ const FrontPageInner = () => {
       <div className={`survey-section-wrapper3 ${surveyWrapperClass}`}>
         <Survey
           setAnimationVisible={setAnimationVisible}
-          setGraphVisible={setGraphVisible}             
+          setGraphVisible={setGraphVisible}
           setSurveyWrapperClass={setSurveyWrapperClass}
           onAnswersUpdate={setAnswers}
         />
       </div>
+
+      {/* Bottom mode toggle (guarded) */}
+      {showModeToggle && <ModeToggle />}
 
       <RadialBackground />
     </div>

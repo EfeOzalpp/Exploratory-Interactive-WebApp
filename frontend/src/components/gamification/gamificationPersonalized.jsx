@@ -7,14 +7,14 @@ import { usePersonalizedPools } from '../../utils/useGamificationPools.ts';
 
 const FADE_MS = 200;
 const PROX_THRESHOLD = 0.02;
-const CLOSE_GRACE_MS = 1000; // keep wrapper visible this long after close
+const CLOSE_GRACE_MS = 1000;
+const NEUTRAL = 'rgba(255,255,255,0.95)';
 
-const GamificationPersonalized = ({ userData, percentage, color, onOpenChange }) => {
+const GamificationPersonalized = ({ userData, percentage, color, mode = 'relative', onOpenChange }) => {
   const [selectedTitle, setSelectedTitle] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
   const [open, setOpen] = useState(true);
 
-  // wrapper visibility grace (panel unmounts instantly; wrapper fades later)
   const [closingGrace, setClosingGrace] = useState(false);
   const closeTimerRef = useRef(null);
 
@@ -23,17 +23,43 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
   const rafRef = useRef(0);
   const lastPointerRef = useRef({ x: 0, y: 0, has: false });
 
+  // Hooks must run unconditionally
   const safePct = Number(percentage) || 0;
-  const { css: skewedColor } = useSkewedPercentColor(safePct);
+  const skewed = useSkewedPercentColor(safePct);
   const { pick } = usePersonalizedPools();
+
+  // Choose knob color by mode
+  const knobColor = mode === 'absolute' ? skewed.css : NEUTRAL;
 
   // inform parent when panel open/closed changes
   useEffect(() => {
     onOpenChange?.(open);
   }, [open, onOpenChange]);
-  
-  // --- proximity check for the toggle button ---
+
+  // proximity tracking
   useEffect(() => {
+    const scheduleCheck = () => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        if (!btnRef.current) return;
+
+        const rect = btnRef.current.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        const { innerWidth: vw, innerHeight: vh } = window;
+        const px = lastPointerRef.current.has ? lastPointerRef.current.x : -9999;
+        const py = lastPointerRef.current.has ? lastPointerRef.current.y : -9999;
+
+        const dx = (px - cx) / vw;
+        const dy = (py - cy) / vh;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        setNearButton(dist < PROX_THRESHOLD);
+      });
+    };
+
     const onMouseMove = (e) => {
       lastPointerRef.current = { x: e.clientX, y: e.clientY, has: true };
       scheduleCheck();
@@ -60,35 +86,12 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
       window.removeEventListener('scroll', onResizeOrScroll);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const scheduleCheck = () => {
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = 0;
-      if (!btnRef.current) return;
-
-      const rect = btnRef.current.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-
-      const { innerWidth: vw, innerHeight: vh } = window;
-      const px = lastPointerRef.current.has ? lastPointerRef.current.x : -9999;
-      const py = lastPointerRef.current.has ? lastPointerRef.current.y : -9999;
-
-      const dx = (px - cx) / vw;
-      const dy = (py - cy) / vh;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      setNearButton(dist < PROX_THRESHOLD);
-    });
-  };
-
-  // --- wrapper close-grace controller (panel unmounts instantly) ---
+  // wrapper close-grace
   useEffect(() => {
     if (!open) {
-      setClosingGrace(true); // keep wrapper visible
+      setClosingGrace(true);
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       closeTimerRef.current = setTimeout(() => {
         setClosingGrace(false);
@@ -109,7 +112,7 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
     };
   }, [open]);
 
-  // --- copy selection (CMS + fallback) ---
+  // copy selection (CMS + fallback)
   useEffect(() => {
     if (percentage === undefined || !userData) return;
 
@@ -122,8 +125,6 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
     };
 
     const chosen = pick(safePct, 'gp', String(userData._id || 'me'), fallbackBuckets);
-    // console.log('[GamificationPersonalized] pct=%d, _id=%s → chosen=%o', safePct, userData?._id, chosen);
-
     if (chosen) {
       setSelectedTitle(chosen.title);
       setSecondaryText(chosen.secondary);
@@ -138,8 +139,23 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
   const panelId = `gp-panel-${userData?._id || 'me'}`;
   const label = open ? 'Hide your result' : 'Show your result';
 
-  // wrapper visible while: open OR in close-grace OR pointer near toggle
   const wrapperVisible = open || closingGrace || nearButton;
+
+  const line =
+    mode === 'relative' ? (
+      <>
+        Ahead of <strong style={{ textShadow: `0 0 12px ${color}` }}>{safePct}%</strong> of
+        people
+      </>
+    ) : (
+      <>
+        Score:{' '}
+        <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>
+          {safePct}
+        </strong>
+        /100
+      </>
+    );
 
   return (
     <div className={`gp-root ${wrapperVisible ? 'is-visible' : ''}`}>
@@ -156,7 +172,6 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
         }}
         style={{ pointerEvents: 'auto' }}
       >
-        {/* Animated + / – icon */}
         <span className={`gp-toggle-icon ${open ? 'is-open' : 'is-closed'}`} aria-hidden>
           {/* Plus */}
           <svg className="icon-plus" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
@@ -170,7 +185,6 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
         </span>
       </button>
 
-      {/* PANEL: mounts only when open (no close delay) */}
       {open && (
         <div
           id={panelId}
@@ -180,20 +194,14 @@ const GamificationPersonalized = ({ userData, percentage, color, onOpenChange })
           <div className="gamification-text">
             <h4 className="gam-title">Compared to the pool you are:</h4>
             <h1 className="personal-title">{selectedTitle}</h1>
-            <p>
-              {secondaryText}{' '}
-              <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${skewedColor}` }}>
-                {safePct}%
-              </strong>{' '}
-              people!
-            </p>
+            <p>{line}</p>
           </div>
 
           <div className="gamification-knob">
             <div className="percentage-knob">
               <div
                 className="knob-arrow"
-                style={{ bottom: `${safePct}%`, borderBottom: `18px solid ${skewedColor}` }}
+                style={{ bottom: `${safePct}%`, borderBottom: `18px solid ${knobColor}` }}
               />
             </div>
           </div>

@@ -1,3 +1,4 @@
+// src/components/dotGraph/graph.jsx
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { Html } from '@react-three/drei';
 
@@ -9,6 +10,8 @@ import RingHalo from './ringHalo';
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRealMobileViewport } from '../real-mobile.ts';
 import { sampleStops, rgbString } from '../../utils/hooks.ts';
+import { useRelativePercentiles } from '../../utils/useRelativePercentiles.ts';
+import { useAbsoluteScore } from '../../utils/useAbsoluteScore.ts';
 
 import useOrbit from './hooks/useOrbit.js';
 import useDotPoints from './hooks/useDotPoints';
@@ -21,7 +24,7 @@ const nonlinearLerp = (a, b, t) => {
 };
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
-  const { myEntryId, observerMode } = useGraph();
+  const { myEntryId, observerMode, mode } = useGraph(); // ← read mode from context
   const safeData = Array.isArray(data) ? data : [];
   const showCompleteUI = useObserverDelay(observerMode, 2000);
 
@@ -35,11 +38,15 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const isTabletLike = width >= 768 && width <= 1024;
   const useDesktopLayout = !(isSmallScreen || isRealMobile || isTabletLike);
 
+  const hasPersonalized = useMemo(
+    () => !!personalizedEntryId && safeData.some(d => d._id === personalizedEntryId),
+    [personalizedEntryId, safeData]
+  );
+
   const wantsSkew =
     (isSmallScreen || isRealMobile) &&
     !observerMode &&
-    !!personalizedEntryId &&
-    safeData.some(d => d._id === personalizedEntryId) &&
+    hasPersonalized &&
     personalOpen;
 
   const {
@@ -59,7 +66,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       xOffset: 0,
       yOffset: 0,
       xOffsetPx: wantsSkew ? -96 : 0,
-      yOffsetPx: wantsSkew ?  90 : 0,
+      yOffsetPx: wantsSkew ? 90 : 0,
     },
     bounds: { minRadius: isSmallScreen ? 2 : 20, maxRadius: 400 },
     dataCount: safeData.length,
@@ -73,8 +80,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     const n = safeData.length;
     const MIN_SPREAD = 28;
     const MAX_SPREAD = 220;
-    const REF_N      = 50;
-    const CURVE      = 0.5;
+    const REF_N = 50;
+    const CURVE = 0.5;
     const t = n <= 1 ? 0 : Math.min(1, Math.pow(n / REF_N, CURVE));
     return MIN_SPREAD + (MAX_SPREAD - MIN_SPREAD) * t;
   }, [safeData.length]);
@@ -92,10 +99,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     relaxStrength: 0.25,
     centerBias: 0.35,
 
-    colorForAverage, 
+    colorForAverage,
     personalizedEntryId,
-    showPersonalized:
-      showCompleteUI && !!personalizedEntryId && safeData.some(d => d._id === personalizedEntryId),
+    showPersonalized: showCompleteUI && hasPersonalized,
   });
 
   const myPoint = useMemo(
@@ -107,26 +113,19 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     [safeData, personalizedEntryId]
   );
 
-  const personalizedPct = useMemo(() => {
+  // ---- Metrics (relative vs absolute) ----
+  const { getForId: getRelForId, getForValue: getRelForValue } = useRelativePercentiles(safeData);
+  const { getForId: getAbsForId, getForValue: getAbsForValue } = useAbsoluteScore(safeData, { decimals: 0 });
+
+  const myDisplayValue = useMemo(() => {
     if (!(showCompleteUI && myEntry)) return 0;
-    const latestVals = Object.values(myEntry.weights || {});
-    const latestAvg = latestVals.length
-      ? latestVals.reduce((s, w) => s + w, 0) / latestVals.length
-      : 0.5;
-    const higher = safeData.filter(entry => {
-      const v = Object.values(entry.weights || {});
-      const avg = v.length ? v.reduce((s, w) => s + w, 0) / v.length : 0.5;
-      return avg > latestAvg;
-    });
-    return safeData.length ? Math.round((higher.length / safeData.length) * 100) : 0;
-  }, [showCompleteUI, myEntry, safeData]);
+    return mode === 'relative' ? getRelForId(myEntry._id) : getAbsForId(myEntry._id);
+  }, [showCompleteUI, myEntry, mode, getRelForId, getAbsForId]);
 
-  const calcPercentForAvg = (averageWeight) => {
-    if (!points.length) return 0;
-    const higher = points.filter((p) => p.averageWeight > averageWeight);
-    return Math.round((higher.length / points.length) * 100);
-  };
+  const calcValueForAvg = (averageWeight) =>
+    mode === 'relative' ? getRelForValue(averageWeight) : getAbsForValue(averageWeight);
 
+  // hover tooltips use whichever metric the mode demands
   const {
     hoveredDot,
     viewportClass,
@@ -137,7 +136,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     isDragging,
     isPinchingRef,
     isTouchRotatingRef,
-    calcPercentForAvg,
+    calcPercentForAvg: calcValueForAvg,
   });
 
   // --- Auto-dismiss tooltip after rotate, with grace + fade-out ---
@@ -146,8 +145,14 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const fadeTimerRef = useRef(null);
 
   const clearCloseTimers = () => {
-    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
-    if (fadeTimerRef.current)  { clearTimeout(fadeTimerRef.current);  fadeTimerRef.current  = null; }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    if (fadeTimerRef.current) {
+      clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = null;
+    }
   };
 
   useEffect(() => {
@@ -172,7 +177,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     return () => window.removeEventListener('gp:orbit-rot', onRotate);
   }, [hoveredDot, onHoverEnd]);
 
-  const isPortrait = typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
+  const isPortrait =
+    typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
   const offsetBase = isPortrait ? 160 : 120;
   const offsetPx = Number.isFinite(tooltipOffsetPx)
     ? tooltipOffsetPx
@@ -202,7 +208,10 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           const suppressHover = !!(myEntry && point._id === personalizedEntryId && showCompleteUI);
           return (
             <mesh
-              key={point._id ?? `${point.position[0]}-${point.position[1]}-${point.position[2]}`}
+              key={
+                point._id ??
+                `${point.position[0]}-${point.position[1]}-${point.position[2]}`
+              }
               position={point.position}
               onPointerOver={(e) => {
                 e.stopPropagation();
@@ -242,8 +251,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               <div>
                 <GamificationPersonalized
                   userData={myEntry}
-                  percentage={personalizedPct}
+                  percentage={myDisplayValue}   // ← value is relative % or absolute 0..100
                   color={myPoint.color}
+                  mode={mode}                    // ← tell the panel which mode we’re in
                   onOpenChange={setPersonalOpen}
                 />
               </div>
@@ -264,15 +274,16 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   pointerEvents: 'none',
                   '--offset-px': `${offsetPx}px`,
                   opacity: isClosing ? 0 : 1,
-                  transition: 'opacity 180ms ease'
+                  transition: 'opacity 180ms ease',
                 }}
                 className={viewportClass}
               >
                 <div>
                   <GamificationGeneral
                     dotId={hoveredDot.dotId}
-                    percentage={hoveredDot.percentage}
+                    percentage={hoveredDot.percentage} // ← already computed via mode in useHoverBubble
                     color={hoveredData.color}
+                    mode={mode}
                   />
                 </div>
               </Html>

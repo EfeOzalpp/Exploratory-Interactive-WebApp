@@ -2,16 +2,18 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { subscribeSurveyData } from "../utils/sanityAPI";
 
+type Mode = "relative" | "absolute";
+
 type GraphContextType = {
   // picker + personalization
   section: string;
   setSection: (s: string) => void;
 
-  mySection: string | null;                     // <- allow null
-  setMySection: (s: string | null) => void;     // <- allow null
+  mySection: string | null;
+  setMySection: (s: string | null) => void;
 
-  myEntryId: string | null;                    
-  setMyEntryId: (id: string | null) => void;    
+  myEntryId: string | null;
+  setMyEntryId: (id: string | null) => void;
 
   data: any[];
   loading: boolean;
@@ -30,6 +32,10 @@ type GraphContextType = {
   vizVisible: boolean;
   openGraph: () => void;
   closeGraph: () => void;
+
+  // visualization mode (relative percentiles vs absolute score)
+  mode: Mode;
+  setMode: (m: Mode) => void;
 };
 
 const GraphCtx = createContext<GraphContextType | null>(null);
@@ -60,6 +66,19 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const openGraph = () => setVizVisible(true);
   const closeGraph = () => setVizVisible(false);
 
+  // New: global visualization mode (persisted)
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window === "undefined") return "relative";
+    const saved = sessionStorage.getItem("gp.mode") as Mode | null;
+    return saved === "absolute" || saved === "relative" ? saved : "relative";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("gp.mode", mode);
+    }
+  }, [mode]);
+
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeSurveyData({
@@ -79,8 +98,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setSection,
         mySection,
         setMySection,
-        myEntryId,          
-        setMyEntryId,      
+        myEntryId,
+        setMyEntryId,
         data,
         loading,
         isSurveyActive,
@@ -92,6 +111,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         vizVisible,
         openGraph,
         closeGraph,
+        mode,
+        setMode,
       }}
     >
       {children}

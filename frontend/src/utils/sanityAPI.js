@@ -29,12 +29,13 @@ const STAFF_IDS = [
 
 const NON_VISITOR_MASSART = Array.from(new Set([...STUDENT_IDS, ...STAFF_IDS]));
 
-const round2 = (v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : undefined);
+// --- rounding helpers (3 dp) ---
+const round3 = (v) => (typeof v === 'number' ? Math.round(v * 1000) / 1000 : undefined);
 
-// normalize to the shape your viz uses (also 2dp)
+// normalize to the shape your viz uses (3 dp + weights{})
 const normalizeRow = (r) => {
-  const q1 = round2(r.q1), q2 = round2(r.q2), q3 = round2(r.q3), q4 = round2(r.q4), q5 = round2(r.q5);
-  const avgWeight = round2(r.avgWeight);
+  const q1 = round3(r.q1), q2 = round3(r.q2), q3 = round3(r.q3), q4 = round3(r.q4), q5 = round3(r.q5);
+  const avgWeight = round3(r.avgWeight);
   return {
     ...r,
     q1, q2, q3, q4, q5, avgWeight,
@@ -55,9 +56,88 @@ const PROJECTION = `
   submittedAt
 `;
 
+// -------------------
+// Resilience helpers
+// -------------------
+function makePoller(fn, intervalMs = 6000) {
+  let timer = null;
+  return {
+    enable() { if (!timer) timer = setInterval(fn, intervalMs); },
+    disable() { if (timer) { clearInterval(timer); timer = null; } },
+  };
+}
+
+/**
+ * Resilient SSE listener:
+ * - uses liveClient.listen (avoids CDN HTTP/3 quirks)
+ * - on error/complete: backoff & temporarily enable polling
+ */
+function resilientListen({ query, params, onPing, onError, poller }) {
+  let sub;
+  let closed = false;
+
+  let attempt = 0;
+  const baseDelay = 1500;
+  const maxDelay = 20000;
+
+  const start = () => {
+    if (closed) return;
+    try {
+      sub = liveClient.listen(query, params, { visibility: 'query' }).subscribe({
+        next: () => {
+          // got a mutation; ensure polling is off and refresh via onPing
+          poller?.disable();
+          onPing?.();
+          attempt = 0; // reset backoff after a successful event
+        },
+        error: (e) => {
+          onError?.(e);
+          // turn on polling while we back off
+          poller?.enable();
+          attempt += 1;
+          const delay = Math.min(maxDelay, baseDelay * Math.pow(1.6, attempt));
+          setTimeout(() => {
+            if (closed) return;
+            poller?.disable();
+            start();
+          }, delay);
+        },
+        complete: () => {
+          // stream closed by server; try reconnect after a short delay
+          if (!closed) {
+            poller?.enable();
+            setTimeout(() => {
+              if (closed) return;
+              poller?.disable();
+              start();
+            }, baseDelay);
+          }
+        },
+      });
+    } catch (e) {
+      onError?.(e);
+      poller?.enable();
+      setTimeout(() => {
+        if (closed) return;
+        poller?.disable();
+        start();
+      }, baseDelay);
+    }
+  };
+
+  start();
+
+  return () => {
+    closed = true;
+    try { sub?.unsubscribe?.(); } catch {}
+  };
+}
+
+// -------------------
+// Queries
+// -------------------
 function buildQueryAndParams(section, limit) {
   const BASE = "*[!(_id in path('drafts.**')) && _type == 'userResponseV3'";
-
   if (!section || section === 'all') {
     return { query: `${BASE}] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { limit } };
   }
@@ -73,24 +153,32 @@ function buildQueryAndParams(section, limit) {
   return { query: `${BASE} && section == $section] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { section, limit } };
 }
 
+// -------------------
+// Public API
+// -------------------
 export const subscribeSurveyData = ({ section, limit = 300, onData }) => {
   const { query, params } = buildQueryAndParams(section, limit);
   const pump = (rows) => onData(rows.map(normalizeRow));
 
-  let refreshTimeout, sub;
+  // initial fetch
+  liveClient.fetch(query, params).then(pump).catch((e) => console.error('[sanityAPI] initial fetch', e));
 
-  liveClient.fetch(query, params).then(pump).catch((e)=>console.error('[sanityAPI] initial fetch', e));
-  sub = cdnClient.listen(query, params, { visibility: 'query' }).subscribe({
-    next: () => {
-      clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(() => {
-        liveClient.fetch(query, params).then(pump).catch((e)=>console.error('[sanityAPI] refresh fetch', e));
-      }, 100);
+  // polling fallback while SSE is down
+  const poller = makePoller(() => {
+    liveClient.fetch(query, params).then(pump).catch((e) => console.error('[sanityAPI] poll fetch', e));
+  }, 6000);
+
+  const unsub = resilientListen({
+    query,
+    params,
+    onPing: () => {
+      liveClient.fetch(query, params).then(pump).catch((e) => console.error('[sanityAPI] refresh fetch', e));
     },
-    error: (e) => console.error('[sanityAPI] listen', e),
+    onError: (e) => console.error('[sanityAPI] listen error', e?.message || e),
+    poller,
   });
 
-  return () => { clearTimeout(refreshTimeout); sub?.unsubscribe?.(); };
+  return () => { try { unsub?.(); } catch {} poller.disable(); };
 };
 
 export const fetchSurveyData = (callback, { limit = 300 } = {}) => {
@@ -100,19 +188,24 @@ export const fetchSurveyData = (callback, { limit = 300 } = {}) => {
   `;
   const pump = (rows) => callback(rows.map(normalizeRow));
 
-  let refreshTimeout, sub;
-  liveClient.fetch(query, { limit }).then(pump).catch((e)=>console.error('[sanityAPI] initial fetch', e));
-  sub = cdnClient.listen(query, { limit }, { visibility: 'query' }).subscribe({
-    next: () => {
-      clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(() => {
-        liveClient.fetch(query, { limit }).then(pump).catch((e)=>console.error('[sanityAPI] refresh fetch', e));
-      }, 100);
+  // single-shot + resilient refresh on change
+  liveClient.fetch(query, { limit }).then(pump).catch((e) => console.error('[sanityAPI] initial fetch', e));
+
+  const poller = makePoller(() => {
+    liveClient.fetch(query, { limit }).then(pump).catch((e) => console.error('[sanityAPI] poll fetch', e));
+  }, 6000);
+
+  const unsub = resilientListen({
+    query,
+    params: { limit },
+    onPing: () => {
+      liveClient.fetch(query, { limit }).then(pump).catch((e) => console.error('[sanityAPI] refresh fetch', e));
     },
-    error: (e) => console.error('[sanityAPI] listen', e),
+    onError: (e) => console.error('[sanityAPI] listen error', e?.message || e),
+    poller,
   });
 
-  return () => { clearTimeout(refreshTimeout); sub?.unsubscribe?.(); };
+  return () => { try { unsub?.(); } catch {} poller.disable(); };
 };
 
 export const subscribeSectionCounts = ({ onData }) => {
@@ -134,19 +227,23 @@ export const subscribeSectionCounts = ({ onData }) => {
     });
   };
 
-  let refreshTimeout, sub;
-  liveClient.fetch(query, {}).then(pump).catch((e)=>console.error('[sanityAPI] counts initial', e));
-  sub = cdnClient.listen(query, {}, { visibility: 'query' }).subscribe({
-    next: () => {
-      clearTimeout(refreshTimeout);
-      refreshTimeout = setTimeout(() => {
-        liveClient.fetch(query, {}).then(pump).catch((e)=>console.error('[sanityAPI] counts refresh', e));
-      }, 100);
+  liveClient.fetch(query, {}).then(pump).catch((e) => console.error('[sanityAPI] counts initial', e));
+
+  const poller = makePoller(() => {
+    liveClient.fetch(query, {}).then(pump).catch((e) => console.error('[sanityAPI] counts poll', e));
+  }, 7000);
+
+  const unsub = resilientListen({
+    query,
+    params: {},
+    onPing: () => {
+      liveClient.fetch(query, {}).then(pump).catch((e) => console.error('[sanityAPI] counts refresh', e));
     },
-    error: (e) => console.error('[sanityAPI] counts listen', e),
+    onError: (e) => console.error('[sanityAPI] counts listen error', e?.message || e),
+    poller,
   });
 
-  return () => { clearTimeout(refreshTimeout); sub?.unsubscribe?.(); };
+  return () => { try { unsub?.(); } catch {} poller.disable(); };
 };
 
 export { STUDENT_IDS, STAFF_IDS, NON_VISITOR_MASSART };
