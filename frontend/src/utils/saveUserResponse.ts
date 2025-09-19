@@ -19,8 +19,8 @@ const computeAvg = (w: Weights) => {
 };
 
 /**
- * Saves a V3 response with numeric q1..q5 (0..1, rounded to 2 decimals)
- * and avgWeight (0..1, rounded to 2 decimals).
+ * Saves a V3 response with numeric q1..q5 (0..1, rounded to 3 decimals)
+ * and avgWeight (0..1, rounded to 3 decimals).
  */
 export async function saveUserResponse(section: string, weights: Weights) {
   // clamp + round each weight

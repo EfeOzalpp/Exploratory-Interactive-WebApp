@@ -1,5 +1,5 @@
 // pages/FrontPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import RadialBackground from '../components/static/radialBackground';
 import Survey from '../components/survey/survey.jsx';
 import Navigation from '../components/nav/navigation.jsx';
@@ -8,8 +8,12 @@ import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider, useGraph } from "../context/graphContext.tsx";
 import GamificationCopyPreloader from '../utils/gamificationCopyPreloader.tsx';
-import ModeToggle from '../components/nav-bottom/modeToggle';
 import '../styles/global-styles.css';
+
+// Lazily load ModeToggle (kept out of first paint)
+const ModeToggle = React.lazy(() =>
+  import(/* webpackChunkName: "mode-toggle" */ '../components/nav-bottom/modeToggle')
+);
 
 function DeferredGamificationPreloader() {
   const [start, setStart] = useState(false);
@@ -27,20 +31,20 @@ function DeferredGamificationPreloader() {
 const FrontPageInner = () => {
   useDynamicMargin();
 
-  // local UI bits
   const [animationVisible, setAnimationVisible] = useState(false);
   const [surveyWrapperClass, setSurveyWrapperClass] = useState('');
   const [answers, setAnswers] = useState({});
 
-  // global viz control + gating
   const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
 
-  // show toggle only when viz is visible AND (observer OR hasCompletedSurvey)
-  const showModeToggle = vizVisible && (observerMode || hasCompletedSurvey);
+  // only show (and thus load) ModeToggle when relevant
+  const showModeToggle = useMemo(
+    () => vizVisible && (observerMode || hasCompletedSurvey),
+    [vizVisible, observerMode, hasCompletedSurvey]
+  );
 
   useEffect(() => {
-    // Allow pinch inside dot graph only
     const preventZoom = (event) => {
       const isInsideDotGraph = event.target.closest('.dot-graph-container');
       if (!isInsideDotGraph && (event.ctrlKey || event.touches?.length > 1)) {
@@ -70,15 +74,12 @@ const FrontPageInner = () => {
       <DeferredGamificationPreloader />
       <Navigation />
 
-      {/* Hide the q5 Canvas whenever the 3D viz is visible OR the overlay is animating */}
       {!animationVisible && !vizVisible && <Canvas answers={answers} />}
 
-      {/* 3D visualization is always mounted; visibility via class */}
       <div className={`graph-wrapper ${vizVisible ? 'visible' : ''}`}>
         <DataVisualization />
       </div>
 
-      {/* Survey */}
       <div className={`survey-section-wrapper3 ${surveyWrapperClass}`}>
         <Survey
           setAnimationVisible={setAnimationVisible}
@@ -88,15 +89,17 @@ const FrontPageInner = () => {
         />
       </div>
 
-      {/* Bottom mode toggle (guarded) */}
-      {showModeToggle && <ModeToggle />}
+      {showModeToggle && (
+        <Suspense fallback={null}>
+          <ModeToggle />
+        </Suspense>
+      )}
 
       <RadialBackground />
     </div>
   );
 };
 
-// Keep GraphProvider outside the consumer
 const FrontPage = () => (
   <GraphProvider>
     <FrontPageInner />

@@ -5,7 +5,7 @@
 .logo-image { pointer-events: none; user-select: none; position: absolute; max-width: 100%; max-height: 100%; object-fit: contain; }
 .level-two { display: flex; flex-direction: column; width: 100%; position: relative; justify-content: flex-end; align-items: flex-end; }
 button.observe-results { pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff; }
-.feedback, .nav-toggle { pointer-events: all; cursor: pointer; text-decoration: underline; color: rgb(6, 21, 1); padding: 12px 6px 6px 12px; border: 1px solid rgb(138, 138, 138); border-radius: 6px; background: #ffffff; }
+.feedback, .nav-toggle { pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); padding: 12px 6px 6px 12px; border: 1px solid rgb(138, 138, 138); border-radius: 6px; background: #ffffff; }
 button.nav-toggle.active { text-align: left; text-decoration: none; }
 .nav-right { display: flex; align-items: flex-end; justify-content: flex-end; }
 .burger-toggle { background: rgb(255, 255, 255); cursor: pointer; z-index: 10; pointer-events: all; position: relative; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); color: black; }

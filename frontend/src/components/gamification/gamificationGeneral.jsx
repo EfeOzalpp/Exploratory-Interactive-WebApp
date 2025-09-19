@@ -7,81 +7,72 @@ import { useGeneralPools } from '../../utils/useGamificationPools.ts';
 
 const NEUTRAL = 'rgba(255,255,255,0.95)';
 
-const GamificationGeneral = ({ dotId, percentage, color, mode = 'relative' }) => {
+const GamificationGeneral = ({
+  dotId,
+  percentage,   // percentile 0..100 (for gauge position / absolute score)
+  count,         // how many people below
+  poolSize,      // pool size (not excluding hovered)
+  color,
+  mode = 'relative',
+}) => {
   const [currentText, setCurrentText] = useState({ title: '', description: '' });
 
   // Call hooks UNCONDITIONALLY
   const safePct = Number(percentage) || 0;
+  const safeCount = Number.isFinite(count) ? count : 0;
+  const safePool = Number.isFinite(poolSize) ? poolSize : 0;
+
   const skewed = useSkewedPercentColor(safePct);
   const { pick, loaded } = useGeneralPools();
 
-  // Choose gauge color by mode (no conditional hook call)
+  // Gauge color only matters in absolute mode
   const knobColor = mode === 'absolute' ? skewed.css : NEUTRAL;
 
   useEffect(() => {
     if (!loaded) return;
-    // Fall back buckets (used/cached by the CMS pool hook)
+    // Fallback buckets in case CMS is empty
     const fallbackBuckets = {
       '0-20': {
         titles: ['Climate Clueless', 'Eco-Absentee', 'Melting-Ice Enthusiast'],
-        secondary: [
-          'Low effort—just ahead of',
-          'Villain in disguise - higher than',
-          'Negative impact—better than only',
-        ],
+        secondary: ['Low effort—just ahead of a few'],
       },
       '21-40': {
         titles: ['Footprint Fumbler', 'Heat Struck', 'Eco Dabbler'],
-        secondary: [
-          'Slow start—higher than',
-          'Not bad, not great—better than',
-          'Mediocre progress—higher than',
-        ],
+        secondary: ['Slow start—keep going'],
       },
       '41-60': {
         titles: ['Uncertain Datapoint', 'Balanced as in Average', 'Null Responder'],
-        secondary: [
-          'Solidly average—better than',
-          'Stuck in the middle—higher than',
-          'Right in the pack—beating',
-        ],
+        secondary: ['Right in the pack'],
       },
       '61-80': {
         titles: ['Planet Ally', 'Animal Protector', 'Nature Carer'],
-        secondary: [
-          'Great work—better than',
-          'Solid progress—higher than',
-          'Making a real difference—beating',
-        ],
+        secondary: ['Solid progress'],
       },
       '81-100': {
         titles: ['Planet Guardian', 'Sustainability Superhero', "Earth's Best Friend"],
-        secondary: [
-          'Outstanding—better than',
-          'Top of the class—higher than',
-          'Eco hero status—better than',
-        ],
+        secondary: ['Top of the class'],
       },
     };
 
     if (!dotId || percentage === undefined) return;
     const chosen = pick(safePct, 'gd', String(dotId), fallbackBuckets);
     if (chosen) {
-      setCurrentText({ title: chosen.title, description: chosen.secondary });
+      setCurrentText({ title: chosen.title, description: chosen.secondary || '' });
     } else {
-      setCurrentText({ title: 'Eco Participant', description: 'Right in the pack—beating' });
+      setCurrentText({ title: 'Eco Participant', description: '' });
     }
   }, [dotId, percentage, safePct, pick, loaded]);
 
   // If inputs are missing, render nothing (hooks already ran above)
   if (!dotId || percentage === undefined || color === undefined) return null;
 
-  // Copy varies by mode (no useMemo needed)
+  // Copy varies by mode: counts in relative, score in absolute
   const line =
     mode === 'relative' ? (
       <>
-        Ahead of <strong style={{ textShadow: `0 0 12px ${color}` }}>{safePct}%</strong> of
-        people.
+        Ahead of{' '}
+        <strong style={{ textShadow: `0 0 12px ${color}` }}>{safeCount}</strong>{' '}
+        {safePool > 0 ? <>people (out of {safePool}).</> : <>people.</>}
       </>
     ) : (
       <>
@@ -103,20 +94,27 @@ const GamificationGeneral = ({ dotId, percentage, color, mode = 'relative' }) =>
           <div className="gam-description-title">
             <h2>{title}</h2>
           </div>
+
+          {/* Secondary line from CMS (like Personalized) */}
+          {description ? <p className="gam-subline">{description}</p> : null}
+
           <div className="gam-description-text">
             <p>{line}</p>
           </div>
         </div>
 
-        <div className="gam-visualization">
-          <div className="gam-percentage-knob">
-            <div
-              className="gam-knob-arrow"
-              style={{ bottom: `${safePct}%`, borderBottom: `15px solid ${knobColor}` }}
-            />
+        {/* Show gauge/bar ONLY in absolute mode */}
+        {mode === 'absolute' && (
+          <div className="gam-visualization">
+            <div className="gam-percentage-knob">
+              <div
+                className="gam-knob-arrow"
+                style={{ bottom: `${safePct}%`, borderBottom: `15px solid ${knobColor}` }}
+              />
+            </div>
+            <div className="gam-percentage-bar" />
           </div>
-          <div className="gam-percentage-bar" />
-        </div>
+        )}
       </div>
     </div>
   );

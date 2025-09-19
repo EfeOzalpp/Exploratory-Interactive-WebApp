@@ -12,24 +12,17 @@ export const avgWeightOf = (item: WithWeights): number => {
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0.5;
 };
 
-/**
- * useRelativePercentiles
- * - input: section-scoped data array
- * - output: funcs to get “ahead of X%” (i.e., % strictly below your value)
- * - tie handling: 'strict' (count strictly lower) or 'lte' (count <=)
- * - excludes self when computing for an id
- */
 export function useRelativePercentiles<T extends { _id?: string }>(
   items: T[],
   opts?: {
-    accessor?: (x: T) => number;  // default avgWeightOf
-    tie?: TiePolicy;              // default 'strict'
-    idOf?: (x: T) => string | undefined; // default x._id
+    accessor?: (x: T) => number;            // default avgWeightOf
+    tie?: TiePolicy;                         // default 'strict'
+    idOf?: (x: T) => string | undefined;     // default x._id
   }
 ) {
-  const accessor = opts?.accessor ?? (avgWeightOf as (x: any) => number);
+  const accessor = (opts?.accessor as ((x: T) => number)) ?? (avgWeightOf as (x: any) => number);
   const tie = opts?.tie ?? 'strict';
-  const idOf = opts?.idOf ?? ((x: T) => x._id);
+  const idOf = (opts?.idOf as ((x: T) => string | undefined)) ?? ((x: T) => x._id);
 
   // Precompute once per data change
   const { sorted, idToValue } = useMemo(() => {
@@ -69,7 +62,6 @@ export function useRelativePercentiles<T extends { _id?: string }>(
   const getForValue = (value: number, excludeId?: string) => {
     if (!sorted.length || !Number.isFinite(value)) return 0;
 
-    // If excluding an id with the same value, subtract one from pool and (maybe) from count.
     let pool = sorted.length;
     let cnt = belowCount(value);
 
@@ -77,10 +69,8 @@ export function useRelativePercentiles<T extends { _id?: string }>(
       const ex = idToValue.get(excludeId)!;
       pool -= 1;
       if (tie === 'strict') {
-        // if ex < value, it was counted in lowerBound; remove it
         if (ex < value) cnt -= 1;
       } else {
-        // if ex <= value, it was counted in upperBound; remove it
         if (ex <= value) cnt -= 1;
       }
     }
@@ -88,10 +78,37 @@ export function useRelativePercentiles<T extends { _id?: string }>(
     return Math.round((cnt / pool) * 100);
   };
 
+  /** raw count below; optionally exclude one id (e.g., self) */
+  const getCountForValue = (value: number, excludeId?: string) => {
+    if (!sorted.length || !Number.isFinite(value)) return 0;
+
+    let cnt = belowCount(value);
+
+    if (excludeId && idToValue.has(excludeId)) {
+      const ex = idToValue.get(excludeId)!;
+      if (tie === 'strict') {
+        if (ex < value) cnt -= 1;
+      } else {
+        if (ex <= value) cnt -= 1;
+      }
+    }
+    return Math.max(0, cnt);
+  };
+
+  /** effective pool size used when excluding self (for messaging) */
+  const getPoolSize = (excludeId?: string) =>
+    Math.max(0, sorted.length - (excludeId && idToValue.has(excludeId) ? 1 : 0));
+
   /** % below for a given entry id (self excluded automatically). returns 0 if not found */
   const getForId = (id?: string) => {
     if (!id || !idToValue.has(id)) return 0;
     return getForValue(idToValue.get(id)!, id);
+  };
+
+  /** count below for a given entry id (self excluded automatically). returns 0 if not found */
+  const getCountForId = (id?: string) => {
+    if (!id || !idToValue.has(id)) return 0;
+    return getCountForValue(idToValue.get(id)!, id);
   };
 
   /** % below for a data object (self excluded if it has an id) */
@@ -101,5 +118,22 @@ export function useRelativePercentiles<T extends { _id?: string }>(
     return getForValue(v, id);
   };
 
-  return { getForId, getForItem, getForValue };
+  /** count below for a data object (self excluded if it has an id) */
+  const getCountForItem = (item: T) => {
+    const id = idOf(item);
+    const v = accessor(item);
+    return getCountForValue(v, id);
+  };
+
+  return {
+    // existing percentile API
+    getForId,
+    getForItem,
+    getForValue,
+    // new counts API
+    getCountForId,
+    getCountForItem,
+    getCountForValue,
+    getPoolSize,
+  };
 }

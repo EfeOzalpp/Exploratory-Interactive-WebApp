@@ -61,8 +61,12 @@ const BarGraph = () => {
   const [animateBars, setAnimateBars] = useState(false);
   const barRefs = useRef({});
 
-  // show "You" only on own section and after completing the survey
-  const canShowYou = Boolean(hasCompletedSurvey && mySection && section === mySection && myEntryId);
+  // Show "You" whenever your entry exists in the current dataset (matches DotGraph behavior)
+  const includesMe = useMemo(
+    () => Boolean(myEntryId && Array.isArray(data) && data.some(d => d?._id === myEntryId)),
+    [data, myEntryId]
+  );
+  const canShowYou = Boolean(hasCompletedSurvey && myEntryId && includesMe);
 
   // Kick bar grow animation once data is ready
   useEffect(() => {
@@ -79,7 +83,7 @@ const BarGraph = () => {
   const categories = useMemo(() => {
     const out = { red: 0, yellow: 0, green: 0 };
     for (const item of data) {
-      const score = Math.round((avgWeightOf(item) || 0) * 100);
+      const score = Math.floor((avgWeightOf(item) || 0) * 100);
       if (score <= 33) out.red++;
       else if (score <= 60) out.yellow++;
       else out.green++;
@@ -88,13 +92,16 @@ const BarGraph = () => {
   }, [data]);
 
   // --- RELATIVE marker (“You”) ---
-  // position by percentile vs the whole pool
-  const youPercentile = useMemo(() => (canShowYou ? getForId(myEntryId) : 0), [canShowYou, getForId, myEntryId]);
+  // position by percentile vs the whole pool (UNADJUSTED, per your request)
+  const youPercentile = useMemo(
+    () => (canShowYou ? getForId(myEntryId) : 0),
+    [canShowYou, getForId, myEntryId]
+  );
 
   // choose bar for marker by your ABSOLUTE score bucket
   const youAbsoluteBar = useMemo(() => {
     if (!canShowYou) return null;
-    const me = data.find(d => d._id === myEntryId);
+    const me = data.find(d => d?._id === myEntryId);
     const score = me ? Math.round((avgWeightOf(me) || 0) * 100) : 0;
     if (score <= 33) return 'red';
     if (score <= 60) return 'yellow';
@@ -113,7 +120,7 @@ const BarGraph = () => {
       }
       const heightPercentage =
         (ref.offsetHeight / (ref.parentElement?.offsetHeight || 1)) * 100;
-      // we map percentile (0..100) to bar height
+      // map percentile (0..100) to current bar height
       ref.style.setProperty('--user-percentage', `${(youPercentile / 100) * heightPercentage}%`);
     });
   }, [youPercentile, animateBars, canShowYou]);
@@ -160,9 +167,11 @@ const BarGraph = () => {
                 {showMarkerInThisBar && (
                   <div
                     className="percentage-section"
-                    style={{
-                      height: animateBars ? `${Math.min(userPercentage, heightPercentage)}%` : '0%',
-                    }}
+                  style={{
+                    height: animateBars
+                      ? `calc(${Math.min(userPercentage, heightPercentage)}% - 4%)`
+                      : '0%',
+                  }}
                   >
                     <div className="percentage-indicator">
                       <p>You</p>

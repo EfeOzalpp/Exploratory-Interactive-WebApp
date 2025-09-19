@@ -1,4 +1,3 @@
-// src/components/dotGraph/graph.jsx
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { Html } from '@react-three/drei';
 
@@ -10,7 +9,7 @@ import RingHalo from './ringHalo';
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRealMobileViewport } from '../real-mobile.ts';
 import { sampleStops, rgbString } from '../../utils/hooks.ts';
-import { useRelativePercentiles } from '../../utils/useRelativePercentiles.ts';
+import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
 import { useAbsoluteScore } from '../../utils/useAbsoluteScore.ts';
 
 import useOrbit from './hooks/useOrbit.js';
@@ -114,13 +113,30 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   );
 
   // ---- Metrics (relative vs absolute) ----
-  const { getForId: getRelForId, getForValue: getRelForValue } = useRelativePercentiles(safeData);
+  const {
+    getForId: getRelForId,
+    getForValue: getRelForValue,
+    getCountForId: getRelCountForId,
+    getCountForValue: getRelCountForValue,
+    getPoolSize,
+  } = useRelativePercentiles(safeData);
+
   const { getForId: getAbsForId, getForValue: getAbsForValue } = useAbsoluteScore(safeData, { decimals: 0 });
 
   const myDisplayValue = useMemo(() => {
     if (!(showCompleteUI && myEntry)) return 0;
     return mode === 'relative' ? getRelForId(myEntry._id) : getAbsForId(myEntry._id);
   }, [showCompleteUI, myEntry, mode, getRelForId, getAbsForId]);
+
+  const myCountBelow = useMemo(() => {
+    if (!(showCompleteUI && myEntry) || mode !== 'relative') return 0;
+    return getRelCountForId(myEntry._id);
+  }, [showCompleteUI, myEntry, mode, getRelCountForId]);
+
+  const myPoolSize = useMemo(() => {
+    if (!(showCompleteUI && myEntry) || mode !== 'relative') return 0;
+    return getPoolSize(myEntry._id);
+  }, [showCompleteUI, myEntry, mode, getPoolSize]);
 
   const calcValueForAvg = (averageWeight) =>
     mode === 'relative' ? getRelForValue(averageWeight) : getAbsForValue(averageWeight);
@@ -251,9 +267,11 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               <div>
                 <GamificationPersonalized
                   userData={myEntry}
-                  percentage={myDisplayValue}   // ← value is relative % or absolute 0..100
+                  percentage={myDisplayValue}    // (kept for backwards-compat)
+                  count={myCountBelow}            // NEW: how many you’re ahead of
+                  poolSize={myPoolSize}           // NEW: pool size (self-excluded)
                   color={myPoint.color}
-                  mode={mode}                    // ← tell the panel which mode we’re in
+                  mode={mode}
                   onOpenChange={setPersonalOpen}
                 />
               </div>
@@ -265,6 +283,17 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           (() => {
             const hoveredData = points.find((d) => d._id === hoveredDot.dotId);
             if (!hoveredData) return null;
+
+            // compute count/pool for relative mode
+            let count = 0;
+            let pool = 0;
+            if (mode === 'relative') {
+              const dataObj = safeData.find(d => d._id === hoveredDot.dotId);
+              const avg = dataObj ? avgWeightOf(dataObj) : 0.5;
+              count = getRelCountForValue(avg);     // includes ties policy
+              pool = getPoolSize(undefined);        // whole pool (don’t exclude hovered)
+            }
+
             return (
               <Html
                 position={hoveredData.position}
@@ -281,7 +310,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                 <div>
                   <GamificationGeneral
                     dotId={hoveredDot.dotId}
-                    percentage={hoveredDot.percentage} // ← already computed via mode in useHoverBubble
+                    percentage={hoveredDot.percentage} 
+                    count={count}                      
+                    poolSize={pool}                     
                     color={hoveredData.color}
                     mode={mode}
                   />
