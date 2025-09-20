@@ -86,7 +86,7 @@ div.level-one, .observe-results { z-index: 10; }
   .level-two { margin-bottom: 1em; }
   button.observe-results { padding-bottom: 1.3em; padding-top: 1.3em; width: 40vw; }
   button.observe-results.is-dark { width: 16vw; }
-  .feedback, .nav-toggle { padding-bottom: 1.3em; padding-top: 1.3em; }
+  .feedback, .nav-toggle { margin-top: -2px; padding-bottom: 1.3em; padding-top: 1.3em; }
   .nav-toggle { width: 40vw; align-items: center; justify-content: center;}
   .nav-toggle.active {width: 27vw; display: inline-flex; align-items: center; gap: 6px; justify-content: flex-start; }
   .feedback { width: 40vw; }
@@ -118,7 +118,7 @@ div.level-one, .observe-results { z-index: 10; }
   button.observe-results { padding-bottom: 1.6em; padding-top: 1.6em; width: 24vw; }
   button.observe-results.active.is-dark { width: 12vw; }
   .observe-results:hover {transform: scale(1.1);}
-  .feedback, .nav-toggle { padding-bottom: 1.6em; padding-top: 1.6em; }
+  .feedback, .nav-toggle { margin-top: -2px; padding-bottom: 1.6em; padding-top: 1.6em; }
   .nav-toggle.active { padding-bottom: 1.34em; padding-top: 1.34em; width: 13vw; max-width: 16vw; }
   .feedback { width: 20vw; }
   .nav-toggle { width: 18vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
@@ -149,7 +149,7 @@ div.level-one, .observe-results { z-index: 10; }
   button.observe-results { padding-bottom: 1.4em; padding-top: 1.4em; width: 14vw; }
   button.observe-results.active { width: 6vw; }
   .observe-results:hover {transform: scale(1.1);}
-  .feedback, .nav-toggle { height: 56px; }
+  .feedback, .nav-toggle { margin-top: -2px; height: 56px; }
   .nav-toggle { width: 14vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
   .feedback { width: 14vw; }
   .nav-toggle-icon { top: 1px; position: relative; }

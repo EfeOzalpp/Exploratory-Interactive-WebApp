@@ -12,7 +12,9 @@ import { sampleStops, rgbString } from '../../utils/hooks.ts';
 import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
 import { useAbsoluteScore } from '../../utils/useAbsoluteScore.ts';
 
-import useOrbit from './hooks/useOrbit.js';
+// use refactored orchestrator (folder index)
+import useOrbit from './hooks/useOrbit';
+
 import useDotPoints from './hooks/useDotPoints';
 import useHoverBubble from './hooks/useHoverBubble';
 import useObserverDelay from './hooks/useObserverDelay';
@@ -48,6 +50,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     hasPersonalized &&
     personalOpen;
 
+  // useOrbit orchestrates the split hooks internally; API is unchanged
   const {
     groupRef,
     radius,
@@ -56,6 +59,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     minRadius,
     maxRadius,
     tooltipOffsetPx,
+    // setZoomTarget, // available if we want to programmatically drive zoom
   } = useOrbit({
     isDragging,
     layout: {
@@ -198,7 +202,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const offsetBase = isPortrait ? 160 : 120;
   const offsetPx = Number.isFinite(tooltipOffsetPx)
     ? tooltipOffsetPx
-    : nonlinearLerp(offsetBase, offsetBase * 1.35, zoomFactor);
+    : nonlinearLerp(offsetBase, offsetBase * 1.35, Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius))));
 
   return (
     <>
@@ -267,9 +271,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               <div>
                 <GamificationPersonalized
                   userData={myEntry}
-                  percentage={myDisplayValue}    // (kept for backwards-compat)
-                  count={myCountBelow}            // NEW: how many you’re ahead of
-                  poolSize={myPoolSize}           // NEW: pool size (self-excluded)
+                  percentage={myDisplayValue}
+                  count={myCountBelow}
+                  poolSize={myPoolSize}
                   color={myPoint.color}
                   mode={mode}
                   onOpenChange={setPersonalOpen}
@@ -279,47 +283,45 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           </>
         )}
 
-        {hoveredDot &&
-          (() => {
-            const hoveredData = points.find((d) => d._id === hoveredDot.dotId);
-            if (!hoveredData) return null;
+        {hoveredDot && (() => {
+          const hoveredData = points.find((d) => d._id === hoveredDot.dotId);
+          if (!hoveredData) return null;
 
-            // compute count/pool for relative mode
-            let count = 0;
-            let pool = 0;
-            if (mode === 'relative') {
-              const dataObj = safeData.find(d => d._id === hoveredDot.dotId);
-              const avg = dataObj ? avgWeightOf(dataObj) : 0.5;
-              count = getRelCountForValue(avg);     // includes ties policy
-              pool = getPoolSize(undefined);        // whole pool (don’t exclude hovered)
-            }
+          let count = 0;
+          let pool = 0;
+          if (mode === 'relative') {
+            const dataObj = safeData.find(d => d._id === hoveredDot.dotId);
+            const avg = dataObj ? avgWeightOf(dataObj) : 0.5;
+            count = getRelCountForValue(avg);
+            pool = getPoolSize(undefined);
+          }
 
-            return (
-              <Html
-                position={hoveredData.position}
-                center
-                zIndexRange={[120, 180]}
-                style={{
-                  pointerEvents: 'none',
-                  '--offset-px': `${offsetPx}px`,
-                  opacity: isClosing ? 0 : 1,
-                  transition: 'opacity 180ms ease',
-                }}
-                className={viewportClass}
-              >
-                <div>
-                  <GamificationGeneral
-                    dotId={hoveredDot.dotId}
-                    percentage={hoveredDot.percentage} 
-                    count={count}                      
-                    poolSize={pool}                     
-                    color={hoveredData.color}
-                    mode={mode}
-                  />
-                </div>
-              </Html>
-            );
-          })()}
+          return (
+            <Html
+              position={hoveredData.position}
+              center
+              zIndexRange={[120, 180]}
+              style={{
+                pointerEvents: 'none',
+                '--offset-px': `${offsetPx}px`,
+                opacity: isClosing ? 0 : 1,
+                transition: 'opacity 180ms ease',
+              }}
+              className={viewportClass}
+            >
+              <div>
+                <GamificationGeneral
+                  dotId={hoveredDot.dotId}
+                  percentage={hoveredDot.percentage}
+                  count={count}
+                  poolSize={pool}
+                  color={hoveredData.color}
+                  mode={mode}
+                />
+              </div>
+            </Html>
+          );
+        })()}
       </group>
     </>
   );

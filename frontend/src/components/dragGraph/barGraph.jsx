@@ -84,7 +84,7 @@ const BarGraph = () => {
     const out = { red: 0, yellow: 0, green: 0 };
     for (const item of data) {
       const score = Math.floor((avgWeightOf(item) || 0) * 100);
-      if (score <= 33) out.red++;
+      if (score <= 40) out.red++;
       else if (score <= 60) out.yellow++;
       else out.green++;
     }
@@ -169,7 +169,7 @@ const BarGraph = () => {
                     className="percentage-section"
                   style={{
                     height: animateBars
-                      ? `calc(${Math.min(userPercentage, heightPercentage)}% - 4%)`
+                      ? `calc(${Math.min(userPercentage, heightPercentage)}%)`
                       : '0%',
                   }}
                   >
