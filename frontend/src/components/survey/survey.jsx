@@ -160,7 +160,7 @@ export default function Survey({
           <div className="survey-section-wrapper2">
             <div className="survey-section">
               <div className="surveyStart">
-                <button className="begin-button4" onClick={handleComplete}><span>Done Viewing</span></button>
+                <button className="begin-button4" onClick={handleComplete}><span>Exit</span></button>
               </div>
             </div>
           </div>

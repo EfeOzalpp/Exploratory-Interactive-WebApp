@@ -15,10 +15,7 @@ export default function ModeToggle() {
   const relFeedback = useMemo(() => {
     if (!poolValues.length || !Number.isFinite(myValue)) return "Ranking mode";
     const pool = poolValues.length - 1;
-    const countBelow = poolValues.reduce((acc, v, i) => {
-      if (i === myIndex) return acc;
-      return acc + (v < myValue ? 1 : 0);
-    }, 0);
+    const countBelow = poolValues.reduce((acc, v, i) => (i === myIndex ? acc : acc + (v < myValue ? 1 : 0)), 0);
     return `Ahead of ${countBelow} of ${Math.max(0, pool)}`;
   }, [poolValues, myIndex, myValue]);
 
@@ -30,7 +27,14 @@ export default function ModeToggle() {
   }, [getAbsForId, myEntryId, myIndex]);
 
   const isAbsolute = mode === "absolute";
-  const onToggle = () => setMode(isAbsolute ? "relative" : "absolute");
+
+  const flipModeAndOpenPanel = (nextMode) => {
+    setMode(nextMode);
+    // Nudge the personalized panel to open
+    window.dispatchEvent(new CustomEvent('gp:open-personalized'));
+  };
+
+  const onToggle = () => flipModeAndOpenPanel(isAbsolute ? "relative" : "absolute");
 
   return (
     <div className="mode-toggle-wrap">
@@ -42,8 +46,8 @@ export default function ModeToggle() {
         onClick={onToggle}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); }
-          if (e.key === "ArrowLeft") setMode("relative");
-          if (e.key === "ArrowRight") setMode("absolute");
+          if (e.key === "ArrowLeft")  flipModeAndOpenPanel("relative");
+          if (e.key === "ArrowRight") flipModeAndOpenPanel("absolute");
         }}
         title={isAbsolute ? "Switch to Relative" : "Switch to Absolute"}
       >

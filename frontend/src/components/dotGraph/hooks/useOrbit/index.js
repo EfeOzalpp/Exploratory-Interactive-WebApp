@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 
 import useActivity from './useActivity.js';
@@ -39,7 +39,7 @@ export default function useOrbit(params = {}) {
 
   const {
     startOnLoad    = idle.startOnLoad ?? true,
-    delayMs        = idle.delayMs ?? 1000,
+    delayMs        = idle.delayMs ?? 1000,     // <- your 1s setting
     speed          = idle.speed ?? 0.15,
     horizontalOnly = idle.horizontalOnly ?? true,
   } = idle;
@@ -59,6 +59,25 @@ export default function useOrbit(params = {}) {
   // ----- activity / idle helpers -----
   const { hasInteractedRef, lastActivityRef, markActivity, isIdle } =
     useActivity({ startOnLoad, delayMs });
+
+  // 🔒 Block idle when a tooltip is open
+  const hoverActiveRef = useRef(false);
+  useEffect(() => {
+    const onOpen = () => { hoverActiveRef.current = true; };
+    const onClose = () => { hoverActiveRef.current = false; };
+    window.addEventListener('gp:hover-open', onOpen);
+    window.addEventListener('gp:hover-close', onClose);
+    return () => {
+      window.removeEventListener('gp:hover-open', onOpen);
+      window.removeEventListener('gp:hover-close', onClose);
+    };
+  }, []);
+
+  // Wrap base isIdle to include hover gating
+  const isIdleWrapped = ({ userInteracting, hasInteractedRef: hiRef = hasInteractedRef, lastActivityRef: laRef = lastActivityRef }) => {
+    if (hoverActiveRef.current) return false;
+    return isIdle({ userInteracting, hasInteractedRef: hiRef, lastActivityRef: laRef });
+  };
 
   // ----- zoom (wheel + pinch + spring) -----
   const { radius, zoomTargetRef, zoomVelRef, setZoomTarget } = useZoom({
@@ -97,7 +116,8 @@ export default function useOrbit(params = {}) {
   usePixelOffsets({ groupRef, camera, radius, xOffset, yOffset, xOffsetPx, yOffsetPx });
 
   // ----- idle drift (separate & tiny) -----
-  useIdleDrift({ groupRef, speed, horizontalOnly, isIdle });
+  // Use the wrapped idle predicate so drift never runs when a tooltip is up
+  useIdleDrift({ groupRef, speed, horizontalOnly, isIdle: isIdleWrapped });
 
   // ----- camera follow radius -----
   useFrame(() => {
@@ -111,7 +131,7 @@ export default function useOrbit(params = {}) {
     const userInteracting =
       effectiveDraggingRef.current || isTouchRotatingRef.current || isPinchingRef.current;
 
-    const idleActive = isIdle({ userInteracting, hasInteractedRef, lastActivityRef });
+    const idleActive = isIdleWrapped({ userInteracting, hasInteractedRef, lastActivityRef });
     notePossibleIdleExit(idleActive);
     applyRotationFrame({ idleActive, delta });
   });

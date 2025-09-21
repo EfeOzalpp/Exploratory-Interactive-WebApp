@@ -21,7 +21,7 @@ export default function DoneOverlayR3F({ onComplete }) {
             <div className="survey-section">
               <div className="surveyStart">
                 <button className="begin-button4" onClick={onComplete}>
-                  <h4>Done</h4>
+                  <h4>Exit</h4>
                 </button>
               </div>
             </div>
