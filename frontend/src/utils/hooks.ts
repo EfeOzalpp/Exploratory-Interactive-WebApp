@@ -40,11 +40,16 @@ export const BRAND_STOPS_ORIGINAL: Stop[] = [
 
 // VIVID brand gradient (narrow yellow, deeper endpoints)
 export const BRAND_STOPS_VIVID: Stop[] = [
-  { stop: 0.00, color: { r: 235, g:  28, b:  36 } }, // deeper red
-  { stop: 0.25, color: { r: 252, g: 120, b:  20 } }, // orange
-  { stop: 0.55, color: { r: 255, g: 230, b:  60 } }, // narrow yellow ridge
-  { stop: 0.75, color: { r:  60, g: 220, b: 120 } }, // greenish-teal
-  { stop: 1.00, color: { r:   0, g: 180, b:  55 } }, // deeper green
+  { stop: 0.00, color: { r: 210, g:  0,  b:  25 } },  // deeper, pure red
+  { stop: 0.20, color: { r: 255, g:  90, b:   0 } },  // hot orange
+
+  // middle ridge — narrow but bright
+  { stop: 0.46, color: { r: 255, g: 210, b:  40 } },  // golden yellow
+  { stop: 0.52, color: { r: 255, g: 245, b: 120 } },  // sharp lemon peak
+  { stop: 0.58, color: { r: 150, g: 235, b: 120 } },  // bright yellow-green
+
+  { stop: 0.78, color: { r:   0, g: 175, b:  70 } },  // clean green
+  { stop: 1.00, color: { r:   0, g: 120, b:  40 } },  // deep forest green
 ];
 
 // COOL alt (less yellow overall)

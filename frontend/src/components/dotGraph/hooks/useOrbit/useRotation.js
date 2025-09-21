@@ -1,4 +1,3 @@
-// src/components/dotGraph/hooks/useOrbit/useRotation.js
 import { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 
@@ -45,13 +44,10 @@ export default function useRotation({
   // Keep a live canvas rect so we can map window coords → canvas NDC even when UI overlaps
   const canvasRectRef = useRef({ left: 0, top: 0, width: 1, height: 1 });
 
-  // === NEW: persistent cursor→yaw remap (applied inside getDesktopCursorTarget) ===
-  // This is the key: at idle-exit, set remapY = currentYaw - baseCursorMappedY.
-  // After that, targetY = baseCursorMappedY + remapY (no snap back).
+  // === cursor→yaw remap to avoid snap on idle exit ===
   const cursorRemapYRef = useRef(0);       // radians
   const remapArmedRef   = useRef(false);   // for logs/clarity
 
-  // helpers
   const rad2deg = (r) => (r * 180) / Math.PI;
 
   // keep canvas rect fresh
@@ -113,8 +109,7 @@ export default function useRotation({
     };
 
     const handleTouchMove = (event) => {
-      // Listen on window so touch over UI also rotates,
-      // but freeze rotation if the external UI is actively dragging.
+      // rotate on single-finger drag; prevent default so page doesn't scroll
       event.preventDefault();
       if (isDraggingRef.current) return;
 
@@ -142,7 +137,6 @@ export default function useRotation({
 
         const vx = (-dy / dt) * 1000 * PX_TO_RAD;
         const vy = (-dx / dt) * 1000 * PX_TO_RAD;
-        // small blend to smooth sensor noise, but no lag
         spinVelRef.current = {
           x: (spinVelRef.current.x + vx) * 0.5,
           y: (spinVelRef.current.y + vy) * 0.5,
@@ -163,7 +157,6 @@ export default function useRotation({
         isMovingRef.current = false;
       }
       if (e.touches.length < 2) {
-        // leaving pinch state
         isPinchingRef.current = false;
       }
     };
@@ -214,11 +207,36 @@ export default function useRotation({
     return { x: tx, y: -ty };
   };
 
-  // wrapper that applies our **cursor→yaw remap** (this is the magic)
+  // wrapper that applies our cursor→yaw remap (no snap on idle exit)
   const getDesktopCursorTarget = () => {
     const base = getDesktopCursorTargetBase();
     const yRemapped = base.y + (cursorRemapYRef.current || 0);
     return { x: base.x, y: yRemapped };
+  };
+
+  // ----- edge drift detection (desktop) -----
+  // Outer 10% band at each edge; tweakable via EDGE_BAND.
+  const EDGE_BAND = 0.10;
+  const bandAmount = (v) => {
+    const a = Math.abs(v);
+    const start = 1 - EDGE_BAND;
+    if (a <= start) return 0;
+    return Math.min(1, (a - start) / EDGE_BAND); // 0..1
+  };
+
+  const getCursorEdgeDrift = () => {
+    if (!useDesktopLayout) return { active: false, vyaw: 0, vpitch: 0, strength: 0 };
+    const { x: nx, y: ny } = lastCursorPositionRef.current; // -1..1
+    const ax = bandAmount(nx);
+    const ay = bandAmount(ny);
+    const active = ax > 0 || ay > 0;
+
+    // Horizontal edges → yaw (rotate around Y): left -, right +
+    // Vertical edges   → pitch (rotate around X): top +, bottom -
+    const vyaw   = ax * Math.sign(nx);      // -1..1 scaled by edge proximity
+    const vpitch = ay * -Math.sign(ny);     // invert so top moves up
+
+    return { active, vyaw, vpitch, strength: Math.max(ax, ay) };
   };
 
   // ----- Idle transition with remap set on exit -----
@@ -227,17 +245,14 @@ export default function useRotation({
     if (!wasIdleRef.current && idleActive) {
       if (groupRef.current) {
         idleEnterYawRef.current = groupRef.current.rotation.y;
-        // reset decay bias; we’re going to rely on remap on exit
+        // reset decay bias; we rely on remap on exit
         rotBiasRef.current.x = 0;
         rotBiasRef.current.y = 0;
         rotBiasDecayRef.current = 0;
-        console.log(
-          "[Idle Enter] yaw =", rad2deg(idleEnterYawRef.current).toFixed(2), "deg"
-        );
+        // console.log("[Idle Enter] yaw =", rad2deg(idleEnterYawRef.current).toFixed(2), "deg");
       } else {
         idleEnterYawRef.current = null;
       }
-      // do not touch cursorRemapYRef here; we keep the previous mapping until exit
     }
 
     // EXIT idle
@@ -245,37 +260,24 @@ export default function useRotation({
       if (groupRef.current != null) {
         const currentY = groupRef.current.rotation.y;          // scene yaw now (rad)
         const { y: baseY } = getDesktopCursorTargetBase();     // raw cursor-mapped yaw (no remap)
-
-        // set remap so cursor position directly maps to current scene yaw
         const remapY = currentY - baseY;
         cursorRemapYRef.current = remapY;
         remapArmedRef.current = true;
-
-        console.log(
-          "[Idle Exit] set remap: currentY=",
-          rad2deg(currentY).toFixed(2),
-          "deg, baseY=",
-          rad2deg(baseY).toFixed(2),
-          "deg, remapY=",
-          rad2deg(remapY).toFixed(2),
-          "deg"
-        );
+        // console.log("[Idle Exit] remapY=", rad2deg(remapY).toFixed(2), "deg");
       }
-      // clear entry marker
       idleEnterYawRef.current = null;
     }
 
     wasIdleRef.current = idleActive;
   }
 
-  // (optional) log the remapped target occasionally to verify no snap
+  // (optional) debug: log remapped target occasionally
   useFrame(() => {
     if (!useDesktopLayout || !groupRef.current) return;
-    // lightweight debug every ~500ms if remap is armed
     if (remapArmedRef.current) {
       if (!useFrame._lastLog || performance.now() - useFrame._lastLog > 500) {
         const { y } = getDesktopCursorTarget();
-        console.log("[Remap] targetY=", rad2deg(y).toFixed(2), "deg, yaw=", rad2deg(groupRef.current.rotation.y).toFixed(2), "deg");
+        // console.log("[Remap] targetY=", rad2deg(y).toFixed(2), "deg");
         useFrame._lastLog = performance.now();
       }
     }
@@ -295,8 +297,6 @@ export default function useRotation({
       if (useDesktopLayout) {
         const { x: targetXFromCursor, y: targetYFromCursor } = getDesktopCursorTarget();
 
-        // if you still want to allow a tiny bias blend, you can keep rotBias*;
-        // default to zero (we’re using remap instead of bias)
         if (rotBiasDecayRef.current > 0) {
           const tau = 0.18;
           const k = 1 - Math.exp(-delta / tau);
@@ -339,9 +339,10 @@ export default function useRotation({
   return {
     isPinchingRef,
     isTouchRotatingRef,
-    getDesktopCursorTarget,     // now returns remapped target
+    getDesktopCursorTarget,     
     applyRotationFrame,
     notePossibleIdleExit,
     lastMouseMoveTsRef,
+    getCursorEdgeDrift,         
   };
 }

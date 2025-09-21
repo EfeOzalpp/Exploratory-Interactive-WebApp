@@ -13,10 +13,8 @@ export default function useHoverBubble({
   const hideTimerRef = useRef(null);
 
   // Tuning:
-  // - Desktop: keep left at 40%, push right start to 72% so it's not too close to center.
-  // - Mobile: unchanged (right starts at 60%).
   const LEFT_PCT_DESKTOP = 0.80;
-  const RIGHT_PCT_DESKTOP = 0.2; // was 0.60; higher = closer to the right edge
+  const RIGHT_PCT_DESKTOP = 0.2; 
   const LEFT_PCT_MOBILE = 0.60;
 
   const calculateViewportProximity = (x, y) => {

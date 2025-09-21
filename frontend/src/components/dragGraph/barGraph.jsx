@@ -79,7 +79,6 @@ const BarGraph = () => {
   }, [loading, data]);
 
   // --- ABSOLUTE buckets for bar heights ---
-  // score = avgWeight * 100 → 0..33 red, 34..60 yellow, 61..100 green
   const categories = useMemo(() => {
     const out = { red: 0, yellow: 0, green: 0 };
     for (const item of data) {
@@ -92,13 +91,11 @@ const BarGraph = () => {
   }, [data]);
 
   // --- RELATIVE marker (“You”) ---
-  // position by percentile vs the whole pool (UNADJUSTED, per your request)
   const youPercentile = useMemo(
     () => (canShowYou ? getForId(myEntryId) : 0),
     [canShowYou, getForId, myEntryId]
   );
 
-  // choose bar for marker by your ABSOLUTE score bucket
   const youAbsoluteBar = useMemo(() => {
     if (!canShowYou) return null;
     const me = data.find(d => d?._id === myEntryId);
@@ -110,6 +107,41 @@ const BarGraph = () => {
 
   const maxItems = Math.max(categories.green, categories.yellow, categories.red) + 15;
 
+  // --- NORMALIZATION ---
+  const [normalizeDivisor, setNormalizeDivisor] = useState(100 / 78);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+
+    const mqSmall = window.matchMedia('(max-width: 768px)');
+    const mqMedium = window.matchMedia('(min-width: 769px) and (max-width: 1024px)');
+
+    const apply = () => {
+      if (mqSmall.matches) {
+        setNormalizeDivisor(100 / 71); // 71% is new 100
+      } else if (mqMedium.matches) {
+        setNormalizeDivisor(100 / 80); // 80% is new 100
+      } else {
+        setNormalizeDivisor(100 / 78); // default
+      }
+    };
+
+    apply();
+
+    const listeners = [mqSmall, mqMedium];
+    listeners.forEach(mq =>
+      mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply)
+    );
+    window.addEventListener('resize', apply);
+
+    return () => {
+      listeners.forEach(mq =>
+        mq.removeEventListener ? mq.removeEventListener('change', apply) : mq.removeListener(apply)
+      );
+      window.removeEventListener('resize', apply);
+    };
+  }, []);
+
   // write CSS var for the "You" indicator height relative to each bar
   useLayoutEffect(() => {
     Object.entries(barRefs.current).forEach(([_, ref]) => {
@@ -120,10 +152,11 @@ const BarGraph = () => {
       }
       const heightPercentage =
         (ref.offsetHeight / (ref.parentElement?.offsetHeight || 1)) * 100;
-      // map percentile (0..100) to current bar height
-      ref.style.setProperty('--user-percentage', `${(youPercentile / 100) * heightPercentage}%`);
+      const raw = (youPercentile / 100) * heightPercentage;
+      const normalized = raw / normalizeDivisor;
+      ref.style.setProperty('--user-percentage', `${normalized}%`);
     });
-  }, [youPercentile, animateBars, canShowYou]);
+  }, [youPercentile, animateBars, canShowYou, normalizeDivisor]);
 
   useEffect(() => {
     if (!animationState) {
@@ -132,11 +165,9 @@ const BarGraph = () => {
     }
   }, [animationState]);
 
-  // UX guards
   if (!section) return <p className="graph-loading">Pick a section to begin.</p>;
   if (loading) return null;
 
-  // render order: Green (left) → Yellow (middle) → Red (right)
   const orderedColors = ['green', 'yellow', 'red'];
 
   return (
@@ -146,12 +177,10 @@ const BarGraph = () => {
           const count = categories[color];
           const heightPercentage = (count / maxItems) * 100;
 
-          // Show marker only in the bar that matches your ABSOLUTE bucket
           const showMarkerInThisBar = canShowYou && youAbsoluteBar === color;
 
-          // We still need a height for the wrapper that clips the marker;
-          // use percentile mapped into the bar's current fill height.
           const userPercentage = (youPercentile / 100) * heightPercentage;
+          const normalizedUserPercentage = userPercentage / normalizeDivisor;
 
           return (
             <div
@@ -167,11 +196,11 @@ const BarGraph = () => {
                 {showMarkerInThisBar && (
                   <div
                     className="percentage-section"
-                  style={{
-                    height: animateBars
-                      ? `calc(${Math.min(userPercentage, heightPercentage)}%)`
-                      : '0%',
-                  }}
+                    style={{
+                      height: animateBars
+                        ? `calc(${Math.min(normalizedUserPercentage, heightPercentage)}%)`
+                        : '0%',
+                    }}
                   >
                     <div className="percentage-indicator">
                       <p>You</p>
@@ -190,7 +219,6 @@ const BarGraph = () => {
         })}
       </div>
 
-      {/* Lotties: lazy wrapper + lazy JSONs */}
       <div className="bar-graph-icons">
         <TreeIcon
           jsonLoader={() =>

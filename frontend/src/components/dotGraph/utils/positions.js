@@ -2,7 +2,6 @@
 // Product-ready 3D point layout (1 .. 5000+):
 // - Even angular coverage via Spherical Fibonacci
 // - Uniform-in-ball radial ramp, with extra inward bias for small N
-// - Optional viewport-aspect shaping (keeps shell radii, biases angular spread)
 // - Fast local relaxation using a spatial grid (O(n))
 // - Deterministic (seed), no console logs
 
@@ -98,35 +97,6 @@ const cellIndex = (p, cs) => [
   Math.floor(p[2] / cs),
 ];
 
-// ----------------- aspect shaping -----------------
-/**
- * Build an anisotropic scaler that biases X/Y to the viewport aspect,
- * then renormalizes back to the intended radius r so shells stay spherical.
- *
- * aspectRatio: width/height (>1 = wide, <1 = tall)
- * aspectStrength: 0..1, how much to push towards the aspect
- */
-const makeAspectScaler = (aspectRatio = 1, aspectStrength = 1) => {
-  const a = Math.max(1e-6, aspectRatio);
-  const s = clamp01(aspectStrength);
-
-  // For wide screens (a>1): stretch X, compress Y; for tall (a<1): opposite.
-  // Interpolate between identity and full aspect using strength.
-  const scaleX = lerp(1, a >= 1 ? a : 1 / a, s);
-  const scaleY = lerp(1, a >= 1 ? 1 / a : a, s);
-  const scaleZ = 1; // keep depth neutral; FOV handles projection
-
-  // Return a function that maps a direction * radius to a reweighted, renormalized point.
-  return (x, y, z, r) => {
-    const X = x * scaleX;
-    const Y = y * scaleY;
-    const Z = z * scaleZ;
-    const len = Math.hypot(X, Y, Z) || 1;
-    const k = r / len;
-    return [X * k, Y * k, Z * k];
-  };
-};
-
 // ----------------- main API -----------------
 /**
  * Generate near-uniform 3D positions centered at the origin.
@@ -147,8 +117,6 @@ const makeAspectScaler = (aspectRatio = 1, aspectStrength = 1) => {
  *  - baseRadiusTight?: number base radius when tight (default ~0.5 * minDistance)
  *  - tightMaxAlpha?: number radial exponent when tight (default 0.85; >1/3 pulls inward)
  *  - tightCurve?: number    1=linear fade of tightness; >1 keeps tightness longer (default 1.25)
- *  - aspectRatio?: number   width/height for viewport shaping (default 1, i.e., disabled)
- *  - aspectStrength?: number 0..1, how strongly to bias to aspect (default 1)
  */
 export const generatePositions = (
   numPoints,
@@ -175,11 +143,6 @@ export const generatePositions = (
   const baseRadiusTight  = opts.baseRadiusTight  ?? Math.max(0.5 * minDistance, 0.5);
   const tightMaxAlpha    = opts.tightMaxAlpha    ?? 0.85;
   const tightCurve       = opts.tightCurve       ?? 1.25;
-
-  // Aspect shaping knobs
-  const aspectRatio     = opts.aspectRatio     ?? 1;   // width / height
-  const aspectStrength  = opts.aspectStrength  ?? 1;   // 0..1
-  const aspectScaleFn   = makeAspectScaler(aspectRatio, aspectStrength);
 
   // Tightness factor: 1 at very small N → 0 by tightRefN
   const tightT = Math.pow(clamp01(1 - n / tightRefN), tightCurve);
@@ -217,20 +180,12 @@ export const generatePositions = (
     const jy = t1[1]*j1*jScale + t2[1]*j2*jScale;
     const jz = t1[2]*j1*jScale + t2[2]*j2*jScale;
 
-    // Base point at radius r in direction d with tiny tangent jitter
-    const bx = d[0]*r + jx;
-    const by = d[1]*r + jy;
-    const bz = d[2]*r + jz;
-
-    // 2.5) Aspect shaping: bias XY to viewport aspect and renormalize back to radius r
-    const [ax, ay, az] = aspectScaleFn(bx, by, bz, r);
-
-    pts[i] = [ax, ay, az];
+    pts[i] = [d[0]*r + jx, d[1]*r + jy, d[2]*r + jz];
   }
 
   if (relaxPasses <= 0 || minDistance <= 0) return pts;
 
-  // 3) Fast local relaxation with a spatial grid (runs in aspect-shaped space)
+  // 3) Fast local relaxation with a spatial grid
   const cellSize = Math.max(1e-6, minDistance);
   const nbr = [-1, 0, 1];
 

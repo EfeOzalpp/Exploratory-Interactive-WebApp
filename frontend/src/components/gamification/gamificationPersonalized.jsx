@@ -2,10 +2,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import '../../styles/gamification.css';
 
-import { useSkewedPercentColor } from '../../utils/hooks.ts';
+// ⬇️ Use the same gradient sampling the 3D uses (no skew curve)
+import { useGradientColor, BRAND_STOPS } from '../../utils/hooks.ts';
 import { usePersonalizedPools } from '../../utils/useGamificationPools.ts';
 
-// ⬇️ import ROLE_SECTIONS so labels match GraphPicker’s list
+// import ROLE_SECTIONS so labels match GraphPicker’s list
 import { ROLE_SECTIONS } from '../survey/sectionPicker/sections';
 
 const FADE_MS = 200;
@@ -47,7 +48,7 @@ const GamificationPersonalized = ({
   positionClass,         // 'solo' | 'top' | 'bottom' | 'middle'
   tieContext,            // 'tiedTop' | 'tiedBottom' | 'tiedMiddle' | 'notTied'
 
-  // 🆕 id of the currently selected section from GraphPicker (e.g. 'animation', 'all', etc.)
+  // id of the currently selected section from GraphPicker (e.g. 'animation', 'all', etc.)
   selectedSectionId,
 }) => {
   const [selectedTitle, setSelectedTitle] = useState('');
@@ -64,10 +65,11 @@ const GamificationPersonalized = ({
 
   const safePct = Number(percentage) || 0;
 
-  const skewed = useSkewedPercentColor(safePct);
+  // 🔁 SAME gradient/stops as the 3D graph (no skew), so knob == dot color family
+  const knobSample = useGradientColor(safePct, { stops: BRAND_STOPS });
   const { pick } = usePersonalizedPools();
 
-  const knobColor = mode === 'absolute' ? skewed.css : NEUTRAL;
+  const knobColor = mode === 'absolute' ? knobSample.css : NEUTRAL;
 
   useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
 
@@ -82,7 +84,12 @@ const GamificationPersonalized = ({
   const allLabelsMap = useMemo(() => {
     const student = ROLE_SECTIONS?.student ?? [];
     const staff   = ROLE_SECTIONS?.staff ?? [];
-    const list = [...SPECIAL, ...student.map(s => ({ id: s.value, label: s.label })), ...staff.map(s => ({ id: s.value, label: s.label })), ...LEGACY_UMBRELLAS];
+    const list = [
+      ...SPECIAL,
+      ...student.map(s => ({ id: s.value, label: s.label })),
+      ...staff.map(s => ({ id: s.value, label: s.label })),
+      ...LEGACY_UMBRELLAS
+    ];
     return new Map(list.map(o => [o.id, o.label]));
   }, []);
 

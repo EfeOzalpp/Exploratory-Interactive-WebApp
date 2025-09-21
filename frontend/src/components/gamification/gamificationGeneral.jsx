@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import '../../styles/gamification.css';
 
-import { useSkewedPercentColor } from '../../utils/hooks.ts';
+// Use the same gradient pipeline/stops as the 3D graph (no skew)
+import { useGradientColor, BRAND_STOPS } from '../../utils/hooks.ts';
 import { useGeneralPools } from '../../utils/useGamificationPools.ts';
 
 const NEUTRAL = 'rgba(255,255,255,0.95)';
@@ -23,9 +24,11 @@ const GamificationGeneral = ({
   const [currentText, setCurrentText] = useState({ title: '', description: '' });
 
   const safePct = Math.max(0, Math.min(100, Math.round(Number(percentage) || 0)));
-  const skewed = useSkewedPercentColor(safePct);
+
+  // 🎯 Exact same palette as the dots; no skew so colors line up visually
+  const knobSample = useGradientColor(safePct, { stops: BRAND_STOPS });
   const { pick, loaded } = useGeneralPools();
-  const knobColor = mode === 'absolute' ? skewed.css : NEUTRAL;
+  const knobColor = mode === 'absolute' ? knobSample.css : NEUTRAL;
 
   useEffect(() => {
     if (!loaded) return;
