@@ -1,4 +1,4 @@
-// components/dataVisualization.jsx
+// src/components/dataVisualization.jsx
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import '../styles/global-styles.css';
 import '../styles/graph.css';
@@ -32,6 +32,23 @@ const VisualizationPage = () => {
   const [isBarGraphVisible, setIsBarGraphVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  // 🔒 HUD latch state (sync with canonical state)
+  const [hudLatched, setHudLatched] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.__gpEdgeLatched == null ? true : !!window.__gpEdgeLatched;
+  });
+
+  useEffect(() => {
+    const onState = (e) => {
+      const { latched } = e.detail || {};
+      if (typeof latched === 'boolean') setHudLatched(!!latched);
+    };
+    window.addEventListener('gp:edge-cue-state', onState);
+    return () => {
+      window.removeEventListener('gp:edge-cue-state', onState);
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setPosition(getPositionByViewport()), 0);
@@ -154,27 +171,11 @@ const VisualizationPage = () => {
             aria-hidden
           >
             {isBarGraphVisible ? (
-              // minus icon
-              <svg
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                stroke="currentColor"
-                style={{ transition: 'transform 0.15s ease-out' }}
-              >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style={{ transition: 'transform 0.15s ease-out' }}>
                 <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
               </svg>
             ) : (
-              // plus icon
-              <svg
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                stroke="currentColor"
-                style={{ transition: 'transform 0.15s ease-out' }}
-              >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style={{ transition: 'transform 0.15s ease-out' }}>
                 <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
                 <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
               </svg>
@@ -183,8 +184,16 @@ const VisualizationPage = () => {
         </div>
 
         {isBarGraphVisible && (
-          <div className="draggable-bar-graph">
-            <Suspense fallback={<div style={{ width: 240, height: 120 }}>Loading…</div>}>
+          <div
+            className="draggable-bar-graph"
+            style={{
+              background: hudLatched
+                ? 'rgba(255,255,255,0.5)'
+                : 'linear-gradient(to bottom, rgba(45, 45, 45, 0.9) 10%, rgba(255, 255, 255, 0.67) 100%)',
+              transition: 'background 200ms ease',
+            }}
+          >
+            <Suspense fallback={<div style={{ width: 240, height: 120 }}><h3>Loading…</h3></div>}>
               <BarGraph isVisible />
             </Suspense>
           </div>

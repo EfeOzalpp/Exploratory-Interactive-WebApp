@@ -1,3 +1,4 @@
+// src/hooks/orbit/useRotation.js
 import { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 
@@ -10,6 +11,9 @@ export default function useRotation({
   radius,
   markActivity,
   isDragging,
+
+  // edge-drive info from useOrbit
+  edgeDriveRef, // { current: { active, nx, ny, strength } }
 }) {
   const { gl } = useThree(); // canvas element lives here
 
@@ -17,6 +21,26 @@ export default function useRotation({
   const isTouchRotatingRef = useRef(false);
   const lastTouchRef       = useRef({ x: 0, y: 0, t: 0 });
   const spinVelRef         = useRef({ x: 0, y: 0 });
+
+  // --- Canonical latched state helpers (global, shared across app) ---
+  const getLatched = () => {
+    if (typeof window === 'undefined') return true;
+    if (window.__gpEdgeLatched == null) window.__gpEdgeLatched = true;
+    return !!window.__gpEdgeLatched;
+  };
+  const setLatched = (next) => {
+    if (typeof window === 'undefined') return;
+    window.__gpEdgeLatched = !!next;
+    window.dispatchEvent(new CustomEvent('gp:edge-cue-state', {
+      detail: { latched: !!next }
+    }));
+  };
+
+  // --- Touch-only: long-press → flip canonical latched state (mobile HUD) ---
+  const holdTimerRef   = useRef(null);
+  const holdArmedRef   = useRef(false);   // prevent repeat fires per gesture
+  const holdSceneRef   = useRef(false);   // true only if touch started on canvas
+  const HOLD_MS        = 650;             // tweak to taste
 
   // desktop cursor-follow state
   const lastCursorPositionRef = useRef({ x: 0, y: 0 }); // -1..1 in canvas space
@@ -27,13 +51,16 @@ export default function useRotation({
   // recent mouse movement (idle gating)
   const lastMouseMoveTsRef = useRef(0);
 
-  // bias (keep for other small blends if you use it elsewhere)
+  // bias (kept for other blends if you use it elsewhere)
   const rotBiasRef      = useRef({ x: 0, y: 0 });
   const rotBiasDecayRef = useRef(0);
 
   // idle bookkeeping
   const wasIdleRef      = useRef(false);
   const idleEnterYawRef = useRef(null); // radians (for logs / debugging)
+
+  // edge-drive bookkeeping (for exit remap)
+  const wasEdgeDrivingRef = useRef(false);
 
   const isMovingRef     = useRef(false);
 
@@ -44,9 +71,10 @@ export default function useRotation({
   // Keep a live canvas rect so we can map window coords → canvas NDC even when UI overlaps
   const canvasRectRef = useRef({ left: 0, top: 0, width: 1, height: 1 });
 
-  // === cursor→yaw remap to avoid snap on idle exit ===
-  const cursorRemapYRef = useRef(0);       // radians
-  const remapArmedRef   = useRef(false);   // for logs/clarity
+  // persistent cursor→rotation remap (prevents snap on handoffs)
+  const cursorRemapXRef = useRef(0);       // radians (pitch/x)
+  const cursorRemapYRef = useRef(0);       // radians (yaw/y)
+  const remapArmedRef   = useRef(false);   // for optional logs
 
   const rad2deg = (r) => (r * 180) / Math.PI;
 
@@ -84,6 +112,13 @@ export default function useRotation({
     const DEADZONE_PX = 2.0 * dpr;
     const PX_TO_RAD   = (isTabletLike ? 0.009 : 0.005) / dpr;
 
+    // Helper: did this touch start over the WebGL canvas?
+    const isSceneTouchTarget = (target) => {
+      const canvas = gl?.domElement;
+      if (!canvas) return false;
+      return target === canvas || canvas.contains(target);
+    };
+
     // --- Desktop/global pointer tracking (works even over other UI) ---
     const handlePointerMove = (event) => {
       const rect = canvasRectRef.current; // canvas rect in page space
@@ -95,21 +130,36 @@ export default function useRotation({
       markActivity?.();
     };
 
-    // --- Touch handlers (rotate/pinch) ---
+    // --- Touch handlers (rotate/pinch + long-press latch flip) ---
     const handleTouchStart = (event) => {
       markActivity?.();
       if (event.touches.length === 1) {
         const t = event.touches[0];
+
+        // Only arm long-press if touch begins on the canvas (not UI)
+        holdSceneRef.current = isSceneTouchTarget(t.target);
+
         isTouchRotatingRef.current = true;
         isMovingRef.current = false;
         lastTouchRef.current = { x: t.clientX, y: t.clientY, t: performance.now() };
-        // kill residual spin for immediate control
         spinVelRef.current = { x: 0, y: 0 };
+
+        // Arm long-press regardless of movement; cancel only on pinch / touchend.
+        holdArmedRef.current = holdSceneRef.current; // arm only for scene touches
+        if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+        if (holdArmedRef.current) {
+          holdTimerRef.current = setTimeout(() => {
+            if (holdArmedRef.current && holdSceneRef.current && !isPinchingRef.current) {
+              // Flip canonical state ONCE per gesture
+              setLatched(!getLatched());
+              holdArmedRef.current = false;
+            }
+          }, HOLD_MS);
+        }
       }
     };
 
     const handleTouchMove = (event) => {
-      // rotate on single-finger drag; prevent default so page doesn't scroll
       event.preventDefault();
       if (isDraggingRef.current) return;
 
@@ -125,6 +175,9 @@ export default function useRotation({
 
         const moving = Math.abs(dx) >= DEADZONE_PX || Math.abs(dy) >= DEADZONE_PX;
         isMovingRef.current = moving;
+
+        // NOTE: We do NOT cancel the long-press on movement anymore.
+
         if (!moving) {
           lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now };
           return;
@@ -147,13 +200,25 @@ export default function useRotation({
         isTouchRotatingRef.current = false;
         isMovingRef.current = false;
         spinVelRef.current = { x: 0, y: 0 };
+
+        // any pinch cancels the long-press intent
+        if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+        holdArmedRef.current = false;
       }
     };
 
     const handleTouchEnd = (e) => {
       markActivity?.();
+
+      // cleanup long-press timer
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+      holdArmedRef.current = false;
+      holdSceneRef.current = false;
+
       if (e.touches.length === 0) {
-        isTouchRotatingRef.current = false; // allow velocity decay
+        isTouchRotatingRef.current = false;
         isMovingRef.current = false;
       }
       if (e.touches.length < 2) {
@@ -161,7 +226,6 @@ export default function useRotation({
       }
     };
 
-    // Bind to window so we keep tracking over any overlay/UI
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('touchstart',  handleTouchStart,  { passive: false });
     window.addEventListener('touchmove',   handleTouchMove,   { passive: false });
@@ -172,14 +236,14 @@ export default function useRotation({
       window.removeEventListener('touchstart',  handleTouchStart);
       window.removeEventListener('touchmove',   handleTouchMove);
       window.removeEventListener('touchend',    handleTouchEnd);
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
     };
-  }, [isTabletLike, groupRef, markActivity]);
+  }, [isTabletLike, groupRef, markActivity, gl]);
 
   // desktop drag reconciliation (so orbit doesn't jump after UI drag)
   useEffect(() => {
     if (!useDesktopLayout) return;
     if (isDragging) {
-      // capture a neutralized "start" position (subtract existing offset)
       lastCursorPositionRef.current = {
         x: lastCursorPositionRef.current.x - (dragOffset.current?.x || 0),
         y: lastCursorPositionRef.current.y - (dragOffset.current?.y || 0),
@@ -187,7 +251,6 @@ export default function useRotation({
       dragStartRef.current = { ...lastCursorPositionRef.current };
       markActivity?.();
     } else {
-      // when drag ends, compute how far the cursor moved during the UI drag
       dragEndRef.current = { ...lastCursorPositionRef.current };
       dragOffset.current = {
         x: dragEndRef.current.x - dragStartRef.current.x,
@@ -207,63 +270,36 @@ export default function useRotation({
     return { x: tx, y: -ty };
   };
 
-  // wrapper that applies our cursor→yaw remap (no snap on idle exit)
+  // wrapper that applies cursor→rotation remap (prevents snap on handoffs)
   const getDesktopCursorTarget = () => {
     const base = getDesktopCursorTargetBase();
+    const xRemapped = base.x + (cursorRemapXRef.current || 0);
     const yRemapped = base.y + (cursorRemapYRef.current || 0);
-    return { x: base.x, y: yRemapped };
+    return { x: xRemapped, y: yRemapped };
   };
 
-  // ----- edge drift detection (desktop) -----
-  // Outer 10% band at each edge; tweakable via EDGE_BAND.
-  const EDGE_BAND = 0.10;
-  const bandAmount = (v) => {
-    const a = Math.abs(v);
-    const start = 1 - EDGE_BAND;
-    if (a <= start) return 0;
-    return Math.min(1, (a - start) / EDGE_BAND); // 0..1
-  };
-
-  const getCursorEdgeDrift = () => {
-    if (!useDesktopLayout) return { active: false, vyaw: 0, vpitch: 0, strength: 0 };
-    const { x: nx, y: ny } = lastCursorPositionRef.current; // -1..1
-    const ax = bandAmount(nx);
-    const ay = bandAmount(ny);
-    const active = ax > 0 || ay > 0;
-
-    // Horizontal edges → yaw (rotate around Y): left -, right +
-    // Vertical edges   → pitch (rotate around X): top +, bottom -
-    const vyaw   = ax * Math.sign(nx);      // -1..1 scaled by edge proximity
-    const vpitch = ay * -Math.sign(ny);     // invert so top moves up
-
-    return { active, vyaw, vpitch, strength: Math.max(ax, ay) };
-  };
-
-  // ----- Idle transition with remap set on exit -----
+  // ----- Idle transition with remap set on exit (existing behavior: yaw only) -----
   function notePossibleIdleExit(idleActive) {
     // ENTER idle
     if (!wasIdleRef.current && idleActive) {
       if (groupRef.current) {
         idleEnterYawRef.current = groupRef.current.rotation.y;
-        // reset decay bias; we rely on remap on exit
         rotBiasRef.current.x = 0;
         rotBiasRef.current.y = 0;
         rotBiasDecayRef.current = 0;
-        // console.log("[Idle Enter] yaw =", rad2deg(idleEnterYawRef.current).toFixed(2), "deg");
       } else {
         idleEnterYawRef.current = null;
       }
     }
 
-    // EXIT idle
+    // EXIT idle → align yaw to cursor (keep your existing logic)
     if (wasIdleRef.current && !idleActive) {
       if (groupRef.current != null) {
-        const currentY = groupRef.current.rotation.y;          // scene yaw now (rad)
-        const { y: baseY } = getDesktopCursorTargetBase();     // raw cursor-mapped yaw (no remap)
+        const currentY = groupRef.current.rotation.y;
+        const { y: baseY } = getDesktopCursorTargetBase(); // raw cursor-mapped yaw (no remap)
         const remapY = currentY - baseY;
         cursorRemapYRef.current = remapY;
         remapArmedRef.current = true;
-        // console.log("[Idle Exit] remapY=", rad2deg(remapY).toFixed(2), "deg");
       }
       idleEnterYawRef.current = null;
     }
@@ -271,13 +307,13 @@ export default function useRotation({
     wasIdleRef.current = idleActive;
   }
 
-  // (optional) debug: log remapped target occasionally
+  // (optional) debug log, throttled
   useFrame(() => {
     if (!useDesktopLayout || !groupRef.current) return;
     if (remapArmedRef.current) {
       if (!useFrame._lastLog || performance.now() - useFrame._lastLog > 500) {
-        const { y } = getDesktopCursorTarget();
-        // console.log("[Remap] targetY=", rad2deg(y).toFixed(2), "deg");
+        const { x, y } = getDesktopCursorTarget();
+        // console.log("[Remap] target=(", rad2deg(x).toFixed(1), ",", rad2deg(y).toFixed(1), ") yaw=", rad2deg(groupRef.current.rotation.y).toFixed(1));
         useFrame._lastLog = performance.now();
       }
     }
@@ -287,14 +323,47 @@ export default function useRotation({
   const ROT_RELEASE_TAU = 0.09;
   const ROT_MIN_SPEED   = 0.02;
 
+  // continuous edge-driven rotation speed caps (rad/s)
+  const EDGE_MAX_PITCH_SPEED = 1.70;  // x-axis
+  const EDGE_MAX_YAW_SPEED   = 2.4;   // y-axis
+
   function applyRotationFrame({ idleActive, delta }) {
     if (!groupRef.current) return;
 
-    // 🔒 Freeze rotation while dragging external UI, but still track pointer via window
+    // Freeze rotation while dragging external UI, but still track pointer via window
     if (isDraggingRef.current) return;
 
     if (!idleActive) {
       if (useDesktopLayout) {
+        const edge = edgeDriveRef?.current;
+        const isEdgeDriving = !!edge?.active;
+
+        // ===== Edge-drive EXIT → set remap for BOTH axes to prevent snap =====
+        if (wasEdgeDrivingRef.current && !isEdgeDriving) {
+          const base = getDesktopCursorTargetBase(); // raw cursor-mapped (no remap)
+          const curX = groupRef.current.rotation.x;
+          const curY = groupRef.current.rotation.y;
+
+          cursorRemapXRef.current = curX - base.x; // align pitch (x)
+          cursorRemapYRef.current = curY - base.y; // align yaw   (y)
+          remapArmedRef.current = true;
+        }
+        wasEdgeDrivingRef.current = isEdgeDriving;
+
+        // ---- If cursor is inside an edge band, apply continuous rotation (velocity-based)
+        if (isEdgeDriving) {
+          // top = pitch DOWN; right = yaw LEFT
+          const vx = ( edge.ny) * EDGE_MAX_PITCH_SPEED; // x-axis (pitch)
+          const vy = (-edge.nx) * EDGE_MAX_YAW_SPEED;   // y-axis (yaw)
+
+          groupRef.current.rotation.x += vx * delta;
+          groupRef.current.rotation.y += vy * delta;
+
+          // skip standard cursor-follow easing while edge-driving
+          return;
+        }
+
+        // ---- Standard desktop cursor-follow (unchanged)
         const { x: targetXFromCursor, y: targetYFromCursor } = getDesktopCursorTarget();
 
         if (rotBiasDecayRef.current > 0) {
@@ -312,7 +381,7 @@ export default function useRotation({
         groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * EASE;
         groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * EASE;
       } else {
-        // touch inertia
+        // touch inertia (unchanged)
         const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius) || 0));
         const zoomMul   = 0.9 + 0.8 * zf;
         const tabletMul = isTabletLike ? 1.6 : 1.25;
@@ -339,10 +408,9 @@ export default function useRotation({
   return {
     isPinchingRef,
     isTouchRotatingRef,
-    getDesktopCursorTarget,     
+    getDesktopCursorTarget, 
     applyRotationFrame,
     notePossibleIdleExit,
     lastMouseMoveTsRef,
-    getCursorEdgeDrift,         
   };
 }

@@ -10,7 +10,15 @@ import { GraphProvider, useGraph } from "../context/graphContext.tsx";
 import GamificationCopyPreloader from '../utils/gamificationCopyPreloader.tsx';
 import '../styles/global-styles.css';
 
-// Lazily load ModeToggle (kept out of first paint)
+// NOTE: defer these so they only load when the viz actually opens
+const EdgeCue = React.lazy(() =>
+  import(/* webpackChunkName: "edge-cue" */ '../components/dotGraph/darkMode.jsx')
+);
+const EdgeModeHint = React.lazy(() =>
+  import(/* webpackChunkName: "edge-mode-hint" */ '../cues/EdgeModeHint')
+);
+
+// Keep ModeToggle lazy as before
 const ModeToggle = React.lazy(() =>
   import(/* webpackChunkName: "mode-toggle" */ '../components/nav-bottom/modeToggle')
 );
@@ -38,16 +46,26 @@ const FrontPageInner = () => {
   const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
 
-  // only show (and thus load) ModeToggle when relevant
-  const showModeToggle = useMemo(
+  // gate for when the 3D viz + HUD should mount
+  const readyForViz = useMemo(
     () => vizVisible && (observerMode || hasCompletedSurvey),
     [vizVisible, observerMode, hasCompletedSurvey]
   );
 
+  // if you want auto-open when conditions met (optional)
+  useEffect(() => {
+    if (observerMode || hasCompletedSurvey) openGraph();
+  }, [observerMode, hasCompletedSurvey, openGraph]);
+
+  // only show (and thus load) ModeToggle when relevant
+  const showModeToggle = readyForViz;
+
+  // tighten the global zoom-preventer so it never interferes with the R3F canvas
   useEffect(() => {
     const preventZoom = (event) => {
-      const isInsideDotGraph = event.target.closest('.dot-graph-container');
-      if (!isInsideDotGraph && (event.ctrlKey || event.touches?.length > 1)) {
+      // Respect interactions that originate from inside the R3F graph container
+      const isInsideGraph = event.target.closest('.graph-container, .dot-graph-container');
+      if (!isInsideGraph && (event.ctrlKey || event.touches?.length > 1)) {
         event.preventDefault();
       }
     };
@@ -71,14 +89,26 @@ const FrontPageInner = () => {
 
   return (
     <div className="app-content">
+      {/* Defer HUD mounting until the viz is actually shown & allowed */}
+      {readyForViz && (
+        <Suspense fallback={null}>
+          <EdgeCue />
+          <EdgeModeHint />
+        </Suspense>
+      )}
+
       <DeferredGamificationPreloader />
       <Navigation />
 
-      {!animationVisible && !vizVisible && <Canvas answers={answers} />}
+      {/* Show the lightweight decoy canvas only when the heavy viz is NOT mounted */}
+      {!animationVisible && !readyForViz && <Canvas answers={answers} />}
 
-      <div className={`graph-wrapper ${vizVisible ? 'visible' : ''}`}>
-        <DataVisualization />
-      </div>
+      {/* Only MOUNT the heavy viz when fully allowed */}
+      {readyForViz && (
+        <div className={`graph-wrapper ${vizVisible ? 'visible' : ''}`}>
+          <DataVisualization />
+        </div>
+      )}
 
       <div className={`survey-section-wrapper3 ${surveyWrapperClass}`}>
         <Survey

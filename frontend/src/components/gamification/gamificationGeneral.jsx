@@ -1,14 +1,13 @@
-// src/components/gamification/GamificationGeneral.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import '../../styles/gamification.css';
 
-// Use the same gradient pipeline/stops as the 3D graph (no skew)
+// Same gradient pipeline/stops as the 3D graph (no skew)
 import { useGradientColor, BRAND_STOPS } from '../../utils/hooks.ts';
 import { useGeneralPools } from '../../utils/useGamificationPools.ts';
 
 const NEUTRAL = 'rgba(255,255,255,0.95)';
 
-const GamificationGeneral = ({
+export default function GamificationGeneral({
   dotId,
   percentage,           // 0..100 (display only)
   color,
@@ -18,29 +17,70 @@ const GamificationGeneral = ({
   belowCountStrict,      // # with strictly lower score (excl self)
   equalCount,            // # with exactly same score (excl self)
   aboveCountStrict,      // # with strictly higher score (excl self)
-  positionClass,         // 'solo' | 'top' | 'bottom' | 'middle'
-  tieContext,            // 'tiedTop' | 'tiedBottom' | 'tiedMiddle' | 'notTied'
-}) => {
+  positionClass,         // 'solo' | 'top' | 'bottom' | 'middle' | 'middle-above' | 'middle-below'
+  tieContext,            // may be 'tiedTop' | 'tiedBottom' | 'tiedMiddle' | 'top'|'bottom'|'middle'|'none'
+}) {
   const [currentText, setCurrentText] = useState({ title: '', description: '' });
 
   const safePct = Math.max(0, Math.min(100, Math.round(Number(percentage) || 0)));
-
-  // 🎯 Exact same palette as the dots; no skew so colors line up visually
   const knobSample = useGradientColor(safePct, { stops: BRAND_STOPS });
   const { pick, loaded } = useGeneralPools();
   const knobColor = mode === 'absolute' ? knobSample.css : NEUTRAL;
 
+  // Small helper to render emphasized numbers with a glow that matches the dot color.
+  const Strong = useMemo(
+    () =>
+      function Strong({ children }) {
+        return <strong style={{ textShadow: `0 0 12px ${color}` }}>{children}</strong>;
+      },
+    [color]
+  );
+
+  // b = belowCountStrict, e = equalCount, a = aboveCountStrict
+  const b = Math.max(0, (belowCountStrict ?? 0) | 0);
+  const e = Math.max(0, (equalCount ?? 0) | 0);
+  const a = Math.max(0, (aboveCountStrict ?? 0) | 0);
+  const totalOthers = b + e + a;
+
+  // rank + percentile (include self)
+  const N = totalOthers + 1;              // population including this point
+  const rankFromLow = b + 1;              // 1 = absolute lowest
+  const q = N > 0 ? rankFromLow / N : 0;  // 0..1 percentile from low
+
+  // thresholds
+  const SMALL = N < 8;         // small group heuristic
+  const BOTTOM_Q = 0.15;       // bottom 15%
+  const TOP_Q    = 0.85;       // top 15%
+  const NEAR_M   = 0.05;       // ±5% near buffer around edges
+
+  // band decisions
+  const isSolo       = totalOthers === 0 || positionClass === 'solo';
+  const isBottomBand = !isSolo && (SMALL ? b === 0 : q <= BOTTOM_Q);
+  const isNearBottom = !isSolo && !isBottomBand && (SMALL ? b === 1 : q <= BOTTOM_Q + NEAR_M);
+
+  const isTopBand    = !isSolo && (SMALL ? a === 0 : q >= TOP_Q);
+  const isNearTop    = !isSolo && !isTopBand && (SMALL ? a === 1 : q >= TOP_Q - NEAR_M);
+
+  const isMiddleBand = !isSolo && !isTopBand && !isBottomBand && !isNearTop && !isNearBottom;
+
+  // canonical tie label derived from counts (independent of incoming tieContext)
+  const canonicalTie =
+    e > 0 ? (isTopBand ? 'tiedTop' : isBottomBand ? 'tiedBottom' : 'tiedMiddle') : 'notTied';
+
   useEffect(() => {
     if (!loaded) return;
+
     const fallbackBuckets = {
       '0-20':   { titles: ['Climate Clueless', 'Eco-Absentee'], secondary: ['Low effort—just ahead of a few'] },
       '21-40':  { titles: ['Footprint Fumbler', 'Eco Dabbler'], secondary: ['Slow start—keep going'] },
       '41-60':  { titles: ['Balanced as in Average'],           secondary: ['Right in the pack'] },
       '61-80':  { titles: ['Planet Ally', 'Nature Carer'],      secondary: ['Solid progress'] },
-      '81-100': { titles: ['Planet Guardian', 'Earth\'s Best Friend'], secondary: ['Top of the class'] },
+      '81-100': { titles: ['Planet Guardian', "Earth's Best Friend"], secondary: ['Top of the class'] },
     };
+
     if (!dotId || percentage === undefined) return;
     const chosen = pick(safePct, 'gd', String(dotId), fallbackBuckets);
+
     setCurrentText(
       chosen
         ? { title: chosen.title, description: chosen.secondary || '' }
@@ -50,54 +90,67 @@ const GamificationGeneral = ({
 
   if (!dotId || percentage === undefined || color === undefined) return null;
 
-  const strongNum = (n) => <strong style={{ textShadow: `0 0 12px ${color}` }}>{n}</strong>;
+  // --- Build relative line (explicit tie handling) ---
+  let relativeLine = null;
 
-  // --- Build tie-aware relative line using shared stats ---
-  let relativeLine;
-  if (
-    mode === 'relative' &&
-    Number.isFinite(belowCountStrict) &&
-    Number.isFinite(equalCount) &&
-    Number.isFinite(aboveCountStrict) &&
-    positionClass &&
-    tieContext
-  ) {
-    const b = Math.max(0, belowCountStrict | 0);
-    const e = Math.max(0, equalCount | 0);
-    const a = Math.max(0, aboveCountStrict | 0);
-    const totalOthers = b + e + a;
-
-    if (totalOthers === 0 || positionClass === 'solo') {
-      relativeLine = <>Hello! Only data point here — hope others join soon.</>;
-    } else if (positionClass === 'top') {
-      relativeLine =
-        tieContext === 'tiedTop'
-          ? <>Sharing the top — tied with {strongNum(e)}.</>
-          : <>On top — ahead of everyone else.</>;
-    } else if (positionClass === 'bottom') {
-      relativeLine =
-        tieContext === 'tiedBottom'
-          ? <>Sharing the bottom — tied with {strongNum(e)}.</>
-          : <>At the bottom — everyone else is ahead.</>;
-    } else {
-      // middle
-      if (tieContext === 'tiedMiddle') {
-        if (e === 1)       relativeLine = <>Twins — tied with {strongNum(1)}.</>;
-        else if (e === 2)  relativeLine = <>Triplets — tied with {strongNum(2)}.</>;
-        else               relativeLine = <>Tied with {strongNum(e)}.</>;
+  if (mode === 'relative') {
+    if (isSolo) {
+      relativeLine = <>This participant is the very first to join.</>;
+    } else if (isTopBand) {
+      if (canonicalTie === 'tiedTop') {
+        if (e === 1) {
+          relativeLine = <>Sharing the top, tied with <Strong>one other person</Strong>.</>;
+        } else if (e === 2) {
+          relativeLine = <>Sharing the top, tied with <Strong>two others</Strong>.</>;
+        } else {
+          relativeLine = <>Sharing the top, tied with <Strong>{e}</Strong> others.</>;
+        }
       } else {
-        // no tie → position-aware
-        if (a === 1)       relativeLine = <>Second place — ahead of {strongNum(b)}.</>;
-        else if (a === 2)  relativeLine = <>Third place — ahead of {strongNum(b)}.</>;
-        else               relativeLine = <>Ahead of {strongNum(b)}, behind {strongNum(a)}.</>;
+        relativeLine = <>At the very top, ahead of everyone else.</>;
+      }
+    } else if (isBottomBand) {
+      if (canonicalTie === 'tiedBottom') {
+        if (e === 1) {
+          relativeLine = <>At the bottom, tied with <Strong>one other person</Strong>.</>;
+        } else if (e === 2) {
+          relativeLine = <>At the bottom, tied with <Strong>two others</Strong>.</>;
+        } else {
+          relativeLine = <>At the bottom, tied with <Strong>{e}</Strong> others.</>;
+        }
+      } else {
+        relativeLine = <>At the bottom, everyone else is ahead.</>;
+      }
+    } else if (isMiddleBand) {
+      if (canonicalTie === 'tiedMiddle') {
+        if (e === 1) {
+          relativeLine = <>In the middle, tied with <Strong>one other person</Strong>.</>;
+        } else if (e === 2) {
+          relativeLine = <>In the middle, tied with <Strong>two others</Strong>.</>;
+        } else {
+          relativeLine = <>In the middle, tied with <Strong>{e}</Strong> others.</>;
+        }
+      } else {
+        if (a < b) {
+          relativeLine =
+            a === 1
+              ? <>In the middle, behind only <Strong>one person</Strong>.</>
+              : <>In the middle, behind only <Strong>{a}</Strong> people.</>;
+        } else if (b < a) {
+          relativeLine =
+            b === 1
+              ? <>In the middle, ahead of only <Strong>one person</Strong>.</>
+              : <>In the middle, ahead of only <Strong>{b}</Strong> people.</>;
+        } else {
+          relativeLine = <>In the middle, ahead of <Strong>{b}</Strong> and behind <Strong>{a}</Strong>.</>;
+        }
       }
     }
   }
 
-  // Absolute mode text stays the same
-  const line = mode === 'relative'
-    ? relativeLine
-    : (
+  const line =
+    mode === 'relative' ? (
+      relativeLine
+    ) : (
       <>
         Score{' '}
         <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>
@@ -135,6 +188,4 @@ const GamificationGeneral = ({
       </div>
     </div>
   );
-};
-
-export default GamificationGeneral;
+}

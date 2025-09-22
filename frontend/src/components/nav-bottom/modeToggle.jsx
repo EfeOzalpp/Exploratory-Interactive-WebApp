@@ -1,5 +1,5 @@
 // src/components/nav-bottom/ModeToggle.jsx
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo } from "react";
 import { useGraph } from "../../context/graphContext.tsx";
 import { avgWeightOf } from "../../utils/useRelativePercentiles.ts";
 import { useAbsoluteScore } from "../../utils/useAbsoluteScore.ts";
@@ -39,30 +39,22 @@ export default function ModeToggle() {
   const isAbsolute = mode === "absolute";
   const canPersonalize = !observerMode && myIndex >= 0;
 
-  // 🔑 Run only once on component mount to force initial mode = "absolute"
-  const didInit = useRef(false);
-  useEffect(() => {
-    if (!didInit.current) {
-      didInit.current = true;
-      if (mode !== "absolute") {
-        setMode("absolute");
-      }
-    }
-  }, [mode, setMode]);
-
   const flipModeAndMaybeSpotlight = (nextMode) => {
     setMode(nextMode);
 
+    // Only nudge the personalized panel open when NOT observing and we have a personal entry.
     if (canPersonalize) {
       window.dispatchEvent(new CustomEvent('gp:open-personalized'));
     }
 
+    // NEW: In observer mode, request a short-lived spotlight on a left/center dot
     if (observerMode) {
       window.dispatchEvent(new CustomEvent('gp:observer-spotlight-request', {
         detail: {
-          durationMs: 3000,
-          fakeMouseXRatio: 0.25,
-          fakeMouseYRatio: 0.5
+          durationMs: 3000,         // keep GamificationGeneral open for up to 3s
+          // approximate screen coords to compute viewportClass for the bubble
+          fakeMouseXRatio: 0.25,    // 25% from left
+          fakeMouseYRatio: 0.5      // centered vertically
         }
       }));
     }
@@ -70,6 +62,7 @@ export default function ModeToggle() {
 
   const onToggle = () => flipModeAndMaybeSpotlight(isAbsolute ? "relative" : "absolute");
 
+  // Context-aware title
   const titleWhenRelative = observerMode ? "Switch to Rankings" : relFeedback;
   const titleWhenAbsolute = observerMode ? "Switch to Scores"   : absFeedback;
   const title = isAbsolute ? titleWhenRelative : titleWhenAbsolute;

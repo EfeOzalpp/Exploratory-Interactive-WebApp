@@ -106,6 +106,16 @@ function createPool(schemaName: 'gamificationGeneralCopy' | 'gamificationPersona
         )
         .sort((a, b) => a.range!.minPct - b.range!.minPct);
 
+      // Small Fisher–Yates
+      const shuffle = <T,>(arr: T[]) => {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+
       return (
         pct: number,
         cachePrefix: string,
@@ -116,11 +126,13 @@ function createPool(schemaName: 'gamificationGeneralCopy' | 'gamificationPersona
         const found = sorted.find((d) => p >= d.range!.minPct && p <= d.range!.maxPct);
 
         // include schema + rev so cache invalidates on CMS changes
-        const key = storageKeyFor(`${cachePrefix}:${schemaName}:${rev}`, id, p, 'v1');
+        const stableKey = storageKeyFor(`${cachePrefix}:${schemaName}:${rev}`, id, p, 'v1');
 
-        const cached = safeSession.get<{ title: string; secondary: string } | null>(key, null);
+        // If this id+pct already has an assignment, return it (stability per dot)
+        const cached = safeSession.get<{ title: string; secondary: string } | null>(stableKey, null);
         if (cached?.title && cached?.secondary) return cached;
 
+        // Resolve source arrays (from CMS or fallback)
         const fbKey = fallback ? bucketForPercent(p) : null;
         const titles =
           found?.titles?.length ? found.titles : fallback ? fallback[fbKey!]?.titles : null;
@@ -133,9 +145,53 @@ function createPool(schemaName: 'gamificationGeneralCopy' | 'gamificationPersona
 
         if (!titles?.length || !secondary?.length) return null;
 
-        const choose = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-        const chosen = { title: choose(titles), secondary: choose(secondary) };
-        safeSession.set(key, chosen);
+        // We pair titles[i] with secondary[i]; if lengths differ, clamp to min.
+        const N = Math.min(titles.length, secondary.length);
+        if (N <= 0) return null;
+
+        // === NO-REPEAT BUCKET QUEUE (session-scoped, per range, per schema+rev) ===
+        // Build a bucket identifier that is stable for the pct range we matched.
+        const bucketId =
+          found?.range
+            ? `${found.range.minPct}-${found.range.maxPct}`
+            : // Fallback bucket uses the coarse fb key (e.g., '41-60')
+              fbKey!;
+
+        // A pool that survives re-renders within the same session and resets on CMS rev change.
+        const poolKey = storageKeyFor(
+          `${schemaName}:${rev}:pool`,
+          bucketId,
+          0,
+          'v1'
+        );
+
+        type PoolState = { queue: number[]; cursor: number };
+        let pool = safeSession.get<PoolState | null>(poolKey, null);
+
+        const resetPool = () => {
+          pool = { queue: shuffle(Array.from({ length: N }, (_, i) => i)), cursor: 0 };
+          safeSession.set(poolKey, pool);
+        };
+
+        if (!pool || !Array.isArray(pool.queue) || typeof pool.cursor !== 'number' || pool.queue.length !== N) {
+          resetPool();
+        }
+
+        // Draw next index without replacement; reshuffle after exhausting.
+        let idx = pool!.queue[pool!.cursor];
+        pool!.cursor += 1;
+        if (pool!.cursor >= pool!.queue.length) {
+          // exhausted → reshuffle for next cycle
+          resetPool();
+        } else {
+          safeSession.set(poolKey, pool!);
+        }
+
+        // Pair title+secondary at the same index (clamped)
+        const chosen = { title: titles[idx] ?? titles[0], secondary: secondary[idx] ?? secondary[0] };
+
+        // Cache per id+pct so a given dot stays consistent across renders
+        safeSession.set(stableKey, chosen);
         return chosen;
       };
     }, [docs, rev]);

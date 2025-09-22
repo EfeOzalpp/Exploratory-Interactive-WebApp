@@ -98,7 +98,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
   const points = useDotPoints(safeData, {
     spread,
-    minDistance: 2.2,
+    minDistance: 2.1,
     seed: 1337,
     relaxPasses: 1,
     relaxStrength: 0.25,
@@ -250,6 +250,31 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   // --- Auto-dismiss tooltip on rotation — DISABLED per request (snapped too fast)
   // (Removed the gp:orbit-rot close logic)
 
+  // >>> MOBILE: dismiss general popup 2s after a touch rotation event
+  const mobileRotDismissRef = useRef(null);
+  useEffect(() => {
+    const onRot = (e) => {
+      const { source } = (e && e.detail) || {};
+      if (useDesktopLayout) return;        // only care about mobile/tablet
+      if (source !== 'touch') return;       // only touch-driven rotates
+      if (mobileRotDismissRef.current) clearTimeout(mobileRotDismissRef.current);
+      mobileRotDismissRef.current = setTimeout(() => {
+        // only close the hover/general tooltip
+        onHoverEnd();
+        mobileRotDismissRef.current = null;
+      }, 2000);
+    };
+    window.addEventListener('gp:orbit-rot', onRot);
+    return () => {
+      window.removeEventListener('gp:orbit-rot', onRot);
+      if (mobileRotDismissRef.current) {
+        clearTimeout(mobileRotDismissRef.current);
+        mobileRotDismissRef.current = null;
+      }
+    };
+  }, [useDesktopLayout, onHoverEnd]);
+  // <<< end mobile rotate dismiss
+
   const isPortrait =
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
   const offsetBase = isPortrait ? 160 : 120;
@@ -391,7 +416,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
           return (
             <group
-              key={point._id ?? `${point.position[0]}-${point.position[1]}-${point.position[2]}`}
+              key={point._id ?? `${point.position[0]}-${point.position[1]}-${point.position[2]}` }
               position={point.position}
             >
               {showHalo && (
@@ -434,22 +459,22 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           <Line
             points={selectedTieLinePoints}
             color="#a3a3a3"
-            lineWidth={2.5}
+            lineWidth={1.5}
             dashed={false}
             toneMapped={false}
             transparent
-            opacity={0.4}
+            opacity={0.85}
           />
         )}
         {mode === 'relative' && !selectedTieKey && rankChainPoints.length >= 2 && (
           <Line
             points={rankChainPoints}
             color="#7b7b7b"
-            lineWidth={2.5}
+            lineWidth={1.5}
             dashed={false}
             toneMapped={false}
             transparent
-            opacity={0.4}
+            opacity={0.6}
           />
         )}
 
@@ -494,26 +519,34 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           const hoveredData = points.find((d) => d._id === hoveredDot.dotId);
           if (!hoveredData) return null;
 
-          // Robust percentage: prefer what the hook computed; fall back to fresh lookups
-          const fallbackPct =
-            mode === 'relative'
+          // 1) Find the backing entry and its average
+          const hoveredEntry = safeData.find(d => d._id === hoveredDot.dotId);
+          const hoveredAvg = hoveredEntry ? avgWeightOf(hoveredEntry) : undefined;
+
+          // 2) Always compute % from current mode + current calculators
+          //    (calcValueForAvg is already re-created when `mode` changes)
+          let displayPct = 0;
+          if (Number.isFinite(hoveredAvg)) {
+            try {
+              displayPct = Math.round(calcValueForAvg(hoveredAvg));
+            } catch {
+              displayPct = 0;
+            }
+          }
+
+          // 3) As a final safety net
+          if (!Number.isFinite(displayPct) || displayPct < 0) {
+            displayPct = mode === 'relative'
               ? getRelForId(hoveredDot.dotId)
               : (absScoreById.get(hoveredDot.dotId) ?? 0);
-
-          const displayPct = Number.isFinite(hoveredDot.percentage)
-            ? hoveredDot.percentage
-            : fallbackPct;
+          }
 
           return (
             <Html
               position={hoveredData.position}
               center
               zIndexRange={[120, 180]}
-              style={{
-                pointerEvents:'none',
-                '--offset-px': `${offsetPx}px`,
-                opacity: 1,
-              }}
+              style={{ pointerEvents:'none', '--offset-px': `${offsetPx}px`, opacity: 1 }}
               className={viewportClass}
             >
               <div>

@@ -1,3 +1,4 @@
+// src/hooks/orbit/useOrbit.js
 import { useMemo, useRef, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 
@@ -6,35 +7,28 @@ import useZoom from './useZoom.js';
 import useRotation from './useRotation.js';
 import useIdleDrift from './useIdleDrift.js';
 import usePixelOffsets from './usePixelOffsets.js';
-
 import { useDynamicOffset } from '../../utils/dynamicOffset.ts';
 
 export default function useOrbit(params = {}) {
   const ROTATE_EVT = 'gp:orbit-rot';
 
   const {
-    // layout
     isDragging = false,
     useDesktopLayout = params.layout?.useDesktopLayout ?? true,
     isSmallScreen   = params.layout?.isSmallScreen   ?? false,
     isTabletLike    = params.layout?.isTabletLike    ?? false,
 
-    // world offsets
     xOffset = params.layout?.xOffset ?? params.xOffset ?? 0,
     yOffset = params.layout?.yOffset ?? params.yOffset ?? 0,
 
-    // pixel offsets
     xOffsetPx = params.layout?.xOffsetPx ?? params.xOffsetPx ?? 0,
     yOffsetPx = params.layout?.yOffsetPx ?? params.yOffsetPx ?? 0,
 
-    // bounds & data
     minRadius = params.bounds?.minRadius ?? params.minRadius ?? (isSmallScreen ? 2 : 20),
     maxRadius = params.bounds?.maxRadius ?? params.maxRadius ?? 800,
     dataCount = params.dataCount ?? (Array.isArray(params.data) ? params.data.length : 0),
 
-    // idle config
     idle = {},
-    // desktop threshold you liked (still read, but used to derive pivot)
     thresholds = { mobile: 60, tablet: 65, desktop: 70 },
   } = params;
 
@@ -49,36 +43,19 @@ export default function useOrbit(params = {}) {
   const groupRef = useRef();
 
   // ----- initial zoom target from data count -----
-  const count = useMemo(
-    () => (typeof dataCount === 'number' ? dataCount : 0),
-    [dataCount]
-  );
-
-  // pick the platform-specific threshold value you provided
-  const THRESH = isSmallScreen
-    ? thresholds.mobile
-    : (isTabletLike ? thresholds.tablet : thresholds.desktop);
-
-  // base camera distances
+  const count = useMemo(() => (typeof dataCount === 'number' ? dataCount : 0), [dataCount]);
+  const THRESH = isSmallScreen ? thresholds.mobile : (isTabletLike ? thresholds.tablet : thresholds.desktop);
   const near = isSmallScreen ? 120 : 90;
   const far  = maxRadius;
 
-  // ===== Saturating curve + cubic smoothstep (0..1) =====
-  const K_RATIO = 0.6;                               // 0.5..0.7
-  const K = Math.max(1, (THRESH || 70) * K_RATIO);   // pivot (~half-full)
-
-  const BETA = 1.4;                                  // 1.3..1.8 for punchier mid
-
+  const K_RATIO = 0.6;
+  const K = Math.max(1, (THRESH || 70) * K_RATIO);
+  const BETA = 1.4;
   const smooth = (s) => (s * s) * (3 - 2 * s);
-
-  const rawFill = count / (count + K);               // 0..~1
-  const curved  = Math.pow(rawFill, BETA);           // emphasize low/mid
+  const rawFill = count / (count + K);
+  const curved  = Math.pow(rawFill, BETA);
   const fill    = smooth(Math.min(1, Math.max(0, curved)));
-
-  const initialTargetComputed = Math.max(
-    minRadius,
-    Math.min(far, near + (far - near) * fill)
-  );
+  const initialTargetComputed = Math.max(minRadius, Math.min(far, near + (far - near) * fill));
 
   // ----- activity / idle helpers -----
   const { hasInteractedRef, lastActivityRef, markActivity, isIdle } =
@@ -97,17 +74,257 @@ export default function useOrbit(params = {}) {
     };
   }, []);
 
-  // Wrap base isIdle to include hover gating
+  // === Desktop edge bands ===
+  const edgeHotzoneRef = useRef(false);
+  const edgeDriveRef = useRef({ active: false, nx: 0, ny: 0, strength: 0 });
+
+  // HUD state we expose/broadcast
+  const edgeCueRef = useRef({ visible: false, mode: 'off', insetX: 0, insetY: 0, pinned: false });
+
+  // Pinning
+  const edgeCuePinnedRef = useRef(false);
+  const edgeCueLastModeRef = useRef('off');
+
+  // last desktop mode (for rising-edge)
+  const lastDesktopModeRef = useRef('off');
+
+  // Gating for unwanted first flip:
+  // - ignore first pointer sample entirely
+  // - only allow rising 'in' toggle after we've seen the cursor OUTSIDE edge at least once
+  const firstPointerSeenRef = useRef(false);
+  const hasSeenNonEdgeRef = useRef(false);
+
+  // --- canonical latched state broadcaster ---
+  const lastBroadcastRef = useRef(edgeCueRef.current);
+  const broadcastEdgeCue = (next) => {
+    const prev = lastBroadcastRef.current;
+    if (
+      !prev ||
+      prev.visible !== next.visible ||
+      prev.mode !== next.mode ||
+      prev.insetX !== next.insetX ||
+      prev.insetY !== next.insetY ||
+      prev.pinned  !== next.pinned
+    ) {
+      lastBroadcastRef.current = next;
+      window.dispatchEvent(new CustomEvent('gp:edge-cue', { detail: next }));
+    }
+  };
+
+  const broadcastLatchedState = (latched) => {
+    window.__gpEdgeLatched = !!latched;
+    window.dispatchEvent(new CustomEvent('gp:edge-cue-state', { detail: { latched: !!latched } }));
+  };
+
+  // Initialize canonical latched once (SSR-safe default true if unset)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.__gpEdgeLatched == null) {
+      window.__gpEdgeLatched = true; // LIGHT by default
+    }
+    broadcastLatchedState(window.__gpEdgeLatched);
+  }, []);
+
+  // Toggle pin (from HUD click OR mobile long-press)
+  useEffect(() => {
+    const onToggle = () => {
+      if (!useDesktopLayout) {
+        // MOBILE/TABLET: force a visible, pinned 'in' state on toggle
+        edgeCuePinnedRef.current = !edgeCuePinnedRef.current;
+        const next = {
+          visible: edgeCuePinnedRef.current,
+          mode: edgeCuePinnedRef.current ? 'in' : 'off',
+          insetX: 0,
+          insetY: 0,
+          pinned: edgeCuePinnedRef.current,
+        };
+        edgeCueLastModeRef.current = next.mode;
+        edgeCueRef.current = next;
+        broadcastEdgeCue(next);
+        // flip canonical dark/light
+        broadcastLatchedState(!Boolean(window.__gpEdgeLatched));
+        // require leaving edge before another implicit flip
+        hasSeenNonEdgeRef.current = false;
+        return;
+      }
+
+      // DESKTOP: only allow toggling when cue is currently visible/pinned
+      const currentlyVisible = edgeCueRef.current?.visible || edgeCuePinnedRef.current;
+      if (!currentlyVisible) return;
+
+      edgeCuePinnedRef.current = !edgeCuePinnedRef.current;
+
+      if (!edgeCuePinnedRef.current) {
+        // Unpin → resume live behavior
+        const offPinned = { ...edgeCueRef.current, pinned: false };
+        edgeCueRef.current = offPinned;
+        broadcastEdgeCue(offPinned);
+      } else {
+        // Pin → lock visible + keep last mode (prefer 'in' if we have it)
+        const modeToUse = edgeCueRef.current.mode === 'off'
+          ? (edgeCueLastModeRef.current === 'off' ? 'in' : edgeCueLastModeRef.current)
+          : edgeCueRef.current.mode;
+
+        const snap = { ...edgeCueRef.current, visible: true, pinned: true, mode: modeToUse };
+        edgeCueLastModeRef.current = modeToUse;
+        edgeCueRef.current = snap;
+        broadcastEdgeCue(snap);
+      }
+
+      // flip canonical dark/light on explicit desktop toggle
+      broadcastLatchedState(!Boolean(window.__gpEdgeLatched));
+      // require leaving edge before another implicit flip
+      hasSeenNonEdgeRef.current = false;
+    };
+
+    window.addEventListener('gp:edge-cue-toggle', onToggle);
+    return () => window.removeEventListener('gp:edge-cue-toggle', onToggle);
+  }, [useDesktopLayout]);
+
+  // Desktop-only pointer bands that drive edge cue live state
+  useEffect(() => {
+    if (!useDesktopLayout) {
+      const off = { visible: false, mode: 'off', insetX: 0, insetY: 0, pinned: false };
+      edgeCuePinnedRef.current = false;
+      edgeCueRef.current = off;
+      broadcastEdgeCue(off);
+      return;
+    }
+
+    const onPointerMove = (e) => {
+      const w = window.innerWidth || 0;
+      const h = window.innerHeight || 0;
+      if (w === 0 || h === 0) {
+        edgeHotzoneRef.current = false;
+        edgeDriveRef.current = { active: false, nx: 0, ny: 0, strength: 0 };
+        if (!edgeCuePinnedRef.current) {
+          const off = { visible: false, mode: 'off', insetX: 0, insetY: 0, pinned: false };
+          edgeCueRef.current = off;
+          broadcastEdgeCue(off);
+        }
+        return;
+      }
+
+      const x = e.clientX;
+      const y = e.clientY;
+
+      // px-based bands
+      const insetX = 120;
+      const insetY = 120;
+
+      const NEAR_MARGIN_PX = 40;
+      const nearInsetX = insetX + NEAR_MARGIN_PX;
+      const nearInsetY = insetY + NEAR_MARGIN_PX;
+
+      // === NEW: top/bottom center "dead zone" across middle 20% of width ===
+      const CENTER_GAP_START = w * 0.35;
+      const CENTER_GAP_END   = w * 0.65;
+      const inCenterGapX = x >= CENTER_GAP_START && x <= CENTER_GAP_END;
+
+      // for rotation
+      const nx = (x / w) * 2 - 1;
+      const ny = -((y / h) * 2 - 1);
+
+      // depth into bands (left/right unchanged)
+      let sx = 0;
+      if (x < insetX)                sx = (insetX - x) / insetX;
+      else if (x > (w - insetX))     sx = (x - (w - insetX)) / insetX;
+
+      // depth into top/bottom — but suppress if cursor is inside the center gap horizontally
+      let syTop = 0;
+      let syBot = 0;
+      if (!inCenterGapX) {
+        if (y < insetY)            syTop = (insetY - y) / insetY;
+        else if (y > (h - insetY)) syBot = (y - (h - insetY)) / insetY;
+      }
+      const sy = Math.max(syTop, syBot);
+
+      const strength = Math.max(sx, sy);
+      const inEdge = strength > 0;
+
+      // near-edge detection (respect the same center-gap suppression for top/bottom)
+      const nearTop    = !inCenterGapX && y < nearInsetY;
+      const nearBottom = !inCenterGapX && y > (h - nearInsetY);
+      const nearLeft   = x < nearInsetX;
+      const nearRight  = x > (w - nearInsetX);
+
+      const nearEdge = !inEdge && (nearTop || nearBottom || nearLeft || nearRight);
+
+      // track for idle + edge-drive
+      edgeHotzoneRef.current = inEdge;
+      edgeDriveRef.current = inEdge
+        ? { active: true, nx, ny, strength: Math.min(1, Math.max(0, strength)) }
+        : { active: false, nx: 0, ny: 0, strength: 0 };
+
+      // Live candidate from cursor
+      const candidate = {
+        visible: inEdge || nearEdge,
+        mode: inEdge ? 'in' : (nearEdge ? 'near' : 'off'),
+        insetX,
+        insetY,
+        pinned: edgeCuePinnedRef.current,
+      };
+
+      // If pinned → force visible and keep darkest look regardless of cursor
+      let finalCue = candidate;
+      if (edgeCuePinnedRef.current) {
+        const modeToUse = candidate.mode === 'off'
+          ? (edgeCueLastModeRef.current || 'in')
+          : candidate.mode;
+        edgeCueLastModeRef.current = modeToUse;
+        finalCue = { ...candidate, visible: true, mode: 'in', pinned: true };
+      } else {
+        edgeCueLastModeRef.current = candidate.mode;
+      }
+
+      // --- First pointer sample guard: seed state, do not flip ---
+      if (!firstPointerSeenRef.current) {
+        firstPointerSeenRef.current = true;
+        lastDesktopModeRef.current = finalCue.mode;
+        // consider whether this first sample counts as "outside"
+        hasSeenNonEdgeRef.current = finalCue.mode !== 'in';
+        edgeCueRef.current = finalCue;
+        broadcastEdgeCue(finalCue);
+        return;
+      }
+
+      // Outside edge → arm the next rising 'in'
+      if (finalCue.mode !== 'in') {
+        hasSeenNonEdgeRef.current = true;
+      }
+
+      // Rising-edge 'in' → flip canonical, but ONLY if we've seen outside first
+      const prevMode = lastDesktopModeRef.current || 'off';
+      const risingIn = finalCue.mode === 'in' && prevMode !== 'in' && hasSeenNonEdgeRef.current;
+
+      lastDesktopModeRef.current = finalCue.mode;
+      edgeCueRef.current = finalCue;
+
+      if (risingIn) {
+        broadcastLatchedState(!Boolean(window.__gpEdgeLatched));
+        // disarm until we leave edge again
+        hasSeenNonEdgeRef.current = false;
+      }
+
+      broadcastEdgeCue(finalCue);
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onPointerMove);
+  }, [useDesktopLayout]);
+
+  // idle wrapper
   const isIdleWrapped = ({
     userInteracting,
     hasInteractedRef: hiRef = hasInteractedRef,
     lastActivityRef: laRef = lastActivityRef
   }) => {
     if (hoverActiveRef.current) return false;
+    if (useDesktopLayout && edgeHotzoneRef.current) return false;
     return isIdle({ userInteracting, hasInteractedRef: hiRef, lastActivityRef: laRef });
   };
 
-  // ----- zoom (wheel + pinch + spring) -----
+  // ----- zoom -----
   const { radius, zoomTargetRef, zoomVelRef, setZoomTarget } = useZoom({
     minRadius,
     maxRadius,
@@ -115,7 +332,7 @@ export default function useOrbit(params = {}) {
     markActivity,
   });
 
-  // ----- rotation (desktop drag-only + touch inertia) -----
+  // ----- rotation -----
   const rot = useRotation({
     groupRef,
     useDesktopLayout,
@@ -125,9 +342,9 @@ export default function useOrbit(params = {}) {
     radius,
     markActivity,
     isDragging,
+    edgeDriveRef,
   });
 
-  // Safe fallbacks
   const isPinchingRef          = rot?.isPinchingRef          ?? { current: false };
   const isTouchRotatingRef     = rot?.isTouchRotatingRef     ?? { current: false };
   const lastMouseMoveTsRef     = rot?.lastMouseMoveTsRef     ?? { current: 0 };
@@ -135,47 +352,16 @@ export default function useOrbit(params = {}) {
   const getDesktopCursorTarget = rot?.getDesktopCursorTarget ?? (() => ({ x: 0, y: 0 }));
   const applyRotationFrame     = rot?.applyRotationFrame     ?? (() => {});
   const notePossibleIdleExit   = rot?.notePossibleIdleExit   ?? (() => {});
-  const getCursorEdgeDrift     = rot?.getCursorEdgeDrift     ?? (() => ({ active:false, vyaw:0, vpitch:0, strength:0 }));
 
-  // ----- pixel-offset animation → group.position -----
   usePixelOffsets({ groupRef, camera, radius, xOffset, yOffset, xOffsetPx, yOffsetPx });
+  useIdleDrift({ groupRef, speed, horizontalOnly, isIdle: isIdleWrapped });
 
-  // ----- idle drift (gated off during edge drift) -----
-  const gatedIsIdle = ({ userInteracting, hasInteractedRef: hiRef, lastActivityRef: laRef }) => {
-    const baseIdle = isIdleWrapped({ userInteracting, hasInteractedRef: hiRef, lastActivityRef: laRef });
-    const edge = getCursorEdgeDrift();
-    return baseIdle && !edge.active;
-  };
-  useIdleDrift({ groupRef, speed, horizontalOnly, isIdle: (args) => gatedIsIdle(args) });
-
-  // ----- fast edge-drift driven by mouse near edges (desktop only) -----
-  const EDGE_YAW_SPEED   = 1.2;  // rad/sec at full edge (horizontal)
-  const EDGE_PITCH_SPEED = 0.6;  // rad/sec at full edge (vertical)
-  const EDGE_ZOOM_GAIN   = 0.75; // extra gain with zoom out (0..1)
-
-  useFrame((_, delta) => {
-    if (!groupRef.current || !useDesktopLayout) return;
-    const { active, vyaw, vpitch } = getCursorEdgeDrift();
-    if (!active) return;
-
-    const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius) || 0));
-    const zoomMul = 1 + EDGE_ZOOM_GAIN * zf;
-
-    groupRef.current.rotation.y += (EDGE_YAW_SPEED   * vyaw   * zoomMul) * delta;
-    if (!horizontalOnly) {
-      groupRef.current.rotation.x += (EDGE_PITCH_SPEED * vpitch * zoomMul) * delta;
-    }
-  });
-
-  // ----- camera follow radius -----
   useFrame(() => {
     camera.position.set(0, 0, radius);
     camera.lookAt(0, 0, 0);
   });
 
-  // ----- idle edge-detect handoff & rotation frame -----
   useFrame((_, delta) => {
-    // Desktop rotates only on true drag/touch/pinch — plain hover doesn’t count.
     const userInteracting =
       effectiveDraggingRef.current || isTouchRotatingRef.current || isPinchingRef.current;
 
@@ -184,7 +370,6 @@ export default function useOrbit(params = {}) {
     applyRotationFrame({ idleActive, delta });
   });
 
-  // ----- rotation event (throttled for listeners like tooltips) -----
   const lastRotEvtRef = useRef({ x: 0, y: 0, t: 0 });
   useFrame(() => {
     if (!groupRef.current) return;
@@ -194,22 +379,17 @@ export default function useOrbit(params = {}) {
     const d  = Math.abs(rx - lastRotEvtRef.current.x) + Math.abs(ry - lastRotEvtRef.current.y);
     if (d > 0.002 && (now2 - lastRotEvtRef.current.t) > 120) {
       lastRotEvtRef.current = { x: rx, y: ry, t: now2 };
-      window.dispatchEvent(
-        new CustomEvent(ROTATE_EVT, {
-          detail: { rx, ry, source: useDesktopLayout ? 'desktop' : 'touch' },
-        })
-      );
+      window.dispatchEvent(new CustomEvent(ROTATE_EVT, {
+        detail: { rx, ry, source: useDesktopLayout ? 'desktop' : 'touch' },
+      }));
     }
   });
 
-  // ----- tooltip offset (zoom-blended) -----
   const dynamicOffset = useDynamicOffset();
-  const isPortrait =
-    typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
+  const isPortrait = typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
   const offsetBase = isPortrait ? 160 : 120;
   const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius)));
-  const nonlinearLerp = (a, b, t) =>
-    a + (b - a) * (1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 5));
+  const nonlinearLerp = (a, b, t) => a + (b - a) * (1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 5));
   const tooltipOffsetPx = nonlinearLerp(
     offsetBase,
     Number.isFinite(dynamicOffset) ? dynamicOffset : 120,
@@ -226,5 +406,6 @@ export default function useOrbit(params = {}) {
     tooltipOffsetPx,
     setZoomTarget,
     zoomTargetRef,
+    edgeCueRef,
   };
 }

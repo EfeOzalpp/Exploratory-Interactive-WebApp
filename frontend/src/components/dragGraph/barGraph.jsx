@@ -1,15 +1,20 @@
 // src/components/dragGraph/barGraph.jsx
-import React, { useState, useEffect, useRef, useLayoutEffect, Suspense, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useLayoutEffect,
+  Suspense,
+  useMemo,
+} from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
 import '../../styles/graph.css';
 
-// lazy-load the wrapper once
 const Lottie = React.lazy(() =>
   import(/* webpackChunkName: "lottie-react" */ 'lottie-react')
 );
 
-// small helper that lazy-loads a JSON and renders a Lottie
 function TreeIcon({ jsonLoader, speed = 0.3, initialSegment = [5, 55] }) {
   const ref = useRef(null);
   const [data, setData] = useState(null);
@@ -54,21 +59,35 @@ const BarGraph = () => {
     myEntryId,
   } = useGraph();
 
-  // Percentile helper (self-excluding for getForId)
   const { getForId } = useRelativePercentiles(data);
+
+  // 🔒 HUD latch state (canonical)
+  const [hudLatched, setHudLatched] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.__gpEdgeLatched == null ? true : !!window.__gpEdgeLatched;
+  });
+
+  useEffect(() => {
+    const onState = (e) => {
+      const { latched } = (e && e.detail) || {};
+      if (typeof latched === 'boolean') setHudLatched(!!latched);
+    };
+    window.addEventListener('gp:edge-cue-state', onState);
+    return () => {
+      window.removeEventListener('gp:edge-cue-state', onState);
+    };
+  }, []);
 
   const [animationState, setAnimationState] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
   const barRefs = useRef({});
 
-  // Show "You" whenever your entry exists in the current dataset (matches DotGraph behavior)
   const includesMe = useMemo(
     () => Boolean(myEntryId && Array.isArray(data) && data.some(d => d?._id === myEntryId)),
     [data, myEntryId]
   );
   const canShowYou = Boolean(hasCompletedSurvey && myEntryId && includesMe);
 
-  // Kick bar grow animation once data is ready
   useEffect(() => {
     if (!loading) {
       const t = setTimeout(() => setAnimateBars(true), 10);
@@ -78,7 +97,6 @@ const BarGraph = () => {
     }
   }, [loading, data]);
 
-  // --- ABSOLUTE buckets for bar heights ---
   const categories = useMemo(() => {
     const out = { red: 0, yellow: 0, green: 0 };
     for (const item of data) {
@@ -90,7 +108,6 @@ const BarGraph = () => {
     return out;
   }, [data]);
 
-  // --- RELATIVE marker (“You”) ---
   const youPercentile = useMemo(
     () => (canShowYou ? getForId(myEntryId) : 0),
     [canShowYou, getForId, myEntryId]
@@ -107,23 +124,18 @@ const BarGraph = () => {
 
   const maxItems = Math.max(categories.green, categories.yellow, categories.red) + 15;
 
-  // --- NORMALIZATION ---
   const [normalizeDivisor, setNormalizeDivisor] = useState(100 / 78);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
 
-    const mqSmall = window.matchMedia('(max-width: 768px)');
+    const mqSmall  = window.matchMedia('(max-width: 768px)');
     const mqMedium = window.matchMedia('(min-width: 769px) and (max-width: 1024px)');
 
     const apply = () => {
-      if (mqSmall.matches) {
-        setNormalizeDivisor(100 / 71); // 71% is new 100
-      } else if (mqMedium.matches) {
-        setNormalizeDivisor(100 / 80); // 80% is new 100
-      } else {
-        setNormalizeDivisor(100 / 78); // default
-      }
+      if (mqSmall.matches)       setNormalizeDivisor(100 / 71);
+      else if (mqMedium.matches) setNormalizeDivisor(100 / 80);
+      else                       setNormalizeDivisor(100 / 78);
     };
 
     apply();
@@ -142,7 +154,6 @@ const BarGraph = () => {
     };
   }, []);
 
-  // write CSS var for the "You" indicator height relative to each bar
   useLayoutEffect(() => {
     Object.entries(barRefs.current).forEach(([_, ref]) => {
       if (!ref) return;
@@ -182,13 +193,22 @@ const BarGraph = () => {
           const userPercentage = (youPercentile / 100) * heightPercentage;
           const normalizedUserPercentage = userPercentage / normalizeDivisor;
 
+          // Derive label color from HUD latch (mirrors the background latch behavior)
+          const labelColor = hudLatched ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.95)';
+
           return (
             <div
               className="bar-graph-bar"
               key={color}
               ref={(el) => (barRefs.current[color] = el)}
             >
-              <span className="bar-graph-label">
+              <span
+                className="bar-graph-label"
+                style={{
+                  color: labelColor,
+                  transition: 'color 200ms ease',
+                }}
+              >
                 <p>{count} People</p>
               </span>
 
@@ -197,7 +217,7 @@ const BarGraph = () => {
                   <div
                     className="percentage-section"
                     style={{
-                      height: animateBars
+                      height: animationState && animateBars
                         ? `calc(${Math.min(normalizedUserPercentage, heightPercentage)}%)`
                         : '0%',
                     }}
