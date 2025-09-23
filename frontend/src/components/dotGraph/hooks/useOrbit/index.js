@@ -8,7 +8,7 @@ import useRotation from './useRotation.js';
 import useIdleDrift from './useIdleDrift.js';
 import usePixelOffsets from './usePixelOffsets.js';
 import { useDynamicOffset } from '../../utils/dynamicOffset.ts';
-
+import {createGestureState } from './sharedGesture.ts';
 export default function useOrbit(params = {}) {
   const ROTATE_EVT = 'gp:orbit-rot';
 
@@ -41,6 +41,8 @@ export default function useOrbit(params = {}) {
 
   const { camera } = useThree();
   const groupRef = useRef();
+
+  const gestureRef = useRef(createGestureState());
 
   // ----- initial zoom target from data count -----
   const count = useMemo(() => (typeof dataCount === 'number' ? dataCount : 0), [dataCount]);
@@ -209,16 +211,16 @@ export default function useOrbit(params = {}) {
       const y = e.clientY;
 
       // px-based bands
-      const insetX = 120;
-      const insetY = 120;
+      const insetX = 240;
+      const insetY = 80;
 
       const NEAR_MARGIN_PX = 40;
       const nearInsetX = insetX + NEAR_MARGIN_PX;
       const nearInsetY = insetY + NEAR_MARGIN_PX;
 
       // === NEW: top/bottom center "dead zone" across middle 20% of width ===
-      const CENTER_GAP_START = w * 0.35;
-      const CENTER_GAP_END   = w * 0.65;
+      const CENTER_GAP_START = w * 0.38;
+      const CENTER_GAP_END   = w * 0.62;
       const inCenterGapX = x >= CENTER_GAP_START && x <= CENTER_GAP_END;
 
       // for rotation
@@ -330,6 +332,7 @@ export default function useOrbit(params = {}) {
     maxRadius,
     initialTarget: initialTargetComputed,
     markActivity,
+    gestureRef,
   });
 
   // ----- rotation -----
@@ -343,6 +346,7 @@ export default function useOrbit(params = {}) {
     markActivity,
     isDragging,
     edgeDriveRef,
+    gestureRef,  
   });
 
   const isPinchingRef          = rot?.isPinchingRef          ?? { current: false };

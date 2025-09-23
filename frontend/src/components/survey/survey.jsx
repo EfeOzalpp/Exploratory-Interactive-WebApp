@@ -1,5 +1,6 @@
 // src/components/survey/Survey.jsx
-import React, { useState, Suspense, useEffect, useMemo } from 'react';
+import React, { useState, Suspense, useEffect, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useGraph } from '../../context/graphContext.tsx';
 import '../../styles/survey.css';
 import { ROLE_SECTIONS } from './sectionPicker/sections.js';
@@ -35,9 +36,12 @@ export default function Survey({
   const [submitting, setSubmitting] = useState(false);
   const [fadeState, setFadeState] = useState('fade-in');
 
+  // Used to synchronously block a render during Exit (prevents the 1-frame ghost)
+  const exitingRef = useRef(false);
+
   const {
     setSurveyActive, setHasCompletedSurvey, setSection, setMySection, setMyEntryId,
-    observerMode, openGraph, section,
+    observerMode, openGraph, section, resetToStart,
   } = useGraph();
 
   const availableSections = useMemo(
@@ -76,7 +80,6 @@ export default function Survey({
         setSurveySection('visitor');
         setAnimationVisible(false);
       });
-      // prefetch questions chunk for smooth entry
       prefetchQuestions();
       return;
     }
@@ -112,9 +115,6 @@ export default function Survey({
           ? mod.saveUserResponseWeights
           : (mod.saveUserResponse || (() => Promise.resolve(null)));
 
-      const looksLikeWeights =
-        payload && typeof payload === 'object' && Object.values(payload).some((v) => typeof v === 'number');
-
       const created = await saver(surveySection, { ...payload });
       const id = created?._id || null;
       setMyEntryId(id);
@@ -129,20 +129,33 @@ export default function Survey({
     }
   };
 
+  // === No-flicker Exit (prevents question flow flashing for a split second) ===
   const handleComplete = () => {
-    setShowCompleteButton(false);
-    setGraphVisible(false);
-    setFadeState('fade-out');
-    setTimeout(() => {
-      setStage('role'); setAudience(''); setSurveySection('');
-      setAnimationVisible(false); setSurveyWrapperClass(''); setSubmitting(false); setError('');
-      setSurveyActive(true); setHasCompletedSurvey(false); setMyEntryId(null); setMySection(null);
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('gp.myEntryId');
-        sessionStorage.removeItem('gp.mySection');
-      }
+    // Block any transient render in this tick
+    exitingRef.current = true;
+
+    flushSync(() => {
+      // 1) Kill the overlay immediately
+      setShowCompleteButton(false);
+
+      // 2) Synchronously put Survey back to pristine "start" local state
+      setStage('role');
+      setAudience('');
+      setSurveySection('');
+      setError('');
       setFadeState('fade-in');
-    }, 70);
+
+      // 3) Clear surrounding UI bits that could animate
+      setAnimationVisible(false);
+      setSurveyWrapperClass('');
+    });
+
+    // 4) Now reset global graph/survey flags in one go
+    //    (Provider batches internally; ensures FrontPage doesn't re-open the viz)
+    resetToStart();
+
+    // 5) Allow renders again next tick
+    Promise.resolve().then(() => { exitingRef.current = false; });
   };
 
   const handleAudienceChange = (role) => {
@@ -152,6 +165,22 @@ export default function Survey({
   };
 
   const handleSectionChange = (val) => { setSurveySection(val); setError(''); };
+
+  // While exiting in the same tick, *force* the start screen (no intermediate stage flashes)
+  if (exitingRef.current) {
+    return (
+      <div className="survey-section fade-in">
+        <Suspense fallback={null}>
+          <RoleStep
+            value=""
+            onChange={handleAudienceChange}
+            onNext={handleRoleNext}
+            error=""
+          />
+        </Suspense>
+      </div>
+    );
+  }
 
   if (showCompleteButton) {
     return (

@@ -48,19 +48,21 @@ export default function GamificationGeneral({
   const q = N > 0 ? rankFromLow / N : 0;  // 0..1 percentile from low
 
   // thresholds
-  const SMALL = N < 8;         // small group heuristic
-  const BOTTOM_Q = 0.15;       // bottom 15%
-  const TOP_Q    = 0.85;       // top 15%
-  const NEAR_M   = 0.05;       // ±5% near buffer around edges
+  const SMALL   = N < 8;   // small group heuristic
+  const BOTTOM_Q = 0.15;   // bottom 15%
+  const TOP_Q    = 0.85;   // top 15%
+  const NEAR_M   = 0.05;   // ±5% near buffer around edges
 
-  // band decisions
+  // STRICT bands (only true top/bottom if nobody above/below)
   const isSolo       = totalOthers === 0 || positionClass === 'solo';
-  const isBottomBand = !isSolo && (SMALL ? b === 0 : q <= BOTTOM_Q);
+  const isTopBand    = !isSolo && a === 0; // nobody above
+  const isBottomBand = !isSolo && b === 0; // nobody below
+
+  // “Near” bands (use quantiles or one-away for tiny groups)
+  const isNearTop    = !isSolo && !isTopBand    && (SMALL ? a === 1 : q >= TOP_Q - NEAR_M);
   const isNearBottom = !isSolo && !isBottomBand && (SMALL ? b === 1 : q <= BOTTOM_Q + NEAR_M);
 
-  const isTopBand    = !isSolo && (SMALL ? a === 0 : q >= TOP_Q);
-  const isNearTop    = !isSolo && !isTopBand && (SMALL ? a === 1 : q >= TOP_Q - NEAR_M);
-
+  // Middle = not top/bottom/near
   const isMiddleBand = !isSolo && !isTopBand && !isBottomBand && !isNearTop && !isNearBottom;
 
   // canonical tie label derived from counts (independent of incoming tieContext)
@@ -90,45 +92,67 @@ export default function GamificationGeneral({
 
   if (!dotId || percentage === undefined || color === undefined) return null;
 
-  // --- Build relative line (explicit tie handling) ---
+  // --- Build relative line (explicit tie & “near” handling) ---
   let relativeLine = null;
 
   if (mode === 'relative') {
     if (isSolo) {
-      relativeLine = <>This participant is the very first to join.</>;
+      relativeLine = <>The first person from this section to arrive!</>;
     } else if (isTopBand) {
       if (canonicalTie === 'tiedTop') {
-        if (e === 1) {
-          relativeLine = <>Sharing the top, tied with <Strong>one other person</Strong>.</>;
-        } else if (e === 2) {
-          relativeLine = <>Sharing the top, tied with <Strong>two others</Strong>.</>;
-        } else {
-          relativeLine = <>Sharing the top, tied with <Strong>{e}</Strong> others.</>;
-        }
+        if (e === 1)       relativeLine = <>Sharing the top, tied with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>Sharing the top, tied with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>Sharing the top, tied with <Strong>{e}</Strong> others.</>;
       } else {
         relativeLine = <>At the very top, ahead of everyone else.</>;
       }
+    } else if (isNearTop) {
+      // NEAR TOP — tie-aware
+      if (e > 0) {
+        if (e === 1 && a === 1)
+          relativeLine = <>Close to the top, tied with <Strong>one person</Strong> and behind only <Strong>one person</Strong>.</>;
+        else if (e === 1)
+          relativeLine = <>Close to the top, tied with <Strong>one person</Strong> and behind only <Strong>{a}</Strong> people.</>;
+        else if (a === 1)
+          relativeLine = <>Close to the top, tied with <Strong>{e}</Strong> others and behind only <Strong>one person</Strong>.</>;
+        else
+          relativeLine = <>Close to the top, tied with <Strong>{e}</Strong> others and behind only <Strong>{a}</Strong> people.</>;
+      } else {
+        relativeLine =
+          a === 1
+            ? <>Almost at the top, behind only <Strong>one person</Strong>.</>
+            : <>Close to the top, behind only <Strong>{a}</Strong> people.</>;
+      }
     } else if (isBottomBand) {
       if (canonicalTie === 'tiedBottom') {
-        if (e === 1) {
-          relativeLine = <>At the bottom, tied with <Strong>one other person</Strong>.</>;
-        } else if (e === 2) {
-          relativeLine = <>At the bottom, tied with <Strong>two others</Strong>.</>;
-        } else {
-          relativeLine = <>At the bottom, tied with <Strong>{e}</Strong> others.</>;
-        }
+        if (e === 1)       relativeLine = <>At the bottom, tied with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>At the bottom, tied with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>At the bottom, tied with <Strong>{e}</Strong> others.</>;
       } else {
         relativeLine = <>At the bottom, everyone else is ahead.</>;
       }
+    } else if (isNearBottom) {
+      // NEAR BOTTOM — tie-aware
+      if (e > 0) {
+        if (e === 1 && b === 1)
+          relativeLine = <>Near the bottom, tied with <Strong>one person</Strong> and ahead of only <Strong>one person</Strong>.</>;
+        else if (e === 1)
+          relativeLine = <>Near the bottom, tied with <Strong>one person</Strong> and ahead of only <Strong>{b}</Strong> people.</>;
+        else if (b === 1)
+          relativeLine = <>Near the bottom, tied with <Strong>{e}</Strong> others and ahead of only <Strong>one person</Strong>.</>;
+        else
+          relativeLine = <>Near the bottom, tied with <Strong>{e}</Strong> others and ahead of only <Strong>{b}</Strong> people.</>;
+      } else {
+        relativeLine =
+          b === 1
+            ? <>Near the bottom, ahead of only <Strong>one person</Strong>.</>
+            : <>Close to the bottom, ahead of only <Strong>{b}</Strong> people.</>;
+      }
     } else if (isMiddleBand) {
       if (canonicalTie === 'tiedMiddle') {
-        if (e === 1) {
-          relativeLine = <>In the middle, tied with <Strong>one other person</Strong>.</>;
-        } else if (e === 2) {
-          relativeLine = <>In the middle, tied with <Strong>two others</Strong>.</>;
-        } else {
-          relativeLine = <>In the middle, tied with <Strong>{e}</Strong> others.</>;
-        }
+        if (e === 1)       relativeLine = <>In the middle, tied with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>In the middle, tied with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>In the middle, tied with <Strong>{e}</Strong> others.</>;
       } else {
         if (a < b) {
           relativeLine =
@@ -144,6 +168,11 @@ export default function GamificationGeneral({
           relativeLine = <>In the middle, ahead of <Strong>{b}</Strong> and behind <Strong>{a}</Strong>.</>;
         }
       }
+    }
+
+    // Safety fallback so we never render empty
+    if (!relativeLine) {
+      relativeLine = <>Somewhere in the pack.</>;
     }
   }
 
@@ -170,7 +199,12 @@ export default function GamificationGeneral({
           <div className="gam-description-title">
             <h2>{title}</h2>
           </div>
-          {description ? <p className="gam-subline">{description}</p> : null}
+
+          {/* Hide secondary text in relative mode (to reduce verbosity) */}
+          {mode === 'absolute' && description ? (
+            <p className="gam-subline">{description}</p>
+          ) : null}
+
           <div className="gam-description-text"><p>{line}</p></div>
         </div>
 

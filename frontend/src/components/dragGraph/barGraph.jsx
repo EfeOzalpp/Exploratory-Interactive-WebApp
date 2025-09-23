@@ -1,4 +1,3 @@
-// src/components/dragGraph/barGraph.jsx
 import React, {
   useState,
   useEffect,
@@ -54,29 +53,12 @@ const BarGraph = () => {
     data,
     loading,
     section,
-    mySection,
     hasCompletedSurvey,
     myEntryId,
+    darkMode,            // ← NEW: drive colors from context
   } = useGraph();
 
   const { getForId } = useRelativePercentiles(data);
-
-  // 🔒 HUD latch state (canonical)
-  const [hudLatched, setHudLatched] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return window.__gpEdgeLatched == null ? true : !!window.__gpEdgeLatched;
-  });
-
-  useEffect(() => {
-    const onState = (e) => {
-      const { latched } = (e && e.detail) || {};
-      if (typeof latched === 'boolean') setHudLatched(!!latched);
-    };
-    window.addEventListener('gp:edge-cue-state', onState);
-    return () => {
-      window.removeEventListener('gp:edge-cue-state', onState);
-    };
-  }, []);
 
   const [animationState, setAnimationState] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
@@ -193,8 +175,8 @@ const BarGraph = () => {
           const userPercentage = (youPercentile / 100) * heightPercentage;
           const normalizedUserPercentage = userPercentage / normalizeDivisor;
 
-          // Derive label color from HUD latch (mirrors the background latch behavior)
-          const labelColor = hudLatched ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.95)';
+          // ← Drive label color from context.darkMode (no edge-cue dependency)
+          const labelColor = darkMode ? 'rgba(249, 249, 249, 0.85)' : 'rgba(0,0,0,0.85)';
 
           return (
             <div

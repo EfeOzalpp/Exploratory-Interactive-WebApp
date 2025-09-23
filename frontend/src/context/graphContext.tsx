@@ -1,5 +1,5 @@
-// context/graphContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { unstable_batchedUpdates as batched } from "react-dom";
 import { subscribeSurveyData } from "../utils/sanityAPI";
 
 type Mode = "relative" | "absolute";
@@ -36,6 +36,13 @@ type GraphContextType = {
   // visualization mode (relative percentiles vs absolute score)
   mode: Mode;
   setMode: (m: Mode) => void;
+
+  // canonical dark mode (toggled via EdgeModeHint)
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
+
+  // NEW: one-shot batched reset to initial/front-page state
+  resetToStart: () => void;
 };
 
 const GraphCtx = createContext<GraphContextType | null>(null);
@@ -66,30 +73,59 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const openGraph = () => setVizVisible(true);
   const closeGraph = () => setVizVisible(false);
 
-  // New: global visualization mode (persisted)
+  // Global visualization mode (persisted)
   const [mode, setMode] = useState<Mode>(() => {
     if (typeof window === "undefined") return "relative";
     const saved = sessionStorage.getItem("gp.mode") as Mode | null;
     return saved === "absolute" || saved === "relative" ? saved : "relative";
   });
-
   useEffect(() => {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("gp.mode", mode);
     }
   }, [mode]);
 
+  // Canonical dark mode (persisted)
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = sessionStorage.getItem("gp.darkMode");
+    return saved === "true";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("gp.darkMode", String(darkMode));
+    }
+  }, [darkMode]);
+
+  // Live data subscription
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeSurveyData({
       section,
-      onData: (rows) => {
+      onData: (rows: any[]) => {
         setData(rows);
         setLoading(false);
       },
     });
     return () => unsub();
   }, [section]);
+
+  // NEW: central, batched reset to avoid transitional flicker
+  const resetToStart = () => {
+    batched(() => {
+      closeGraph();
+      setSurveyActive(true);
+      setHasCompletedSurvey(false);
+      setObserverMode(false);
+      setMyEntryId(null);
+      setMySection(null);
+      setSection("all"); // default landing section
+    });
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("gp.myEntryId");
+      sessionStorage.removeItem("gp.mySection");
+    }
+  };
 
   return (
     <GraphCtx.Provider
@@ -113,6 +149,9 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         closeGraph,
         mode,
         setMode,
+        darkMode,
+        setDarkMode,
+        resetToStart,
       }}
     >
       {children}
@@ -122,5 +161,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useGraph = () => {
   const ctx = useContext(GraphCtx);
-  return ctx!;
+  if (!ctx) {
+    throw new Error("useGraph must be used within a GraphProvider");
+  }
+  return ctx;
 };

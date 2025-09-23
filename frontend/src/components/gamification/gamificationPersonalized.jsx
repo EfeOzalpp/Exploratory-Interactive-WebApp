@@ -160,45 +160,110 @@ export default function GamificationPersonalized({
   const panelId = `gp-panel-${userData?._id || 'me'}`;
   const wrapperVisible = open || closingGrace || nearButton;
 
-  // Robust tie detection derived from counts (works even if tieContext string varies)
+  // ---- Tie-aware bands (mirrors GamificationGeneral but with "you" voice) ----
   const b = Math.max(0, (belowCountStrict ?? 0) | 0);
   const e = Math.max(0, (equalCount ?? 0) | 0);
   const a = Math.max(0, (aboveCountStrict ?? 0) | 0);
   const totalOthers = b + e + a;
 
-  const isSolo = totalOthers === 0 || positionClass === 'solo';
-  const isTopBand = !isSolo && a === 0;
+  const N = totalOthers + 1;
+  const rankFromLow = b + 1;
+  const q = N > 0 ? rankFromLow / N : 0;
+
+  const SMALL   = N < 8;
+  const BOTTOM_Q = 0.15;
+  const TOP_Q    = 0.85;
+  const NEAR_M   = 0.05;
+
+  const isSolo       = totalOthers === 0 || positionClass === 'solo';
+  const isTopBand    = !isSolo && a === 0;
   const isBottomBand = !isSolo && b === 0;
-  const isMiddleBand = !isSolo && !isTopBand && !isBottomBand;
+
+  const isNearTop    = !isSolo && !isTopBand    && (SMALL ? a === 1 : q >= TOP_Q - NEAR_M);
+  const isNearBottom = !isSolo && !isBottomBand && (SMALL ? b === 1 : q <= BOTTOM_Q + NEAR_M);
+
+  const isMiddleBand = !isSolo && !isTopBand && !isBottomBand && !isNearTop && !isNearBottom;
 
   const canonicalTie =
-    e > 0
-      ? (isTopBand ? 'tiedTop' : isBottomBand ? 'tiedBottom' : 'tiedMiddle')
-      : 'notTied';
+    e > 0 ? (isTopBand ? 'tiedTop' : isBottomBand ? 'tiedBottom' : 'tiedMiddle') : 'notTied';
 
-  // --- Personalized relative line (second-person, explicit ties) ---
+  // --- Personalized relative line (second-person, explicit ties & “near”)
   let relativeLine = null;
   if (mode === 'relative') {
     if (isSolo) {
       relativeLine = <>Hurray! You’re the first one here.</>;
     } else if (isTopBand) {
-      relativeLine =
-        canonicalTie === 'tiedTop'
-          ? <>Sharing the top — tied with <Strong>{e}</Strong>.</>
-          : <>On top — ahead of everyone else.</>;
+      if (canonicalTie === 'tiedTop') {
+        if (e === 1)       relativeLine = <>Sharing the very top — tied with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>Sharing the very top — tied with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>Sharing the very top — tied with <Strong>{e}</Strong> others.</>;
+      } else {
+        relativeLine = <>On top — ahead of everyone else.</>;
+      }
+    } else if (isNearTop) {
+      if (e > 0) {
+        if (e === 1 && a === 1)
+          relativeLine = <>Close to the top — tied with <Strong>one person</Strong> and behind only <Strong>one person</Strong>.</>;
+        else if (e === 1)
+          relativeLine = <>Close to the top — tied with <Strong>one person</Strong> and behind only <Strong>{a}</Strong> people.</>;
+        else if (a === 1)
+          relativeLine = <>Close to the top — tied with <Strong>{e}</Strong> others and behind only <Strong>one person</Strong>.</>;
+        else
+          relativeLine = <>Close to the top — tied with <Strong>{e}</Strong> others and behind only <Strong>{a}</Strong> people.</>;
+      } else {
+        relativeLine =
+          a === 1
+            ? <>Almost there — behind only <Strong>one person</Strong>.</>
+            : <>Close to the top — behind only <Strong>{a}</Strong> people.</>;
+      }
     } else if (isBottomBand) {
-      relativeLine =
-        canonicalTie === 'tiedBottom'
-          ? <>Sharing the bottom — tied with <Strong>{e}</Strong>.</>
-          : <>At the bottom — everyone else is ahead.</>;
+      if (canonicalTie === 'tiedBottom') {
+        if (e === 1)       relativeLine = <>At the bottom — tied with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>At the bottom — tied with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>At the bottom — tied with <Strong>{e}</Strong> others.</>;
+      } else {
+        relativeLine = <>At the bottom — everyone else is ahead.</>;
+      }
+    } else if (isNearBottom) {
+      if (e > 0) {
+        if (e === 1 && b === 1)
+          relativeLine = <>Near the bottom — tied with <Strong>one person</Strong> and ahead of only <Strong>one person</Strong>.</>;
+        else if (e === 1)
+          relativeLine = <>Near the bottom — tied with <Strong>one person</Strong> and ahead of only <Strong>{b}</Strong> people.</>;
+        else if (b === 1)
+          relativeLine = <>Near the bottom — tied with <Strong>{e}</Strong> others and ahead of only <Strong>one person</Strong>.</>;
+        else
+          relativeLine = <>Near the bottom — tied with <Strong>{e}</Strong> others and ahead of only <Strong>{b}</Strong> people.</>;
+      } else {
+        relativeLine =
+          b === 1
+            ? <>Near the bottom — ahead of only <Strong>one person</Strong>.</>
+            : <>Close to the bottom — ahead of only <Strong>{b}</Strong> people.</>;
+      }
     } else if (isMiddleBand) {
       if (canonicalTie === 'tiedMiddle') {
-        if (e === 1)       relativeLine = <>Twins — tied with <Strong>1</Strong>.</>;
-        else if (e === 2)  relativeLine = <>Triplets — tied with <Strong>2</Strong>.</>;
-        else               relativeLine = <>Tied with <Strong>{e}</Strong>.</>;
+        if (e === 1)       relativeLine = <>In the middle — tied with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>In the middle — tied with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>In the middle — tied with <Strong>{e}</Strong> others.</>;
       } else {
-        relativeLine = <>Ahead of <Strong>{b}</Strong>, behind <Strong>{a}</Strong>.</>;
+        if (a < b) {
+          relativeLine =
+            a === 1
+              ? <>In the middle — behind only <Strong>one person</Strong>.</>
+              : <>In the middle — behind only <Strong>{a}</Strong> people.</>;
+        } else if (b < a) {
+          relativeLine =
+            b === 1
+              ? <>In the middle — ahead of only <Strong>one person</Strong>.</>
+              : <>In the middle — ahead of only <Strong>{b}</Strong> people.</>;
+        } else {
+          relativeLine = <>In the middle — ahead of <Strong>{b}</Strong> and behind <Strong>{a}</Strong>.</>;
+        }
       }
+    }
+
+    if (!relativeLine) {
+      relativeLine = <>Somewhere in the pack.</>;
     }
   }
 
@@ -207,7 +272,11 @@ export default function GamificationPersonalized({
       ? relativeLine
       : (
         <>
-          Score: <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>{safePct}</strong>/100
+          Score:{' '}
+          <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>
+            {safePct}
+          </strong>
+          /100
         </>
       );
 

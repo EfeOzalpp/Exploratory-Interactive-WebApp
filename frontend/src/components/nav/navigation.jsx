@@ -141,7 +141,7 @@ const Navigation = () => {
                       />
                     </svg>
                   </span>
-                  <span>Go Back</span>
+                  <span>Return</span>
                 </>
               ) : (
                 "What's the Idea?"

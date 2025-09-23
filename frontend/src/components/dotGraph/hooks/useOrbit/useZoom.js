@@ -6,6 +6,7 @@ export default function useZoom({
   maxRadius,
   initialTarget,      // optional starting target (number)
   markActivity,       // optional callback from useActivity
+  gestureRef,
 }) {
   const [radius, setRadius] = useState(
     Number.isFinite(initialTarget)
@@ -30,6 +31,7 @@ export default function useZoom({
     const WHEEL_SENSITIVITY = 0.85;
     const CTRL_ZOOM_GAIN    = 3.0;
     const PINCH_GAIN        = 1.25;
+    const PINCH_COOLDOWN_MS = 200; // grace after pinch ends
 
     const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
     const ping  = () => { if (typeof markActivity === 'function') markActivity(); };
@@ -55,8 +57,9 @@ export default function useZoom({
       const current = zoomTargetRef.current ?? radius;
 
       if (touchStartDistance.current != null) {
-        const pinchDelta = dist - touchStartDistance.current; // pinch out => +
-        const next = clamp(current + pinchDelta * PINCH_GAIN, minRadius, maxRadius);
+        const pinchDelta = dist - touchStartDistance.current; // >0 when fingers move apart
+        // Fingers apart => zoom IN => radius should DECREASE
+        const next = clamp(current - pinchDelta * PINCH_GAIN, minRadius, maxRadius);
         zoomTargetRef.current = next;
       }
       touchStartDistance.current = dist;
@@ -65,18 +68,33 @@ export default function useZoom({
     const handleTouchStart = (event) => {
       if (event.touches.length === 2) {
         ping();
-        // initialize touchStartDistance to avoid first-frame jump
         const [t1, t2] = event.touches;
         touchStartDistance.current = Math.hypot(
           t2.clientX - t1.clientX,
           t2.clientY - t1.clientY
         );
+        if (gestureRef?.current) {
+          gestureRef.current.pinching = true;
+          gestureRef.current.touchCount = 2;
+        }
       }
     };
 
     const handleTouchEnd = (event) => {
       ping();
-      if (event.touches.length < 2) {
+
+      const touches = event.touches.length;
+      if (gestureRef?.current) gestureRef.current.touchCount = touches;
+
+      // Leaving 2-finger state? end pinch and arm cooldown
+      if (gestureRef?.current) {
+        if (gestureRef.current.pinching && touches < 2) {
+          gestureRef.current.pinching = false;
+          gestureRef.current.pinchCooldownUntil = performance.now() + PINCH_COOLDOWN_MS;
+        }
+      }
+
+      if (touches < 2) {
         if (pinchTimeoutRef.current) clearTimeout(pinchTimeoutRef.current);
         pinchTimeoutRef.current = setTimeout(() => {
           touchStartDistance.current = null;
@@ -98,7 +116,7 @@ export default function useZoom({
       window.removeEventListener('touchmove',  handleTouchMove);
       window.removeEventListener('touchend',   handleTouchEnd);
     };
-  }, [minRadius, maxRadius, radius, markActivity]);
+  }, [minRadius, maxRadius, radius, markActivity, gestureRef]);
 
   // critically damped spring to target
   const ZOOM_OMEGA    = 18.0;
@@ -135,8 +153,8 @@ export default function useZoom({
 
   return {
     radius,
-    zoomTargetRef,                // <- provided for orchestrator / external reads
-    zoomVelRef,                   // <- provided for orchestrator if needed
+    zoomTargetRef,
+    zoomVelRef,
     setZoomTarget: (val) => {
       const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
       zoomTargetRef.current = clamp(val, minRadius, maxRadius);

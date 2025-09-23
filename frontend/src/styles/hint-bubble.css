@@ -1,108 +1,42 @@
 /* ---------------------------------------
    HintBubble — base
 ----------------------------------------*/
-.hint-bubble {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  translate: -50% 0;
-
-  /* sizing */
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.1;
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-
-  /* visuals */
-  border: 1px solid transparent;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-
-  /* motion + layering */
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 140ms ease, transform 140ms ease;
-  z-index: 4;
-
-  /* placement offsets (customizable via inline style) */
-  --offset-x: 0px;
-  --offset-y: 6px;
-
-  /* default (top) placement transform */
-  transform: translate(var(--offset-x), calc(-100% - var(--offset-y))) scale(0.98);
-}
-
+.hint-bubble { position: absolute; top: 0; left: 50%; translate: -50% 0; padding: 6px 10px; border-radius: 8px; line-height: 1.2; letter-spacing: 0.2px; white-space: nowrap; border: 1px solid transparent; box-shadow: 0 4px 16px rgba(0,0,0,0.1); opacity: 0; transition: opacity 140ms ease, transform 140ms ease; z-index: 4; --offset-x: 0px; --offset-y: 6px; transform: translate(var(--offset-x), calc(-100% - var(--offset-y))) scale(0.98); }
 .hint-bubble.show { opacity: 1; transform: translate(var(--offset-x), calc(-100% - var(--offset-y))) scale(1); }
 .hint-bubble.hide { opacity: 0; transform: translate(var(--offset-x), calc(-100% - var(--offset-y))) scale(0.98); }
-
-
 
 /* ---------------------------------------
    Theme variants
 ----------------------------------------*/
-.hb-dark {
-  background: rgba(18,18,18,0.92);
-  color: #f4f4f5;
-  border-color: rgba(255,255,255,0.12);
-}
-
-.hb-light {
-  background: rgba(255,255,255,0.92);
-  color: #0f172a;
-  border-color: rgba(15,23,42,0.15);
-}
-
-/* optional text bits */
-.hb-title { font-weight: 600; margin-right: 6px; }
-.hb-sub   { font-weight: 500; opacity: 0.7; }
+.hb-dark { background: rgba(18,18,18,0.92); color: #f4f4f5; border-color: rgba(255,255,255,0.12); }
+.hb-light { background: rgba(255,255,255,0.92); color: #0f172a; border-color: rgba(15,23,42,0.15); }
+.hb-title { font-weight: 600; }
 
 /* ---------------------------------------
    Edge mode hint (uses HintBubble)
 ----------------------------------------*/
-.edge-mode-hint {
-  font-size: 12px;
-  line-height: 1;
-  padding: 8px 10px;
-  border-radius: 8px;
-  user-select: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); /* crisper over dark overlay */
-}
-
-.edge-mode-hint.is-dark {
-  background: #1a1a1a;
-  color: #f7f7f7;
-  border: 1px solid #535353;
-}
-
-.edge-mode-hint.is-light {
-  background: #fff;
-  color: #111;
-  border: 1px solid #e6e6e6;
-}
-
+.edge-mode-hint { padding: 8px 10px; border-radius: 8px; user-select: none; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); cursor: pointer;}
+.edge-mode-hint.is-dark { background: #1a1a1a; color: #f7f7f7; border: 1px solid #535353; }
+.edge-mode-hint.is-light { background: #fff; color: #111; border: 1px solid #e6e6e6; }
+.hint-bubble {text-align: center;}
 /* ---------------------------------------
    Responsive tweaks
-   - <768px (mobile)
-   - 769–1024px (tablet)
-   - ≥1025px (desktop)
 ----------------------------------------*/
-
-/* Mobile: tighter spacing & smaller shadow */
 @media (max-width: 768px) {
-  .hint-bubble      { font-size: 11px; padding: 6px 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.16); }
-  .edge-mode-hint   { font-size: 11px; padding: 7px 9px;  box-shadow: 0 2px 6px rgba(0,0,0,0.22); }
+  .hint-bubble { padding: 12px 14px;}
+  .edge-mode-hint h4 {padding-bottom: 4px;}
+  .cue-bubble { bottom: 5.8em; }
 }
 
-/* Tablet: modest padding */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .hint-bubble      { font-size: 12px; padding: 7px 10px; }
-  .edge-mode-hint   { font-size: 12px; padding: 8px 10px; }
+  .hint-bubble { padding: 12px 18px; }
+  .edge-mode-hint h4 {padding-bottom: 4px;}
+  .cue-bubble { bottom: 8.4em; }
 }
 
-/* Desktop: a touch more padding */
 @media (min-width: 1025px) {
-  .hint-bubble      { font-size: 18px; padding: 8px 12px; }
-  .edge-mode-hint   { padding: 9px 12px;}
-  .cue-bubble {bottom: 8em;}
+  .hint-bubble { padding: 8px 12px; }
+  .edge-mode-hint { padding: 9px 12px; }
+  .cue-bubble { bottom: 6.8em; }
+  .edge-mode-hint h4 { padding-bottom: 4px; padding-top: 2px;}
 }

@@ -11,6 +11,7 @@ export default function useRotation({
   radius,
   markActivity,
   isDragging,
+  gestureRef, 
 
   // edge-drive info from useOrbit
   edgeDriveRef, // { current: { active, nx, ny, strength } }
@@ -21,6 +22,9 @@ export default function useRotation({
   const isTouchRotatingRef = useRef(false);
   const lastTouchRef       = useRef({ x: 0, y: 0, t: 0 });
   const spinVelRef         = useRef({ x: 0, y: 0 });
+
+  // After pinch, ignore first 1-finger frame (until we reseed)
+  const ignoreFirstSingleAfterPinchRef = useRef(false);
 
   // --- Canonical latched state helpers (global, shared across app) ---
   const getLatched = () => {
@@ -35,6 +39,51 @@ export default function useRotation({
       detail: { latched: !!next }
     }));
   };
+
+  // --- App activity gate: true only when the app/tab is focused and pointer is inside the OS window
+  const appActiveRef = useRef(true);
+
+  useEffect(() => {
+    const recompute = () => {
+      const visible = document.visibilityState === 'visible';
+      const focused = document.hasFocus?.() ?? true;
+      appActiveRef.current = visible && focused;
+    };
+
+    // If pointer leaves **the OS window**, stop edge-drive immediately
+    const onPointerOut = (e) => {
+      // relatedTarget === null means it left the browser window
+      if (e.relatedTarget === null) {
+        appActiveRef.current = false;
+      }
+    };
+    // When pointer re-enters the OS window, allow again (actual drive still depends on edgeDriveRef)
+    const onPointerOver = () => {
+      const visible = document.visibilityState === 'visible';
+      const focused = document.hasFocus?.() ?? true;
+      appActiveRef.current = visible && focused;
+    };
+
+    const onBlur  = () => { appActiveRef.current = false; };
+    const onFocus = () => { recompute(); };
+    const onVis   = () => { recompute(); };
+
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pointerout', onPointerOut);
+    window.addEventListener('pointerover', onPointerOver);
+
+    recompute();
+
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pointerout', onPointerOut);
+      window.removeEventListener('pointerover', onPointerOver);
+    };
+  }, []);
 
   // --- Touch-only: long-press → flip canonical latched state (mobile HUD) ---
   const holdTimerRef   = useRef(null);
@@ -133,10 +182,12 @@ export default function useRotation({
     // --- Touch handlers (rotate/pinch + long-press latch flip) ---
     const handleTouchStart = (event) => {
       markActivity?.();
+      if (gestureRef?.current) {
+        gestureRef.current.touchCount = event.touches.length;
+      }
+
       if (event.touches.length === 1) {
         const t = event.touches[0];
-
-        // Only arm long-press if touch begins on the canvas (not UI)
         holdSceneRef.current = isSceneTouchTarget(t.target);
 
         isTouchRotatingRef.current = true;
@@ -144,42 +195,81 @@ export default function useRotation({
         lastTouchRef.current = { x: t.clientX, y: t.clientY, t: performance.now() };
         spinVelRef.current = { x: 0, y: 0 };
 
-        // Arm long-press regardless of movement; cancel only on pinch / touchend.
-        holdArmedRef.current = holdSceneRef.current; // arm only for scene touches
+        // long-press logic unchanged...
+        holdArmedRef.current = holdSceneRef.current;
         if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
         if (holdArmedRef.current) {
           holdTimerRef.current = setTimeout(() => {
-            if (holdArmedRef.current && holdSceneRef.current && !isPinchingRef.current) {
-              // Flip canonical state ONCE per gesture
+            if (holdArmedRef.current && holdSceneRef.current && !isPinchingRef.current && !(gestureRef?.current?.pinching)) {
               setLatched(!getLatched());
+              window.dispatchEvent(new CustomEvent('gp:edge-hint-request', { detail: { source: 'long-press' } }));
               holdArmedRef.current = false;
             }
           }, HOLD_MS);
         }
+      } else if (event.touches.length >= 2) {
+        // entering multi-touch — rotation must not consume deltas
+        isTouchRotatingRef.current = false;
+        isMovingRef.current = false;
+        spinVelRef.current = { x: 0, y: 0 };
+        if (gestureRef?.current) {
+          gestureRef.current.pinching = true;
+        }
+        // cancel long-press
+        if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+        holdArmedRef.current = false;
       }
     };
 
     const handleTouchMove = (event) => {
       event.preventDefault();
       if (isDraggingRef.current) return;
-
       markActivity?.();
 
-      if (event.touches.length === 1 && !isPinchingRef.current) {
+      // --- HARD GATES ---
+      const now = performance.now();
+      const gs = gestureRef?.current;
+      const inCooldown = gs ? now < (gs.pinchCooldownUntil || 0) : false;
+      const multiTouch = (gs?.touchCount ?? event.touches.length) >= 2;
+      const pinching = gs?.pinching || isPinchingRef.current;
+
+      if (multiTouch || pinching) {
+        // don’t rotate while pinching / multi-touch
+        return;
+      }
+
+      if (inCooldown) {
+        // We just left a pinch; reseed and ignore this frame’s delta to avoid a jump
+        if (event.touches.length === 1) {
+          const t = event.touches[0];
+          lastTouchRef.current = { x: t.clientX, y: t.clientY, t: performance.now() };
+          ignoreFirstSingleAfterPinchRef.current = true;
+        }
+        return;
+      }
+
+      if (event.touches.length === 1) {
         const t   = event.touches[0];
-        const now = performance.now();
+        const now2 = performance.now();
+
+        // If we’re consuming the first 1-finger frame after pinch, just seed and skip deltas
+        if (ignoreFirstSingleAfterPinchRef.current) {
+          lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now2 };
+          ignoreFirstSingleAfterPinchRef.current = false;
+          return;
+        }
+
         const last = lastTouchRef.current;
-        const dt = Math.max(1, now - last.t);
+        const dt = Math.max(1, now2 - last.t);
         const dx = t.clientX - last.x;
         const dy = t.clientY - last.y;
 
         const moving = Math.abs(dx) >= DEADZONE_PX || Math.abs(dy) >= DEADZONE_PX;
         isMovingRef.current = moving;
 
-        // NOTE: We do NOT cancel the long-press on movement anymore.
-
         if (!moving) {
-          lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now };
+          lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now2 };
           return;
         }
 
@@ -194,36 +284,38 @@ export default function useRotation({
           x: (spinVelRef.current.x + vx) * 0.5,
           y: (spinVelRef.current.y + vy) * 0.5,
         };
-        lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now };
-      } else if (event.touches.length === 2) {
-        isPinchingRef.current = true;
-        isTouchRotatingRef.current = false;
-        isMovingRef.current = false;
-        spinVelRef.current = { x: 0, y: 0 };
-
-        // any pinch cancels the long-press intent
-        if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-        holdTimerRef.current = null;
-        holdArmedRef.current = false;
+        lastTouchRef.current = { x: t.clientX, y: t.clientY, t: now2 };
       }
     };
 
-    const handleTouchEnd = (e) => {
+    const handleTouchEnd = (event) => {
       markActivity?.();
 
-      // cleanup long-press timer
+      if (gestureRef?.current) {
+        gestureRef.current.touchCount = event.touches.length;
+        // Leaving multi-touch? set pinch=false and arm cooldown (zoom does this too; either is fine)
+        if (gestureRef.current.pinching && event.touches.length < 2) {
+          gestureRef.current.pinching = false;
+          // Only set if not already set by zoom; keep the later timestamp
+          if ((gestureRef.current.pinchCooldownUntil || 0) < performance.now() + 200) {
+            gestureRef.current.pinchCooldownUntil = performance.now() + 200;
+          }
+        }
+      }
+
+      if (event.touches.length === 0) {
+        isTouchRotatingRef.current = false;
+        isMovingRef.current = false;
+      }
+      if (event.touches.length < 2) {
+        isPinchingRef.current = false;
+      }
+
+      // cancel long-press timer
       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
       holdArmedRef.current = false;
       holdSceneRef.current = false;
-
-      if (e.touches.length === 0) {
-        isTouchRotatingRef.current = false;
-        isMovingRef.current = false;
-      }
-      if (e.touches.length < 2) {
-        isPinchingRef.current = false;
-      }
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
@@ -238,7 +330,7 @@ export default function useRotation({
       window.removeEventListener('touchend',    handleTouchEnd);
       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
     };
-  }, [isTabletLike, groupRef, markActivity, gl]);
+  }, [isTabletLike, groupRef, markActivity, gl, gestureRef]);
 
   // desktop drag reconciliation (so orbit doesn't jump after UI drag)
   useEffect(() => {
@@ -280,7 +372,6 @@ export default function useRotation({
 
   // ----- Idle transition with remap set on exit (existing behavior: yaw only) -----
   function notePossibleIdleExit(idleActive) {
-    // ENTER idle
     if (!wasIdleRef.current && idleActive) {
       if (groupRef.current) {
         idleEnterYawRef.current = groupRef.current.rotation.y;
@@ -292,11 +383,10 @@ export default function useRotation({
       }
     }
 
-    // EXIT idle → align yaw to cursor (keep your existing logic)
     if (wasIdleRef.current && !idleActive) {
       if (groupRef.current != null) {
         const currentY = groupRef.current.rotation.y;
-        const { y: baseY } = getDesktopCursorTargetBase(); // raw cursor-mapped yaw (no remap)
+        const { y: baseY } = getDesktopCursorTargetBase();
         const remapY = currentY - baseY;
         cursorRemapYRef.current = remapY;
         remapArmedRef.current = true;
@@ -336,34 +426,31 @@ export default function useRotation({
     if (!idleActive) {
       if (useDesktopLayout) {
         const edge = edgeDriveRef?.current;
-        const isEdgeDriving = !!edge?.active;
 
-        // ===== Edge-drive EXIT → set remap for BOTH axes to prevent snap =====
+        // *** Gate edge-drive by app activity ***
+        const appActive = appActiveRef.current;
+        const isEdgeDriving = appActive && !!edge?.active;
+
+        // Exit edge-drive → set remap to avoid snap on resume
         if (wasEdgeDrivingRef.current && !isEdgeDriving) {
-          const base = getDesktopCursorTargetBase(); // raw cursor-mapped (no remap)
+          const base = getDesktopCursorTargetBase();
           const curX = groupRef.current.rotation.x;
           const curY = groupRef.current.rotation.y;
-
-          cursorRemapXRef.current = curX - base.x; // align pitch (x)
-          cursorRemapYRef.current = curY - base.y; // align yaw   (y)
+          cursorRemapXRef.current = curX - base.x;
+          cursorRemapYRef.current = curY - base.y;
           remapArmedRef.current = true;
         }
         wasEdgeDrivingRef.current = isEdgeDriving;
 
-        // ---- If cursor is inside an edge band, apply continuous rotation (velocity-based)
         if (isEdgeDriving) {
-          // top = pitch DOWN; right = yaw LEFT
-          const vx = ( edge.ny) * EDGE_MAX_PITCH_SPEED; // x-axis (pitch)
-          const vy = (-edge.nx) * EDGE_MAX_YAW_SPEED;   // y-axis (yaw)
-
+          const vx = ( edge.ny) * EDGE_MAX_PITCH_SPEED;
+          const vy = (-edge.nx) * EDGE_MAX_YAW_SPEED;
           groupRef.current.rotation.x += vx * delta;
           groupRef.current.rotation.y += vy * delta;
-
-          // skip standard cursor-follow easing while edge-driving
           return;
         }
 
-        // ---- Standard desktop cursor-follow (unchanged)
+        // Standard desktop cursor-follow
         const { x: targetXFromCursor, y: targetYFromCursor } = getDesktopCursorTarget();
 
         if (rotBiasDecayRef.current > 0) {
@@ -377,11 +464,16 @@ export default function useRotation({
         const targetX = targetXFromCursor + (rotBiasRef.current.x || 0);
         const targetY = targetYFromCursor + (rotBiasRef.current.y || 0);
 
-        const EASE = 0.10;
+        // Zoom-aware easing (slower when zoomed in)
+        const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius) || 0));
+        const EASE_MIN = 0.06;
+        const EASE_MAX = 0.12;
+        const EASE = EASE_MIN + (EASE_MAX - EASE_MIN) * (1 - zf);
+
         groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * EASE;
         groupRef.current.rotation.y += (targetY - groupRef.current.rotation.y) * EASE;
       } else {
-        // touch inertia (unchanged)
+        // touch inertia
         const zf = Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius) || 0));
         const zoomMul   = 0.9 + 0.8 * zf;
         const tabletMul = isTabletLike ? 1.6 : 1.25;

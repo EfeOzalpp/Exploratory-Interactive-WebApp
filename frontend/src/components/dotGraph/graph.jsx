@@ -18,21 +18,39 @@ const Graph = ({ isDragging }) => {
   // Heuristics for “low” vs “high” fidelity
   const isNarrow =
     typeof window !== 'undefined' ? window.innerWidth < 768 : false;
-  const lowFidelity = isRealMobile || isNarrow;
+
+  // Keep the original “low” idea for heavier features,
+  // but don’t punish text/circles on mobile.
+  const lowFidelity = isNarrow && !isRealMobile;
 
   // Renderer DPR (memoized)
   const dpr = useMemo(() => {
-    const max = typeof window !== 'undefined' ? window.devicePixelRatio || 1.5 : 1.5;
-    return lowFidelity ? [1, 1.25] : [1, Math.min(2, max)];
-  }, [lowFidelity]);
+    const device = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
 
-  // ---- Single return; conditionals handled inside JSX ----
+    // On touch devices, bump sharpness but cap for perf.
+    //  - min ~1.4 so UI/circles aren’t blurry
+    //  - max ~2 on mobile to avoid melting GPUs
+    if (isRealMobile) {
+      const min = Math.min(1.5, Math.max(1, device));
+      const max = Math.min(2, device);
+      return [min, max];
+    }
+
+    // Desktop: allow a bit higher cap, but still clamp
+    const maxCap = Math.min(2.5, device);
+    return lowFidelity ? [1, Math.min(2, maxCap)] : [1, maxCap];
+  }, [isRealMobile, lowFidelity]);
+
+  // Antialiasing:
+  //  - Enable on mobile to clean up circle edges.
+  //  - On desktop keep it on unless you truly need the perf.
+  const wantAA = true;
+
   return (
     <div className="graph-container" style={{ height: '100svh', width: '100%' }}>
       {!section ? (
         <p className="graph-loading">Pick a section to begin.</p>
       ) : loading ? (
-        // Keep layout stable while loading
         <div className="graph-loading" aria-busy="true" />
       ) : (
         <Canvas
@@ -40,7 +58,7 @@ const Graph = ({ isDragging }) => {
           dpr={dpr}
           shadows={!lowFidelity}
           gl={{
-            antialias: !lowFidelity,
+            antialias: wantAA,
             powerPreference: 'high-performance',
             stencil: false,
             depth: true,
@@ -72,7 +90,8 @@ const Graph = ({ isDragging }) => {
           <DotGraph data={safeData} isDragging={isDragging} />
 
           {/* Perf helpers */}
-          <AdaptiveDpr pixelated />
+          {/* Important: avoid pixelated scaling on mobile to prevent blocky circles */}
+          {isRealMobile ? <AdaptiveDpr /> : <AdaptiveDpr /* pixelated */ />}
           <AdaptiveEvents />
           <Preload all />
         </Canvas>

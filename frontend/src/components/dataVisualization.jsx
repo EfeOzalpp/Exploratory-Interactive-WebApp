@@ -1,5 +1,5 @@
-// src/components/dataVisualization.jsx
-import React, { useState, useRef, useEffect, Suspense } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, Suspense } from 'react';
+import { useGraph } from '../context/graphContext.tsx';
 import '../styles/global-styles.css';
 import '../styles/graph.css';
 
@@ -11,15 +11,16 @@ const BarGraph = React.lazy(() =>
 );
 
 const getPositionByViewport = (customX = null, customY = null) => {
-  const width = window.innerWidth;
-  let bar1Position = { x: 0, y: 0 };
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const h = typeof window !== 'undefined' ? window.innerHeight : 768;
 
-  if (width < 768) {
-    bar1Position = { x: window.innerWidth * 0, y: window.innerHeight * 0.35 };
-  } else if (width >= 768 && width <= 1024) {
-    bar1Position = { x: window.innerWidth * 0.05, y: window.innerHeight * 0.2 };
+  let bar1Position = { x: 0, y: 0 };
+  if (w < 768) {
+    bar1Position = { x: w * 0.06, y: h * 0.17 };
+  } else if (w >= 768 && w <= 1024) {
+    bar1Position = { x: w * 0.05, y: h * 0.17 };
   } else {
-    bar1Position = { x: window.innerWidth * 0.24, y: window.innerHeight * 0.1 };
+    bar1Position = { x: w * 0.16, y: h * 0.12 };
   }
 
   return {
@@ -29,36 +30,59 @@ const getPositionByViewport = (customX = null, customY = null) => {
 };
 
 const VisualizationPage = () => {
+  const { darkMode, observerMode } = useGraph();
+
   const [isBarGraphVisible, setIsBarGraphVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  // 🔒 HUD latch state (sync with canonical state)
-  const [hudLatched, setHudLatched] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return window.__gpEdgeLatched == null ? true : !!window.__gpEdgeLatched;
-  });
+  // Seed a sensible initial pos immediately to avoid (0,0) during SSR/hydration.
+  const seedPos =
+    typeof window !== 'undefined' ? getPositionByViewport() : { x: 160, y: 120 };
+  const [position, setPosition] = useState(seedPos);
 
+  // Hide draggable until we do our pre-paint init (prevents any flash)
+  const [ready, setReady] = useState(typeof window === 'undefined' ? false : true);
+
+  // Remember if the user explicitly toggled (don’t auto-flip after that)
+  const userToggledRef = useRef(false);
+  const didInitRef = useRef(false);
+
+  // Pre-paint init: compute position and visibility atomically before first paint,
+  // and also when observerMode flips on (so mobile can auto-open without flashing).
+  useLayoutEffect(() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const isDesktopOrTablet = w >= 768;
+
+    // Set position synchronously
+    setPosition(getPositionByViewport());
+
+    // Initial visibility rules:
+    // - ≥768px: always open
+    // - <768px: closed by default, open if observerMode is true
+    if (isDesktopOrTablet) {
+      setIsBarGraphVisible(true);
+    } else {
+      setIsBarGraphVisible(observerMode ? true : false);
+    }
+
+    didInitRef.current = true;
+    setReady(true);
+  }, [observerMode]);
+
+  // Keep position responsive after mount
   useEffect(() => {
-    const onState = (e) => {
-      const { latched } = e.detail || {};
-      if (typeof latched === 'boolean') setHudLatched(!!latched);
-    };
-    window.addEventListener('gp:edge-cue-state', onState);
-    return () => {
-      window.removeEventListener('gp:edge-cue-state', onState);
-    };
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setPosition(getPositionByViewport()), 0);
     const handleResize = () => setPosition(getPositionByViewport());
     window.addEventListener('resize', handleResize);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // If observer mode turns on later, auto-open unless the user already toggled.
+  useEffect(() => {
+    if (!ready) return;
+    if (!userToggledRef.current && observerMode) {
+      setIsBarGraphVisible(true);
+    }
+  }, [observerMode, ready]);
 
   const dragRef = useRef(null);
   const buttonRef = useRef(null);
@@ -67,6 +91,7 @@ const VisualizationPage = () => {
   const dragAnimationRef = useRef(null);
 
   const handleDragStart = (e) => {
+    if (!dragRef.current) return;
     const rect = dragRef.current.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -77,7 +102,7 @@ const VisualizationPage = () => {
   };
 
   const handleDrag = (e) => {
-    if (!isDragging) return;
+    if (!isDragging || !buttonRef.current) return;
 
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -126,7 +151,7 @@ const VisualizationPage = () => {
       document.removeEventListener('selectstart', preventTextSelection);
       document.body.style.userSelect = 'auto';
     };
-  }, [isDragging]);
+  }, [isDragging, handleDrag]);
 
   return (
     <div>
@@ -134,7 +159,7 @@ const VisualizationPage = () => {
         <Graph isDragging={isDragging} />
       </Suspense>
 
-      {/* Draggable + toggle */}
+      {/* Draggable + toggle (hidden until pre-paint init completes) */}
       <div
         ref={dragRef}
         className="draggable-container"
@@ -144,6 +169,7 @@ const VisualizationPage = () => {
           top: `${position.y}px`,
           zIndex: 20,
           cursor: isDragging ? 'grabbing' : 'grab',
+          visibility: ready ? 'visible' : 'hidden', // prevent (0,0) flash on first paint
         }}
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
@@ -163,6 +189,7 @@ const VisualizationPage = () => {
               hasMoved.current = false;
               return;
             }
+            userToggledRef.current = true; // remember user intent
             setIsBarGraphVisible((prev) => !prev);
           }}
         >
@@ -187,9 +214,9 @@ const VisualizationPage = () => {
           <div
             className="draggable-bar-graph"
             style={{
-              background: hudLatched
-                ? 'rgba(255,255,255,0.5)'
-                : 'linear-gradient(to bottom, rgba(45, 45, 45, 0.9) 10%, rgba(255, 255, 255, 0.67) 100%)',
+              background: darkMode
+                ? 'linear-gradient(to bottom, rgba(45, 45, 45, 0.9) 10%, rgba(255, 255, 255, 0.85) 100%)'
+                : 'rgba(255, 255, 255, 0.4)',
               transition: 'background 200ms ease',
             }}
           >
