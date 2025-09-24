@@ -14,8 +14,8 @@ export default function QuestionMonitor({ prompt, options, t, index, qIndex, qTo
 
   // ---- tunables ----
   const BASE_SCALE = 0.96;
-  const GROW       = 0.48;   // fully active ≈ 1.28x
-  const Y_OFFSET   = 26;     // spread at the midpoint
+  const GROW       = 0.54;   // fully active ≈ 1.28x
+  const Y_OFFSET   = 24;     // spread at the midpoint
   const CURVE_EXP  = 1.0;    // 1 = linear tent; >1 = tighter to the middle
 
   const tent = (x) => {

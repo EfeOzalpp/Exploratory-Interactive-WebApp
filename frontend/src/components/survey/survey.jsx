@@ -1,4 +1,3 @@
-// src/components/survey/Survey.jsx
 import React, { useState, Suspense, useEffect, useMemo, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useGraph } from '../../context/graphContext.tsx';
@@ -44,10 +43,27 @@ export default function Survey({
     observerMode, openGraph, section, resetToStart,
   } = useGraph();
 
-  const availableSections = useMemo(
-    () => (audience && audience !== 'visitor' ? (ROLE_SECTIONS[audience] || []) : []),
-    [audience]
-  );
+  // Build available sections:
+  // - student → student only
+  // - staff   → institutional header + items, then student header + items
+  // - visitor → handled by skipping the section step
+  const availableSections = useMemo(() => {
+    if (!audience || audience === 'visitor') return [];
+    if (audience === 'student') {
+      return (ROLE_SECTIONS.student || []).map(s => ({ ...s, type: 'option' }));
+    }
+    if (audience === 'staff') {
+      const stu = (ROLE_SECTIONS.student || []).map(s => ({ ...s, type: 'option' }));
+      const fac = (ROLE_SECTIONS.staff   || []).map(s => ({ ...s, type: 'option' }));
+      return [
+        { type: 'header', id: 'staff',   label: 'Institutional departments' },
+        ...fac,
+        { type: 'header', id: 'student', label: 'Student departments' },
+        ...stu,
+      ];
+    }
+    return [];
+  }, [audience]);
 
   useEffect(() => {
     if (observerMode) {
@@ -68,7 +84,7 @@ export default function Survey({
     }, 70);
   };
 
-  // Prefetch helpers (hint the *next* step)
+  // Prefetch helpers
   const prefetchSection = () => import(/* webpackPrefetch: true, webpackChunkName:"survey-section" */ './sectionPicker/sectionPicker.jsx');
   const prefetchQuestions = () => import(/* webpackPrefetch: true, webpackChunkName:"survey-questions" */ './questions/questionFlow');
 
@@ -118,9 +134,10 @@ export default function Survey({
       const created = await saver(surveySection, { ...payload });
       const id = created?._id || null;
       setMyEntryId(id);
-      if (id && typeof window !== 'undefined') {
-        sessionStorage.setItem('gp.myEntryId', id);
+      if (typeof window !== 'undefined') {
+        if (id) sessionStorage.setItem('gp.myEntryId', id);
         sessionStorage.setItem('gp.mySection', surveySection);
+        if (audience) sessionStorage.setItem('gp.myRole', audience);
       }
     } catch (e) {
       console.error('[Survey] submit error:', e);
@@ -129,54 +146,40 @@ export default function Survey({
     }
   };
 
-  // === No-flicker Exit (prevents question flow flashing for a split second) ===
+  // No-flicker Exit
   const handleComplete = () => {
-    // Block any transient render in this tick
     exitingRef.current = true;
-
     flushSync(() => {
-      // 1) Kill the overlay immediately
       setShowCompleteButton(false);
-
-      // 2) Synchronously put Survey back to pristine "start" local state
       setStage('role');
       setAudience('');
       setSurveySection('');
       setError('');
       setFadeState('fade-in');
-
-      // 3) Clear surrounding UI bits that could animate
       setAnimationVisible(false);
       setSurveyWrapperClass('');
     });
-
-    // 4) Now reset global graph/survey flags in one go
-    //    (Provider batches internally; ensures FrontPage doesn't re-open the viz)
     resetToStart();
-
-    // 5) Allow renders again next tick
     Promise.resolve().then(() => { exitingRef.current = false; });
   };
 
   const handleAudienceChange = (role) => {
     setAudience(role); setError('');
-    const allowed = (ROLE_SECTIONS[role] || []).map((s) => s.value);
-    setSurveySection((prev) => (allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''));
+    const allowed = role === 'staff'
+      ? [...(ROLE_SECTIONS.student || []), ...(ROLE_SECTIONS.staff || [])].map(s => s.value)
+      : (ROLE_SECTIONS[role] || []).map(s => s.value);
+    setSurveySection(prev =>
+      allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''
+    );
   };
 
   const handleSectionChange = (val) => { setSurveySection(val); setError(''); };
 
-  // While exiting in the same tick, *force* the start screen (no intermediate stage flashes)
   if (exitingRef.current) {
     return (
       <div className="survey-section fade-in">
         <Suspense fallback={null}>
-          <RoleStep
-            value=""
-            onChange={handleAudienceChange}
-            onNext={handleRoleNext}
-            error=""
-          />
+          <RoleStep value="" onChange={handleAudienceChange} onNext={handleRoleNext} error="" />
         </Suspense>
       </div>
     );
@@ -184,17 +187,19 @@ export default function Survey({
 
   if (showCompleteButton) {
     return (
-      <Suspense fallback={
-        <div style={{ position: 'fixed', inset: 0, zIndex: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', pointerEvents: 'none' }}>
-          <div className="survey-section-wrapper2">
-            <div className="survey-section">
-              <div className="surveyStart">
-                <button className="begin-button4" onClick={handleComplete}><span>Exit</span></button>
+      <Suspense
+        fallback={
+          <div style={{ position: 'fixed', inset: 0, zIndex: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', pointerEvents: 'none' }}>
+            <div className="survey-section-wrapper2">
+              <div className="survey-section">
+                <div className="surveyStart">
+                  <button className="begin-button4" onClick={handleComplete}><span>Exit</span></button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      }>
+        }
+      >
         <DoneOverlayR3F onComplete={handleComplete} />
       </Suspense>
     );
@@ -218,6 +223,8 @@ export default function Survey({
             onBegin={handleBeginFromSection}
             error={error}
             sections={availableSections}
+            placeholderOverride={audience === 'student' ? 'Your Major...' : undefined}
+            titleOverride={audience === 'student' ? 'Select Your Major' : undefined}
           />
         )}
         {stage === 'questions' && (

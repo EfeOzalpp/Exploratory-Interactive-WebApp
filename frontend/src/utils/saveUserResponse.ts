@@ -1,4 +1,3 @@
-// utils/saveUserResponse.ts
 import { liveClient } from './sanityClient';
 
 type Weights = { q1?: number; q2?: number; q3?: number; q4?: number; q5?: number };
@@ -21,6 +20,10 @@ const computeAvg = (w: Weights) => {
 /**
  * Saves a V3 response with numeric q1..q5 (0..1, rounded to 3 decimals)
  * and avgWeight (0..1, rounded to 3 decimals).
+ *
+ * NEW: also stash a lightweight client snapshot in sessionStorage (gp.myDoc),
+ * so we can continue showing personalized UI even when the current section’s
+ * dataset doesn’t include the user’s entry.
  */
 export async function saveUserResponse(section: string, weights: Weights) {
   // clamp + round each weight
@@ -47,8 +50,20 @@ export async function saveUserResponse(section: string, weights: Weights) {
   const created = await liveClient.create(doc);
 
   if (typeof window !== 'undefined') {
+    // Persist identifiers
     sessionStorage.setItem('gp.myEntryId', created._id);
     sessionStorage.setItem('gp.mySection', section);
+    // Persist a minimal snapshot for local rehydrate (no schema change needed)
+    try {
+      const snapshot = {
+        _id: created._id,
+        section,
+        q1: created.q1, q2: created.q2, q3: created.q3, q4: created.q4, q5: created.q5,
+        avgWeight: created.avgWeight,
+        submittedAt: created.submittedAt,
+      };
+      sessionStorage.setItem('gp.myDoc', JSON.stringify(snapshot));
+    } catch {}
   }
 
   return created;

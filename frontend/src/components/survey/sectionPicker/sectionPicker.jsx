@@ -1,4 +1,3 @@
-// src/components/survey/sectionPicker.jsx
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 
 export default function SectionPickerIntro({
@@ -7,42 +6,106 @@ export default function SectionPickerIntro({
   onBegin,
   error,
   sections = [],
+  // NEW:
+  placeholderOverride,        // e.g., "Your Major..."
+  titleOverride,              // e.g., "Select Your Major"
 }) {
-  const options = useMemo(() => sections, [sections]);
+  const hasHeaders = useMemo(
+    () => Array.isArray(sections) && sections.some(s => s && s.type === 'header'),
+    [sections]
+  );
+
+  const optionsWithHeaders = useMemo(() => {
+    if (!Array.isArray(sections)) return [];
+    return sections.map(s => (s?.type === 'header' ? { ...s } : { ...s, type: 'option' }));
+  }, [sections]);
+
+  const baseFocusable = useMemo(() => {
+    const out = [];
+    optionsWithHeaders.forEach((item, idx) => {
+      if (item?.type !== 'header') out.push({ ...item, __listIndex: idx });
+    });
+    return out;
+  }, [optionsWithHeaders]);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
-  const [placement, setPlacement] = useState('down'); // 'down' | 'up'
+  const [placement, setPlacement] = useState('down');
 
   const wrapperRef = useRef(null);
-  const inputRef = useRef(null);
-  const listRef = useRef(null);
-  const listboxId = 'section-listbox';
-  const openedByPointer = useRef(false); // track how we opened
-  const current = options.find((o) => o.value === value) || null;
+  const inputRef   = useRef(null);
+  const listRef    = useRef(null);
+  const listboxId  = 'section-listbox';
+  const openedByPointer = useRef(false);
 
-  // Filtered options by search (label + value)
-  const filtered = useMemo(() => {
+  const current = useMemo(
+    () => baseFocusable.find(o => o.value === value) || null,
+    [baseFocusable, value]
+  );
+
+  const filteredFocusable = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return options;
-
-    return options.filter((o) => {
-      const labelMatch = o.label.toLowerCase().includes(q);
-      const valueMatch = o.value.toLowerCase().includes(q);
-      const aliasMatch = o.aliases?.some((a) => a.toLowerCase().includes(q));
+    if (!q) return baseFocusable;
+    return baseFocusable.filter((o) => {
+      const labelMatch = (o.label || '').toLowerCase().includes(q);
+      const valueMatch = (o.value || '').toLowerCase().includes(q);
+      const aliasMatch = (o.aliases || []).some(a => (a || '').toLowerCase().includes(q));
       return labelMatch || valueMatch || aliasMatch;
     });
-  }, [options, search]);
+  }, [baseFocusable, search]);
 
-  // Keep activeIndex in range when list changes
+  const displayedList = useMemo(() => {
+    if (!hasHeaders) return filteredFocusable;
+
+    const filteredSet = new Set(filteredFocusable.map(o => o.__listIndex));
+    const out = [];
+    let i = 0;
+    while (i < optionsWithHeaders.length) {
+      const item = optionsWithHeaders[i];
+      if (item.type === 'header') {
+        let j = i + 1, any = false;
+        while (j < optionsWithHeaders.length && optionsWithHeaders[j].type !== 'header') {
+          if (filteredSet.has(j)) { any = true; break; }
+          j++;
+        }
+        if (any) {
+          out.push(item);
+          let k = i + 1;
+          while (k < optionsWithHeaders.length && optionsWithHeaders[k].type !== 'header') {
+            if (filteredSet.has(k)) out.push(optionsWithHeaders[k]);
+            k++;
+          }
+          i = k;
+          continue;
+        } else {
+          let k = i + 1;
+          while (k < optionsWithHeaders.length && optionsWithHeaders[k].type !== 'header') k++;
+          i = k;
+          continue;
+        }
+      } else {
+        if (filteredSet.has(i)) out.push(item);
+        i++;
+      }
+    }
+    return out;
+  }, [hasHeaders, filteredFocusable, optionsWithHeaders]);
+
+  const renderedFocusable = useMemo(() => {
+    const out = [];
+    displayedList.forEach((item, idx) => {
+      if (item.type !== 'header') out.push({ ...item, __renderIndex: idx });
+    });
+    return out;
+  }, [displayedList]);
+
   useEffect(() => {
     setActiveIndex((idx) =>
-      filtered.length ? Math.min(Math.max(idx, 0), filtered.length - 1) : 0
+      renderedFocusable.length ? Math.min(Math.max(idx, 0), renderedFocusable.length - 1) : 0
     );
-  }, [filtered.length]);
+  }, [renderedFocusable.length]);
 
-  // Click outside closes
   useEffect(() => {
     const onDoc = (e) => {
       if (!wrapperRef.current) return;
@@ -56,14 +119,18 @@ export default function SectionPickerIntro({
     };
   }, []);
 
-  // Compute placement when open
   useEffect(() => {
     const computePlacement = () => {
       if (!inputRef.current) return;
       const rect = inputRef.current.getBoundingClientRect();
       const viewportH = window.innerHeight || document.documentElement.clientHeight;
       const spaceBelow = viewportH - rect.bottom;
-      const estimatedListHeight = Math.min(260, filtered.length * 44 + 12);
+      const estimatedRowHeight = 44;
+      const estimatedHeaders = displayedList.filter(x => x.type === 'header').length;
+      const estimatedListHeight = Math.min(
+        260,
+        (displayedList.length * estimatedRowHeight) + (estimatedHeaders * 8) + 12
+      );
       setPlacement(spaceBelow >= estimatedListHeight ? 'down' : 'up');
     };
     if (open) computePlacement();
@@ -74,50 +141,51 @@ export default function SectionPickerIntro({
       window.removeEventListener('resize', onWin);
       window.removeEventListener('scroll', onWin, true);
     };
-  }, [open, filtered.length]);
+  }, [open, displayedList]);
 
-  // When opening, DO NOT seed search with the selected label (prevents “lock-in”)
   useEffect(() => {
     if (!open) return;
-    // If opened by pointer, show full list (clear search).
-    if (openedByPointer.current) {
-      setSearch('');
-    }
+    if (openedByPointer.current) setSearch('');
     const t = setTimeout(() => inputRef.current && inputRef.current.focus(), 0);
     return () => clearTimeout(t);
   }, [open]);
 
-  // Keep activeIndex aligned to selected when open & present in filtered
   useEffect(() => {
     if (!open) return;
-    const idx = filtered.findIndex((o) => o.value === value);
+    const idx = renderedFocusable.findIndex(o => o.value === value);
     if (idx >= 0) setActiveIndex(idx);
-  }, [value, filtered, open]);
+  }, [value, renderedFocusable, open]);
 
   const moveActive = useCallback(
     (delta) => {
-      if (!filtered.length) return;
-      setActiveIndex((idx) => (idx + delta + filtered.length) % filtered.length);
+      if (!renderedFocusable.length) return;
+      setActiveIndex((idx) => (idx + delta + renderedFocusable.length) % renderedFocusable.length);
     },
-    [filtered.length]
+    [renderedFocusable.length]
   );
 
-  // Choose with source: 'pointer' or 'keyboard'
   const chooseIndex = useCallback(
-    (idx, source = 'keyboard') => {
-      const opt = filtered[idx];
+    (focusIdx, source = 'keyboard') => {
+      const opt = renderedFocusable[focusIdx];
       if (!opt) return;
       onChange && onChange(opt.value);
-      // Only clear the search if selection was by pointer (click/tap).
       if (source === 'pointer') setSearch('');
       setOpen(false);
     },
-    [filtered, onChange]
+    [renderedFocusable, onChange]
   );
+
+  const activeRenderedId = open && renderedFocusable[activeIndex]
+    ? `opt-${renderedFocusable[activeIndex].value}`
+    : undefined;
+
+  // IMPORTANT: placeholder shows only when the input value is empty.
+  // We keep the displayed value behavior untouched. We just let you override the placeholder text.
+  const placeholderText = placeholderOverride ?? (current ? current.label : 'MassArt Dept...');
 
   return (
     <div className="surveyStart" ref={wrapperRef}>
-      {!open && <h3 className="begin-title1">Select Your Department</h3>}
+      {!open && <h3 className="begin-title1">{titleOverride ?? 'Select Your Department'}</h3>}
 
       <div className="section-picker">
         <div
@@ -126,11 +194,7 @@ export default function SectionPickerIntro({
           aria-owns={listboxId}
           aria-expanded={open}
           aria-controls={listboxId}
-          aria-activedescendant={
-            open && filtered[activeIndex]
-              ? `opt-${filtered[activeIndex].value}`
-              : undefined
-          }
+          aria-activedescendant={activeRenderedId}
           className={`section-combobox ${open ? 'is-open' : ''}`}
           onMouseDown={() => { openedByPointer.current = true; }}
           onTouchStart={() => { openedByPointer.current = true; }}
@@ -141,13 +205,12 @@ export default function SectionPickerIntro({
             type="text"
             className="section-input"
             aria-label="Select your department"
-            placeholder={current ? current.label : 'MassArt Dept...'}
+            placeholder={placeholderText}
             value={open ? search : (current && current.label) || ''}
             inputMode="search"
             autoCapitalize="none"
             onFocus={() => { setOpen(true); }}
             onChange={(e) => {
-              // typing = keyboard-driven filtering
               openedByPointer.current = false;
               if (!open) setOpen(true);
               setSearch(e.target.value);
@@ -167,11 +230,10 @@ export default function SectionPickerIntro({
                 setActiveIndex(0);
               } else if (e.key === 'End') {
                 e.preventDefault();
-                setActiveIndex(Math.max(0, filtered.length - 1));
+                setActiveIndex(Math.max(0, renderedFocusable.length - 1));
               } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (open) {
-                  // selection by keyboard: do NOT clear search here
                   chooseIndex(activeIndex, 'keyboard');
                 } else {
                   setOpen(true);
@@ -185,21 +247,22 @@ export default function SectionPickerIntro({
             spellCheck={false}
           />
           <span className="section-chevron" aria-hidden>
-          <svg
-            className="section-chevron-svg"
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-          >
-            <polyline
-              points="6 9 12 15 18 9"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg></span>
+            <svg
+              className="section-chevron-svg"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+            >
+              <polyline
+                points="6 9 12 15 18 9"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </div>
 
         {open && (
@@ -212,38 +275,56 @@ export default function SectionPickerIntro({
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
               else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
-              else if (e.key === 'Home') { e.preventDefault(); setActiveIndex(0); }
-              else if (e.key === 'End') { e.preventDefault(); setActiveIndex(Math.max(0, filtered.length - 1)); }
+              else if (e.key === 'Home')   { e.preventDefault(); setActiveIndex(0); }
+              else if (e.key === 'End')    { e.preventDefault(); setActiveIndex(Math.max(0, renderedFocusable.length - 1)); }
               else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseIndex(activeIndex, 'keyboard'); }
               else if (e.key === 'Escape') { e.preventDefault(); setOpen(false); inputRef.current && inputRef.current.focus(); }
             }}
           >
-            {filtered.length === 0 && (
+            {displayedList.length === 0 && (
               <div className="section-empty" role="option" aria-disabled="true">
                 No matches
               </div>
             )}
 
-            {filtered.map((opt, idx) => {
-              const selected = value === opt.value;
-              const active = idx === activeIndex;
+            {displayedList.map((item, idx) => {
+              if (item.type === 'header') {
+                return (
+                  <p
+                    key={`hdr-${item.id || idx}`}
+                    className="section-group-header"
+                    role="presentation"
+                    aria-hidden="true"
+                  >
+                    {item.label}
+                  </p>
+                );
+              }
+              const selected = value === item.value;
+              const isActive = renderedFocusable[activeIndex]?.__renderIndex === idx;
               return (
                 <div
-                  id={`opt-${opt.value}`}
-                  key={opt.value}
+                  id={`opt-${item.value}`}
+                  key={item.value}
                   role="option"
                   aria-selected={selected}
                   className={
                     'section-option' +
-                    (active ? ' is-active' : '') +
+                    (isActive ? ' is-active' : '') +
                     (selected ? ' is-selected' : '')
                   }
-                  onMouseEnter={() => setActiveIndex(idx)}
+                  onMouseEnter={() => {
+                    const focusIdx = renderedFocusable.findIndex(f => f.__renderIndex === idx);
+                    if (focusIdx >= 0) setActiveIndex(focusIdx);
+                  }}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => chooseIndex(idx, 'pointer')}  // ← clear filter only on pointer
+                  onClick={() => {
+                    const focusIdx = renderedFocusable.findIndex(f => f.__renderIndex === idx);
+                    if (focusIdx >= 0) chooseIndex(focusIdx, 'pointer');
+                  }}
                 >
                   <span className={'section-dot' + (selected ? ' is-selected' : '')} />
-                  <span className="section-label">{opt.label}</span>
+                  <span className="section-label">{item.label}</span>
                 </div>
               );
             })}
@@ -259,7 +340,7 @@ export default function SectionPickerIntro({
       )}
 
       <button className="begin-button" onClick={onBegin}>
-        <h4>Next</h4>
+        <span>Next</span>
       </button>
     </div>
   );

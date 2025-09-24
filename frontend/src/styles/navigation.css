@@ -6,7 +6,7 @@
 .level-two { display: flex; flex-direction: column; width: 100%; position: relative; justify-content: flex-end; align-items: flex-end; }
 button.observe-results { pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff; }
 .feedback, .nav-toggle { pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138, 138, 138); border-radius: 6px; background: #ffffff; }
-.nav-toggle.active {border: 1px solid rgb(200, 200, 200); border-color: rgb(200, 200, 200) !important; background-color: rgb(75, 75, 75) !important;}
+.nav-toggle.active {color: rgba(255, 255, 255, 0.925) !important; border: 1px solid rgb(200, 200, 200); border-color: rgb(200, 200, 200) !important; background-color: rgb(75, 75, 75) !important;}
 button.nav-toggle.active { text-align: left; text-decoration: none; }
 .nav-right { display: flex; align-items: flex-end; justify-content: flex-end; }
 .burger-toggle { background: rgb(255, 255, 255); cursor: pointer; z-index: 10; pointer-events: all; position: relative; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); color: black; }
@@ -116,13 +116,13 @@ div.level-one, .observe-results { z-index: 10; }
   .level-two { margin-bottom: 1.1em; }
   .level-two.is-dark.is-post-complete { flex-direction: row; align-items: center; }
   .level-two.is-dark.is-post-complete .nav-divider { width: calc(50vw + 98px); }
-  button.observe-results { padding-bottom: 1.6em; padding-top: 1.6em; width: 24vw; }
+  button.observe-results { padding-bottom: 1.8em; padding-top: 1.8em; width: 24vw; }
   button.observe-results.active.is-dark { width: 12vw; }
   .observe-results:hover {transform: scale(1.1);}
-  .feedback, .nav-toggle { padding-bottom: 2em; padding-top: 2em; }
-  .nav-toggle.active { padding-bottom: 1.75em; padding-top: 1.75em; width: 14vw; max-width: 16vw; padding-left: 12px;}
-  .feedback { width: 20vw; }
-  .nav-toggle { width: 18vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
+  .feedback, .nav-toggle { padding-bottom: 1.8em; padding-top: 1.8em; }
+  .nav-toggle.active { padding-bottom: 1.65em; padding-top: 1.65em; width: 14vw; max-width: 16vw; padding-left: 12px;}
+  .feedback { width: 24vw; }
+  .nav-toggle { width: 22vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
   .nav-toggle-icon { top: 1px; position: relative; }
   .gp-picker { max-width: 880px; }
   .gp-trigger { font-family: Heebo, sans-serif; padding: 1.2em 18px; border-radius: 12px; font-size: 2.2vw; font-weight: 600; color: #282828; }
@@ -146,10 +146,10 @@ div.level-one, .observe-results { z-index: 10; }
   .level-two { margin-bottom: 16px; }
   .level-two.is-dark.is-post-complete { flex-direction: row; align-items: center; }
   .level-two.is-dark.is-post-complete .burger-toggle { margin-top: 0px; }
-  button.observe-results { padding-bottom: 1.4em; padding-top: 1.4em; width: 14vw; }
+  button.observe-results { padding-bottom: 1.8em; padding-top: 1.8em; width: 14vw; }
   button.observe-results.active { width: 6vw; }
   .observe-results:hover {transform: scale(1.1);}
-  .feedback, .nav-toggle { padding-top: 2em; padding-bottom: 2em; }
+  .feedback, .nav-toggle { padding-top: 1.8em; padding-bottom: 1.8em; }
   .nav-toggle { width: 14vw; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
   .nav-toggle.active { padding-left: 12px; padding-top: 1.88em; padding-bottom: 1.88em;}
   .feedback { width: 14vw; }

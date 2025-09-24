@@ -3,9 +3,9 @@ import React from "react";
 import RolePicker from "./rolePicker";
 
 const DISPLAY = {
-  student: "Student",
-  staff: "Faculty",
-  visitor: "Visitor",
+  student: "student",
+  staff: "faculty",
+  visitor: "visitor",
 };
 
 export default function RoleStep({ value, onChange, onNext, error }) {

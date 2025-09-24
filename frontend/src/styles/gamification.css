@@ -65,7 +65,7 @@
   /* =============================================
   Personalized Gamification
   ============================================= */
-  .personalized-result { top: 7px; padding: 0px 0px 0px 12px; border-radius: 12px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 280px; max-width: 280px; min-width: 280px; left: 165px; pointer-events: all; z-index: 10; }
+  .personalized-result { padding: 0px 0px 0px 12px; border-radius: 12px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; width: 280px; max-width: 280px; min-width: 280px; left: 165px; pointer-events: all; z-index: 10; }
   .personalized-result:before { border-radius: 12px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
   .personalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
   .gamification-text { pointer-events: none; width: 75%; max-width: 75%; min-width: 75%; text-align: left; padding: 24px 0 24px 9px; }
@@ -102,7 +102,7 @@
   .is-left .generalized-result { top: 0px; }
   .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
   .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
-  .toggle-button.gp-toggle { position: absolute; top: -62px; right: 47px; z-index: 3; pointer-events: all; }
+  .toggle-button.gp-toggle { position: absolute; top: -67px; right: 47px; z-index: 3; pointer-events: all; }
   .toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }
   .toggle-button.gp-toggle:active, .toggle-button:active { transform: translateY(0); }
   .toggle-button.gp-toggle[aria-expanded="false"] { top: -2px; right: -24px; position: relative; }

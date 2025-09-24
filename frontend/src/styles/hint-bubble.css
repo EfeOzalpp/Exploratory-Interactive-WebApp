@@ -31,12 +31,12 @@
 @media (min-width: 769px) and (max-width: 1024px) {
   .hint-bubble { padding: 12px 18px; }
   .edge-mode-hint h4 {padding-bottom: 4px;}
-  .cue-bubble { bottom: 8.4em; }
+  .cue-bubble { bottom: 9.2em; }
 }
 
 @media (min-width: 1025px) {
   .hint-bubble { padding: 8px 12px; }
   .edge-mode-hint { padding: 9px 12px; }
-  .cue-bubble { bottom: 6.8em; }
+  .cue-bubble { bottom: 7.6em; }
   .edge-mode-hint h4 { padding-bottom: 4px; padding-top: 2px;}
 }

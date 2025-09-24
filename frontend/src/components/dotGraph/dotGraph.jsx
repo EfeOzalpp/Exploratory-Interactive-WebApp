@@ -31,9 +31,10 @@ const nonlinearLerp = (a, b, t) => {
 const EPS = 1e-6;
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
-  const { myEntryId, observerMode, mode, section } = useGraph();
+  const { myEntryId, mySection, observerMode, mode, section, darkMode } = useGraph();
   const safeData = Array.isArray(data) ? data : [];
   const showCompleteUI = useObserverDelay(observerMode, 2000);
+  const noData = safeData.length === 0;
 
   const personalizedEntryId =
     myEntryId || (typeof window !== 'undefined' ? sessionStorage.getItem('gp.myEntryId') : null);
@@ -45,17 +46,31 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const isTabletLike = width >= 768 && width <= 1024;
   const useDesktopLayout = !(isSmallScreen || isRealMobile || isTabletLike);
 
-  const hasPersonalized = useMemo(
+  const hasPersonalizedInDataset = useMemo(
     () => !!personalizedEntryId && safeData.some(d => d._id === personalizedEntryId),
     [personalizedEntryId, safeData]
   );
 
-  // Only skew under 768px
+  // ===== SCOPE GUARD (only show in allowed scopes) =====
+  // - exactly the section the user submitted to
+  // - or staff umbrella view ('all-staff')
+  const shouldShowPersonalized = useMemo(() => {
+    if (!mySection) return false;
+    return (
+      section === mySection ||
+      section === 'all-staff' ||
+      section === 'all-massart' ||  
+      section === 'all'    
+    );
+  }, [section, mySection]);
+
+  // Only skew under 768px and when we're actually showing the personalized card here
   const wantsSkew =
     isSmallScreen &&
     !observerMode &&
-    hasPersonalized &&
-    personalOpen;
+    hasPersonalizedInDataset &&
+    personalOpen &&
+    shouldShowPersonalized;
 
   const {
     groupRef,
@@ -105,7 +120,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     centerBias: 0.35,
     colorForAverage,
     personalizedEntryId,
-    showPersonalized: showCompleteUI && hasPersonalized,
+    // only highlight the personalized point in this view if the scope allows it
+    showPersonalized: showCompleteUI && hasPersonalizedInDataset && shouldShowPersonalized,
   });
 
   // maps & helpers
@@ -121,6 +137,30 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     [safeData, personalizedEntryId]
   );
 
+  // ---- Fallbacks so personalized panel can still show in umbrella views
+  //      even if the user's entry isn't in the current dataset ----
+  const mySnapshot = useMemo(() => {
+    if (myEntry || typeof window === 'undefined') return null;
+    try {
+      const raw = sessionStorage.getItem('gp.myDoc');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [myEntry]);
+
+  const effectiveMyEntry = myEntry || mySnapshot;
+
+  const fallbackColor = useMemo(() => {
+    const avg = Number(effectiveMyEntry?.avgWeight);
+    if (!Number.isFinite(avg)) return '#ffffff';
+    return rgbString(sampleStops(avg));
+  }, [effectiveMyEntry]);
+
+  const effectiveMyPoint = myPoint || (effectiveMyEntry
+    ? { position: [0, 0, 0], color: fallbackColor }
+    : null);
+
   // ---- Metrics (relative vs absolute) ----
   const {
     getForId: getRelForId,
@@ -130,9 +170,23 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const { getForId: getAbsForId, getForValue: getAbsForValue } = useAbsoluteScore(safeData, { decimals: 0 });
 
   const myDisplayValue = useMemo(() => {
-    if (!(showCompleteUI && myEntry)) return 0;
-    return mode === 'relative' ? getRelForId(myEntry._id) : getAbsForId(myEntry._id);
-  }, [showCompleteUI, myEntry, mode, getRelForId, getAbsForId]);
+    if (!(showCompleteUI && effectiveMyEntry)) return 0;
+
+    // Prefer dataset-based id when present; otherwise compute from saved avg against current dataset
+    if (myEntry) {
+      return mode === 'relative' ? getRelForId(myEntry._id) : getAbsForId(myEntry._id);
+    }
+
+    const avg = Number(effectiveMyEntry?.avgWeight);
+    if (!Number.isFinite(avg)) return 0;
+    try {
+      return mode === 'relative'
+        ? Math.round(getRelForValue(avg))
+        : Math.round(getAbsForValue(avg));
+    } catch {
+      return 0;
+    }
+  }, [showCompleteUI, effectiveMyEntry, myEntry, mode, getRelForId, getAbsForId, getRelForValue, getAbsForValue]);
 
   // Ensure the calculator we pass to the hover hook updates when mode changes
   const calcValueForAvg = useCallback(
@@ -169,7 +223,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     calcPercentForAvg: calcValueForAvg,
   });
 
-  // ----- global bottom→top chain (by average/relative value) — always includes personalized dot if present
+  // ----- global bottom→top chain (by average/relative value)
   const rankChainIds = useMemo(() => {
     if (points.length < 2) return [];
     const entries = safeData.map(d => ({ id: d._id, avg: avgWeightOf(d) }));
@@ -247,19 +301,15 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     return new Set(ids);
   }, [mode, hoveredDot, absScoreById, safeData]);
 
-  // --- Auto-dismiss tooltip on rotation — DISABLED per request (snapped too fast)
-  // (Removed the gp:orbit-rot close logic)
-
   // >>> MOBILE: dismiss general popup 2s after a touch rotation event
   const mobileRotDismissRef = useRef(null);
   useEffect(() => {
     const onRot = (e) => {
       const { source } = (e && e.detail) || {};
-      if (useDesktopLayout) return;        // only care about mobile/tablet
-      if (source !== 'touch') return;       // only touch-driven rotates
+      if (useDesktopLayout) return;
+      if (source !== 'touch') return;
       if (mobileRotDismissRef.current) clearTimeout(mobileRotDismissRef.current);
       mobileRotDismissRef.current = setTimeout(() => {
-        // only close the hover/general tooltip
         onHoverEnd();
         mobileRotDismissRef.current = null;
       }, 2000);
@@ -273,7 +323,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       }
     };
   }, [useDesktopLayout, onHoverEnd]);
-  // <<< end mobile rotate dismiss
 
   const isPortrait =
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false;
@@ -287,9 +336,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       );
 
   // -------- tie-aware stats (shared for both panels) --------
-  const myStats = myEntry
+  const myStats = effectiveMyEntry && myEntry
     ? getTieStats({ data: safeData, targetId: myEntry._id })
-    : { below: 0, equal: 0, above: 0, totalOthers: 0 };
+    : { below: 0, equal: 0, above: 0, totalOthers: 0 }; // if not in dataset, don’t invent counts
   const myClass  = classifyPosition(myStats);
 
   const hoveredStats = useMemo(() => {
@@ -304,7 +353,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const spotlightTimerRef = useRef(null);
   const spotlightActiveRef = useRef(false);
 
-  // cancel spotlight on user actions — BUT NOT on rotation anymore
   useEffect(() => {
     const cancel = () => {
       if (!spotlightActiveRef.current) return;
@@ -314,7 +362,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
         spotlightTimerRef.current = null;
       }
       onHoverEnd();
-      window.dispatchEvent(new CustomEvent('gp:hover-close')); // re-allow idle drift
+      window.dispatchEvent(new CustomEvent('gp:hover-close'));
     };
 
     const onAnyUserAction = () => cancel();
@@ -323,7 +371,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     window.addEventListener('wheel', onAnyUserAction, { passive: true });
     window.addEventListener('keydown', onAnyUserAction);
     window.addEventListener('touchstart', onAnyUserAction, { passive: true });
-    // NOTE: no gp:orbit-rot listener here anymore
 
     return () => {
       window.removeEventListener('pointerdown', onAnyUserAction);
@@ -333,10 +380,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     };
   }, [onHoverEnd]);
 
-  // Heuristic: pick a point near left-center & likely visible
   const pickLeftCenterPoint = () => {
     if (!points.length) return null;
-    // Prefer points whose x is ≤ median x, then sort by |y| + 0.5|z|
     const xs = points.map(p => p.position[0]).sort((a,b) => a - b);
     const medianX = xs[Math.floor(xs.length / 2)];
     const candidates = points.filter(p => p.position[0] <= medianX);
@@ -347,7 +392,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     return scored[0]?.p || null;
   };
 
-  // Listen for spotlight requests from ModeToggle (observer mode only)
   useEffect(() => {
     const onSpotlightReq = (e) => {
       if (!observerMode) return;
@@ -356,13 +400,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       const target = pickLeftCenterPoint();
       if (!target) return;
 
-      // Prevent conflict with selected tie lines
       setSelectedTieKey(null);
-
-      // disable idle drift
       window.dispatchEvent(new CustomEvent('gp:hover-open'));
 
-      // Fake a "mouse" to compute viewport class nicely
       const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
       const h = typeof window !== 'undefined' ? window.innerHeight : 768;
       const fakeEvt = { clientX: w * fakeMouseXRatio, clientY: h * fakeMouseYRatio };
@@ -375,7 +415,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
         if (!spotlightActiveRef.current) return;
         spotlightActiveRef.current = false;
         onHoverEnd();
-        window.dispatchEvent(new CustomEvent('gp:hover-close')); // re-allow idle drift
+        window.dispatchEvent(new CustomEvent('gp:hover-close'));
         spotlightTimerRef.current = null;
       }, durationMs);
     };
@@ -383,6 +423,17 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     window.addEventListener('gp:observer-spotlight-request', onSpotlightReq);
     return () => window.removeEventListener('gp:observer-spotlight-request', onSpotlightReq);
   }, [observerMode, onHoverStart, onHoverEnd, points]);
+
+  if (noData) {
+    return (
+      <Html center zIndexRange={[110, 130]} style={{ pointerEvents: 'none' }}>
+        <div className={`empty-card empty-card--canvas ${darkMode ? 'is-dark' : 'is-light'}`}>
+          <h3>No responses yet</h3>
+          <p>There’s nothing yet for {section}. 🪄✨ Come back later and this space will fill up.</p>
+        </div>
+      </Html>
+    );
+  }
 
   return (
     <>
@@ -401,17 +452,12 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
         {points.map((point) => {
           const suppressHover = !!(myEntry && point._id === personalizedEntryId && showCompleteUI);
 
-          // RELATIVE: is this point in the selected tie group?
           const tieKey = getTieKeyForId(point._id);
           const isInSelectedTie = mode === 'relative' && selectedTieKey && tieKey === selectedTieKey;
 
-          // RELATIVE: if NO selection, show rank-chain halos on every node in chain
           const showRankChainHalos = mode === 'relative' && !selectedTieKey && rankChainIdSet.has(point._id);
-
-          // ABSOLUTE: when hovering, halo all equal-score points (including hovered)
           const showAbsEqualHoverHalo = mode === 'absolute' && hoveredAbsEqualSet.has(point._id);
 
-          // Determine if this point gets a halo (priority: selected-tie > abs-equal-hover > rank-chain)
           const showHalo = isInSelectedTie || showAbsEqualHoverHalo || showRankChainHalos;
 
           return (
@@ -436,7 +482,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   if (mode !== 'relative') return;
                   const key = getTieKeyForId(point._id);
                   if (key) {
-                    setSelectedTieKey(prev => (prev === key ? null : key)); // toggle selection
+                    setSelectedTieKey(prev => (prev === key ? null : key));
                   } else {
                     setSelectedTieKey(null);
                   }
@@ -449,12 +495,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           );
         })}
 
-        {/* Lines:
-            - RELATIVE:
-                - If a tie group is selected → show ONLY the tie polyline + halos
-                - Else → show the global bottom→top chain + halos on every chain node
-            - ABSOLUTE: no lines
-        */}
         {mode === 'relative' && selectedTieKey && selectedTieLinePoints.length >= 2 && (
           <Line
             points={selectedTieLinePoints}
@@ -478,28 +518,28 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           />
         )}
 
-        {/* Personalized highlight */}
-        {showCompleteUI && myPoint && myEntry && (
+        {/* Personalized highlight — unchanged content, only shown if scope allows it */}
+        {showCompleteUI && shouldShowPersonalized && effectiveMyPoint && effectiveMyEntry && (
           <>
-            <group position={myPoint.position}>
-              <RingHalo color={myPoint.color} baseRadius={1.4} active bloomLayer={1} />
+            <group position={effectiveMyPoint.position}>
+              <RingHalo color={effectiveMyPoint.color} baseRadius={1.4} active bloomLayer={1} />
               <mesh>
                 <sphereGeometry args={[1.4, 48, 48]} />
-                <meshStandardMaterial color={myPoint.color} />
+                <meshStandardMaterial color={effectiveMyPoint.color} />
               </mesh>
             </group>
 
             <Html
-              position={myPoint.position}
+              position={effectiveMyPoint.position}
               center
               zIndexRange={[110, 130]}
               style={{ pointerEvents:'none', '--offset-px': `${offsetPx}px` }}
             >
               <div>
                 <GamificationPersonalized
-                  userData={myEntry}
+                  userData={effectiveMyEntry}
                   percentage={myDisplayValue}
-                  color={myPoint.color}
+                  color={effectiveMyPoint.color}
                   mode={mode}
                   selectedSectionId={section}
                   belowCountStrict={myStats.below}
@@ -519,12 +559,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           const hoveredData = points.find((d) => d._id === hoveredDot.dotId);
           if (!hoveredData) return null;
 
-          // 1) Find the backing entry and its average
           const hoveredEntry = safeData.find(d => d._id === hoveredDot.dotId);
           const hoveredAvg = hoveredEntry ? avgWeightOf(hoveredEntry) : undefined;
 
-          // 2) Always compute % from current mode + current calculators
-          //    (calcValueForAvg is already re-created when `mode` changes)
           let displayPct = 0;
           if (Number.isFinite(hoveredAvg)) {
             try {
@@ -534,12 +571,17 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
             }
           }
 
-          // 3) As a final safety net
           if (!Number.isFinite(displayPct) || displayPct < 0) {
             displayPct = mode === 'relative'
               ? getRelForId(hoveredDot.dotId)
               : (absScoreById.get(hoveredDot.dotId) ?? 0);
           }
+
+          // compute stats for hovered
+          const hoveredStats = hoveredEntry
+            ? getTieStats({ data: safeData, targetId: hoveredEntry._id })
+            : { below: 0, equal: 0, above: 0, totalOthers: 0 };
+          const hoveredClass = classifyPosition(hoveredStats);
 
           return (
             <Html

@@ -33,6 +33,18 @@
   backdrop-filter: saturate(120%) blur(2px);
   transition: background 140ms ease;
 }
+/* No submitted data placeholder */
+.empty-center {display: flex; height: 100%;} .empty-card {padding-left: 4px; padding-right: 4px; justify-content: center; display: flex; flex-direction: column; align-items: center;} .empty-card p {text-align: center;}
+.empty-card h3 {padding-bottom: 8px;}
+.empty-card.is-light { color: #111; }
+.empty-card.is-dark  { color: #fff; }
+.empty-card--canvas {width: 250%; margin-left: -75%;}
+@keyframes floaty {
+  0%   { transform: translateY(0);    }
+  50%  { transform: translateY(-4px); }
+  100% { transform: translateY(0);    }
+}
+.floaty { animation: floaty 3s ease-in-out infinite; }
 
 /* Mobile */
 @media screen and (max-width: 768px) {
@@ -91,7 +103,7 @@
   .toggle-button { display: flex; align-items: center; justify-content: center; border: 1px solid rgb(138 138 138 / 78%); width: 40px; height: 40px; background-color: #292929; color: white; border-radius: 6px; border-color: #444; cursor: pointer; position: relative; pointer-events: all; }
   .toggle-icon { display: flex; align-items: center; justify-content: center; line-height: 0; }
   .graph-container { z-index: 4; position: relative; }
-  .percentage-section { position: absolute; width: 25%; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+  .percentage-section { position: absolute; width: 28%; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 60%); color: white; border-top: 3px solid rgba(0, 0, 0, 0.445); font-size: 1rem; font-weight: bold; border-radius: 4px; z-index: 10; pointer-events: none; text-align: center; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out; }
   .percentage-indicator { position: absolute; top: calc(-1.1vw - 14px); left: -25%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.941); color: rgb(255, 255, 255); padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
   .percentage-indicator::before { content: ""; position: absolute; bottom: -5px; left: 100%; top: 50%; transform: translateX(-32%) rotate(-90deg); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid black; }
   .bar-graph-divider {width: 106%;}

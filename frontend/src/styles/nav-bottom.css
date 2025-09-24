@@ -16,15 +16,15 @@
 
 @media(min-width:768px) and (max-width:1024px){
 .mode-toggle-wrap{bottom:2.8em;}
-.mode-toggle-switch{width:34vw;border-radius: 12px;padding:2em 6px;}
-.mode-toggle-thumb{height: 80%;}
+.mode-toggle-switch{width:34vw;border-radius: 12px;padding:2.2em 6px;}
+.mode-toggle-thumb{height: 82%;}
 .mode-toggle-label{font-size: clamp(1.7vw, 2.1vw, 2.1vw);}
 .mode-toggle-thumb{border-radius: 10px;}
 }
 
 @media(min-width:1025px){
 .mode-toggle-wrap{bottom:2.4em;}
-.mode-toggle-switch{width:14vw;border-radius:8px;padding:1.4em 6px;}
+.mode-toggle-switch{width:14vw;border-radius:8px;padding:1.8em 6px;}
 .mode-toggle-thumb{height: 80%;}
 .mode-toggle-label{font-size: clamp(1vw, 1.1vw, 1.2vw);}
 .mode-toggle-thumb{border-radius: 6px;}

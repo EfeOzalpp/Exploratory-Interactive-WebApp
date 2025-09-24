@@ -97,31 +97,31 @@ export default function GamificationGeneral({
 
   if (mode === 'relative') {
     if (isSolo) {
-      relativeLine = <>The first person from this section to arrive!</>;
+      relativeLine = <>You are the first from this section to arrive. Welcome aboard!</>;
     } else if (isTopBand) {
       if (canonicalTie === 'tiedTop') {
-        if (e === 1)       relativeLine = <>Sharing the top, tied with <Strong>one other person</Strong>.</>;
-        else if (e === 2)  relativeLine = <>Sharing the top, tied with <Strong>two others</Strong>.</>;
-        else               relativeLine = <>Sharing the top, tied with <Strong>{e}</Strong> others.</>;
+        if (e === 1)       relativeLine = <>Sharing the top spot with <Strong>one other person</Strong>.</>;
+        else if (e === 2)  relativeLine = <>Sharing the top spot with <Strong>two others</Strong>.</>;
+        else               relativeLine = <>Sharing the top spot with <Strong>{e}</Strong> others.</>;
       } else {
-        relativeLine = <>At the very top, ahead of everyone else.</>;
+        relativeLine = <>You are at the very top, ahead of everyone else.</>;
       }
     } else if (isNearTop) {
       // NEAR TOP — tie-aware
       if (e > 0) {
         if (e === 1 && a === 1)
-          relativeLine = <>Close to the top, tied with <Strong>one person</Strong> and behind only <Strong>one person</Strong>.</>;
+          relativeLine = <>Almost at the top, tied with <Strong>one person</Strong> and behind only <Strong>one</Strong>.</>;
         else if (e === 1)
-          relativeLine = <>Close to the top, tied with <Strong>one person</Strong> and behind only <Strong>{a}</Strong> people.</>;
+          relativeLine = <>Almost at the top, tied with <Strong>one person</Strong> and behind <Strong>{a}</Strong> people.</>;
         else if (a === 1)
-          relativeLine = <>Close to the top, tied with <Strong>{e}</Strong> others and behind only <Strong>one person</Strong>.</>;
+          relativeLine = <>Almost at the top, tied with <Strong>{e}</Strong> others and behind only <Strong>one</Strong>.</>;
         else
-          relativeLine = <>Close to the top, tied with <Strong>{e}</Strong> others and behind only <Strong>{a}</Strong> people.</>;
+          relativeLine = <>Close to the top, tied with <Strong>{e}</Strong> others and behind <Strong>{a}</Strong> people.</>;
       } else {
         relativeLine =
           a === 1
             ? <>Almost at the top, behind only <Strong>one person</Strong>.</>
-            : <>Close to the top, behind only <Strong>{a}</Strong> people.</>;
+            : <>Close to the top, behind <Strong>{a}</Strong> people.</>;
       }
     } else if (isBottomBand) {
       if (canonicalTie === 'tiedBottom') {
@@ -129,24 +129,24 @@ export default function GamificationGeneral({
         else if (e === 2)  relativeLine = <>At the bottom, tied with <Strong>two others</Strong>.</>;
         else               relativeLine = <>At the bottom, tied with <Strong>{e}</Strong> others.</>;
       } else {
-        relativeLine = <>At the bottom, everyone else is ahead.</>;
+        relativeLine = <>At the bottom, with everyone else ahead.</>;
       }
     } else if (isNearBottom) {
       // NEAR BOTTOM — tie-aware
       if (e > 0) {
         if (e === 1 && b === 1)
-          relativeLine = <>Near the bottom, tied with <Strong>one person</Strong> and ahead of only <Strong>one person</Strong>.</>;
+          relativeLine = <>Near the bottom, tied with <Strong>one person</Strong> and ahead of only <Strong>one</Strong>.</>;
         else if (e === 1)
-          relativeLine = <>Near the bottom, tied with <Strong>one person</Strong> and ahead of only <Strong>{b}</Strong> people.</>;
+          relativeLine = <>Near the bottom, tied with <Strong>one person</Strong> and ahead of <Strong>{b}</Strong> people.</>;
         else if (b === 1)
-          relativeLine = <>Near the bottom, tied with <Strong>{e}</Strong> others and ahead of only <Strong>one person</Strong>.</>;
+          relativeLine = <>Near the bottom, tied with <Strong>{e}</Strong> others and ahead of only <Strong>one</Strong>.</>;
         else
-          relativeLine = <>Near the bottom, tied with <Strong>{e}</Strong> others and ahead of only <Strong>{b}</Strong> people.</>;
+          relativeLine = <>Near the bottom, tied with <Strong>{e}</Strong> others and ahead of <Strong>{b}</Strong> people.</>;
       } else {
         relativeLine =
           b === 1
             ? <>Near the bottom, ahead of only <Strong>one person</Strong>.</>
-            : <>Close to the bottom, ahead of only <Strong>{b}</Strong> people.</>;
+            : <>Close to the bottom, ahead of <Strong>{b}</Strong> people.</>;
       }
     } else if (isMiddleBand) {
       if (canonicalTie === 'tiedMiddle') {
@@ -158,12 +158,12 @@ export default function GamificationGeneral({
           relativeLine =
             a === 1
               ? <>In the middle, behind only <Strong>one person</Strong>.</>
-              : <>In the middle, behind only <Strong>{a}</Strong> people.</>;
+              : <>In the middle, behind <Strong>{a}</Strong> people.</>;
         } else if (b < a) {
           relativeLine =
             b === 1
               ? <>In the middle, ahead of only <Strong>one person</Strong>.</>
-              : <>In the middle, ahead of only <Strong>{b}</Strong> people.</>;
+              : <>In the middle, ahead of <Strong>{b}</Strong> people.</>;
         } else {
           relativeLine = <>In the middle, ahead of <Strong>{b}</Strong> and behind <Strong>{a}</Strong>.</>;
         }
@@ -172,9 +172,10 @@ export default function GamificationGeneral({
 
     // Safety fallback so we never render empty
     if (!relativeLine) {
-      relativeLine = <>Somewhere in the pack.</>;
+      relativeLine = <>Somewhere in the group, keeping pace with everyone else.</>;
     }
   }
+
 
   const line =
     mode === 'relative' ? (

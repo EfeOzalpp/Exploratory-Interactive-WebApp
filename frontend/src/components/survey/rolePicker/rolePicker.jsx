@@ -32,7 +32,7 @@ export default function RolePicker({ value, onChange }) {
             >
               <LottieOption selected={checked} />
               <label className="radio-label">
-                <p>{opt.label}</p>
+                <h4>{opt.label}</h4>
               </label>
             </div>
           );

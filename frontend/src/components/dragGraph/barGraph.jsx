@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
+import EmptyStateArt from '../../components/emptyStateArt';
 import '../../styles/graph.css';
 
 const Lottie = React.lazy(() =>
@@ -90,9 +91,15 @@ const BarGraph = () => {
     return out;
   }, [data]);
 
-  const youPercentile = useMemo(
+  const totalCount = Array.isArray(data) ? data.length : 0;
+  const rawYouPercentile = useMemo(
     () => (canShowYou ? getForId(myEntryId) : 0),
     [canShowYou, getForId, myEntryId]
+  );
+  // If you're the only respondent, show 100% instead of 0%
+  const youPercentile = useMemo(
+    () => (canShowYou && totalCount === 1 ? 100 : rawYouPercentile),
+    [canShowYou, totalCount, rawYouPercentile]
   );
 
   const youAbsoluteBar = useMemo(() => {
@@ -160,6 +167,18 @@ const BarGraph = () => {
 
   if (!section) return <p className="graph-loading">Pick a section to begin.</p>;
   if (loading) return null;
+
+  const noData = !Array.isArray(data) || data.length === 0;
+  if (noData) {
+    return (
+      <div className="empty-center">
+        <div className={`empty-card ${darkMode ? 'is-dark' : 'is-light'}`}>
+            <EmptyStateArt kind="bars" className="empty-icon floaty" />
+            <h3>Nothing Here...</h3>
+        </div>
+      </div>
+    );
+}
 
   const orderedColors = ['green', 'yellow', 'red'];
 

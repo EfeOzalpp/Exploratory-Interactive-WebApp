@@ -15,6 +15,10 @@ type GraphContextType = {
   myEntryId: string | null;
   setMyEntryId: (id: string | null) => void;
 
+  // NEW: how the user entered (student/staff/visitor)
+  myRole: string | null;
+  setMyRole: (r: string | null) => void;
+
   data: any[];
   loading: boolean;
 
@@ -60,6 +64,12 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const [myEntryId, setMyEntryId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.myEntryId");
+  });
+
+  // NEW: track how the user entered (student/staff/visitor)
+  const [myRole, setMyRole] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem("gp.myRole");
   });
 
   const [data, setData] = useState<any[]>([]);
@@ -119,11 +129,14 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
       setObserverMode(false);
       setMyEntryId(null);
       setMySection(null);
+      setMyRole(null);
       setSection("all"); // default landing section
     });
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("gp.myEntryId");
       sessionStorage.removeItem("gp.mySection");
+      sessionStorage.removeItem("gp.myRole");
+      sessionStorage.removeItem("gp.myDoc");
     }
   };
 
@@ -136,6 +149,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setMySection,
         myEntryId,
         setMyEntryId,
+        myRole,
+        setMyRole,
         data,
         loading,
         isSurveyActive,
