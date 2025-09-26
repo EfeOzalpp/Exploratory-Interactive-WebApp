@@ -1,13 +1,13 @@
 .cp-scale { width: 100%; padding: 28px 0; user-select: none; padding-bottom: 64px; }
-.cp-rail { position: relative; background: black; border-radius: 3px; }
-.cp-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; border-radius: 100%; border: 2px solid black; pointer-events: auto; transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
+.cp-rail { cursor: pointer; position: relative; background: black; border-radius: 3px; }
+.cp-dot { cursor: pointer; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; border-radius: 100%; border: 2px solid black; pointer-events: auto; transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
 .cp-dot.active { box-shadow: 0 0 0 2px #fff inset, 0 4px 14px rgba(0,0,0,0.14), 0 0 18px rgba(0,0,0,0.08); background: rgba(255,255,255,0.6); }
 
-.cp-thumb-hitbox { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+.cp-thumb-hitbox { cursor: pointer;position: absolute; top: 50%; transform: translate(-50%, -50%); width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .cp-thumb { width: 36px; height: 36px; background: rgb(23,23,23); border-radius: 50%; pointer-events: none; transition: width 0.14s ease, height 0.14s ease, border-radius 0.14s ease, background 0.14s ease, box-shadow 0.14s ease; }
 
 /* Circular glowing plug when hitbox has is-rect */
-.cp-thumb-hitbox.is-rect .cp-thumb { border-radius: 100%; background: rgb(35,35,35); box-shadow: 0 2px 32px rgba(193, 193, 193, 0.25); }
+.cp-thumb-hitbox.is-rect .cp-thumb { border-radius: 100%; background: rgb(35,35,35); box-shadow: 0 2px 32px rgba(193, 193, 193, 0.25); cursor: pointer;}
 
 /* Rectangular insert when thumb itself has is-rect */
 .cp-thumb.is-rect { width: 10px; height: 24px; border-radius: 3px; background: black; box-shadow: 0 0 0 1px #fff inset, 0 1px 3px rgba(0,0,0,0.22); }
@@ -18,7 +18,25 @@
 .qm-answer-abs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0.96); opacity: 0; transition: opacity 140ms ease, transform 200ms ease, filter 200ms ease, box-shadow 220ms ease; pointer-events: none; text-align: center; max-width: min(780px, 90vw); }
 .qm-answer-chip { display: inline-block; padding: 10px 14px; border-radius: 10px; color: #000; line-height: 1.25; }
 .qm-title { text-align: center; padding-bottom: 12px; }
-.qm-answer-abs.is-selected .qm-answer-chip {}
+/* Promote & avoid heavy work every frame */
+.qm-answer-abs {
+  transition: opacity 140ms ease, transform 200ms ease; /* keep light props */
+  will-change: transform, opacity;
+  transform-origin: 50% 50%;
+}
+
+/* IMPORTANT: no transitions while dragging */
+.qm-stage.is-dragging .qm-answer-abs {
+  transition: none !important;
+}
+
+/* Contain paint so other page changes don't cause extra invalidation */
+.qm-stage { contain: paint; }
+
+.cp-thumb, .cp-thumb-hitbox, .cp-rail {
+  will-change: transform, left;
+}
+
 
 /* --------- BREAKPOINTS --------- */
 
@@ -50,7 +68,7 @@
 
 /* 768px and below (mobile) */
 @media (max-width: 768px) {
-  .cp-scale { padding: 20px 0 44px; }
+  .cp-scale { width: 95%; padding-bottom: 3.2em; padding-left: 5%; box-sizing: border-box;}
   .cp-rail { height: 5px; }
   .cp-dot { width: 36px; height: 36px; border-width: 2px; }
   .cp-thumb-hitbox { width: 112px; height: 112px; }
@@ -58,7 +76,7 @@
   .cp-thumb.is-rect { width: 8px; height: 20px; }
   .qm-stage { height: 92px; width: 94vw; }
   .qm-answer-chip { padding: 9px 12px; border-radius: 9px; }
-  .qm-answer-abs { max-width: 90vw; transform: translate(-50%, -50%) scale(0.95); }
+  .qm-answer-abs { min-width: 120vw; max-width: 160vw; transform: translate(-50%, -50%) scale(0.95); }
 }
 
 /* Reduced motion */

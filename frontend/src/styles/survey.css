@@ -14,8 +14,8 @@
 .z-index-respective .survey-section-wrapper, .z-index-respective .survey-section-wrapper2 {pointer-events: none !important;}
 
 /* Section Picker (combobox + listbox) */
-.section-picker { position: relative; display: block; max-width: 420px; margin-top: 1.2rem; }
-.section-combobox { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 6px; border: 1px solid #d6dee6; background: #fff; line-height: 1.2; cursor: text; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: box-shadow 120ms ease, border-color 120ms ease, background-color 120ms ease; }
+.section-picker { position: relative; display: block; max-width: 360px; margin-top: 1.2rem; }
+.section-combobox { display: flex; align-items: center; justify-content: space-between; padding: 1.6em 14px; border-radius: 6px; border: 1px solid #d6dee6; background: #fff; line-height: 1.2; cursor: text; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: box-shadow 120ms ease, border-color 120ms ease, background-color 120ms ease; }
 .section-combobox:hover { border-color: #c7d2de; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
 .section-combobox:focus-within { outline: 2px solid #505050; outline-offset: 2px; }
 .section-combobox.is-open { border-color: #000000b5; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
@@ -24,16 +24,16 @@
 .section-input:focus { outline: none; }
 .section-chevron { margin-left: 10px; opacity: .7; transition: transform 160ms ease, opacity 120ms ease; flex: 0 0 auto; }
 .section-combobox.is-open .section-chevron { transform: rotate(180deg); opacity: .9; }
-.section-listbox { background: #f5f5f5; border: 1px solid #d6dee6; border-radius: 6px; box-shadow: 0 10px 20px rgba(0,0,0,.05), 0 3px 8px rgba(0,0,0,.06); overflow-y: auto; padding: 6px; }
+.section-listbox { height: 300px; background: #f5f5f5; border: 1px solid #d6dee6; border-radius: 6px; box-shadow: 0 10px 20px rgba(0,0,0,.05), 0 3px 8px rgba(0,0,0,.06); overflow-y: auto; padding: 6px; }
 .section-listbox.drop-down { margin-top: 6px; }
 .section-listbox.drop-up { margin-bottom: 6px; }
-.section-empty { padding: 1.2em 12px; border-radius: 8px; color: #414141; background: #ffffff; font-size: .95vw; }
-.section-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; outline: none; border: 1px solid transparent; transition: background-color 100ms ease, border-color 100ms ease; }
+.section-empty { padding: 1.2em 12px; border-radius: 8px; color: #414141; background: #ffffff;}
+.section-option { display: flex; align-items: center; gap: 10px; padding: 0.8em 12px; border-radius: 10px; cursor: pointer; outline: none; border: 1px solid transparent; transition: background-color 100ms ease, border-color 100ms ease; }
 .section-option.is-active { background: rgba(255, 255, 255, 0.642); }
 .section-option.is-selected { border-color: #bebebe; background-color: #fff; }
 .section-dot { width: 8px; height: 8px; border-radius: 50%; background: #c3cbd5; flex: 0 0 auto; }
 .section-option.is-selected .section-dot, .section-dot.is-selected { background: #202020; }
-.section-label { font-size: .95rem; color: #1b2430; }
+.section-label { color: #1b2430; }
 .error-container { margin-top: 0.75rem; }
 .begin-button { margin-top: 1rem; }
 
@@ -57,22 +57,24 @@
   /* Main survey component */
   .survey-section-wrapper, .survey-section-wrapper3 { z-index: 6; user-select: none; pointer-events: none; display: flex; justify-content: center; align-items: center; width: 100%; position: absolute; bottom: 15px; }
   .survey-section, .survey-section-2 { width: 100%; display: flex; justify-content: center; align-content: flex-end; flex-wrap: wrap; }
-  .section-group-header {padding-bottom: 0.8em; padding-top: 0.8em; background-color: rgb(255, 255, 255); border-radius: 8px;}
-  
+  .section-group-header {padding-bottom: 1.4em; padding-top: 1.4em; background-color: rgb(255, 255, 255); border-radius: 8px;}
+  .section-combobox.is-open {min-width: 360px; box-sizing: border-box;}
+
   /* Onboarding Beginning */
-  .begin-title1 { font-weight: 400; padding-bottom: 0.4em; }
-  .begin-title2 { padding-bottom: 0.5em; }
-  button.begin-button, button.begin-button2, button.begin-button3 { color: #fff; background-color: #292929; padding: 1.6em 0; border-radius: 6px; cursor: pointer; border: none; margin-bottom: 1.4em; z-index: 10; pointer-events: all; }
-  button.begin-button2 { margin-top: 1em; }
-  button.begin-button2, button.begin-button, button.begin-button3 { width: 50%; }
+  .begin-title1 { font-weight: 400; padding-bottom: 0em;}
+  .surveyStart .begin-title1 { padding-bottom: 0.3em;}
+  .begin-title2 { padding-bottom: 0.3em; }
+  button.begin-button, button.begin-button2, button.begin-button3 { color: #fff; background-color: #292929; padding-top: 1.8em; padding-bottom: 1.8em; border-radius: 6px; cursor: pointer; border: none; z-index: 10; pointer-events: all; }
+  button.begin-button, button.begin-button3 { width: 40%; }
   button.begin-button3 { width: 20% !important; margin-bottom: 13.95em !important; }
+  button.begin-button2, .shuffle-button { width: 30%;}
+  .shuffle-button { display: flex; align-content: center; flex-wrap: wrap; gap: 2px; justify-content: center; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff;}
   button.begin-button, button.begin-button3 { border: 1px solid rgba(138, 138, 138, 0.2);}
-  button.begin-button { width: 45%; }
   button.begin-button3 { width: 100%; }
   button.begin-button:hover { transform: scale(1.05); transition: transform 0.1s ease, box-shadow 0.1s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
   button.begin-button2:hover, button.begin-button3:hover { background-color: #353b41; transition: background-color 0.2s ease-in-out; }
-  .surveyStart { display: flex; flex-direction: column; width: 92%; flex-wrap: wrap; align-content: center; text-align: center; }
-  .questionnaire { display: flex; flex-direction: column; width: 92%; flex-wrap: nowrap; }
+  .surveyStart { margin-bottom: 0.8em; display: flex; flex-direction: column; align-items: center; width: 100%; flex-wrap: wrap; align-content: center; text-align: center; }
+  .questionnaire { margin-bottom: 0.8em; display: flex; flex-direction: column; width: 92%; flex-wrap: nowrap; }
   .question-section { display: flex; justify-content: flex-start; align-items: center; position: relative; }
   .input-part-inside { pointer-events: all; }
   .question-part h4 { margin-left: 6vw; padding-bottom: 0.65em; }
@@ -80,6 +82,7 @@
   .error-container { background-color: rgb(246, 246, 246); padding: 1em 2.4em; border-radius: 12px; backdrop-filter: blur(6px); margin-bottom: 24px; -webkit-backdrop-filter: blur(6px); }
   .error-container h2 { color: rgb(241, 84, 60); }
   .email-tag { pointer-events: all; }
+  .survey-actions {display: flex; gap: 16px; justify-content: center;}
 
   /* Label */
   label { font-size: 16px; color: #333; cursor: pointer; padding: 5px 8px; }
@@ -89,9 +92,9 @@
   /* Radio Button */
   .lottie-option { display: inline-flex; cursor: pointer; }
   .lottie-option.selected { transform: scale(1.1); transition: transform 0.2s ease-in-out; }
-  .input-part-inside { display: flex; align-items: center; gap: 6px; user-select: text; }
+  .input-part-inside { display: flex; align-items: center; gap: 3px; user-select: text; }
   .radio-button { cursor: pointer; height: 1.8em; width: 1.8em; min-width: 1.8em; min-height: 1.8em; -webkit-tap-highlight-color: transparent; outline: none; webkit-tap-highlight-color: transparent; }
-
+  
   /* Special Cases */
   /* Special case for three/drei DOM environment context integration for z-index */
   .z-index-respective .survey-section-wrapper, .z-index-respective .survey-section-wrapper2 { pointer-events: none; display: flex; justify-content: flex-start; align-items: center; width: 100vw; position: relative; left: -14vw; }
@@ -103,6 +106,7 @@
   .begin-button4 { margin-top: -1.2em; width: 20%; margin-bottom: 15.15em !important; color: #ffffff00; background-color: #29292900; padding: 1.6em 0; border-radius: 6px; cursor: pointer; border: none; margin-bottom: 2.4em; z-index: 10; pointer-events: all; }
   .begin-button4:hover { background-color: rgba(128, 128, 128, 0.114); transition: 0.2s ease-in; border-radius: 6px; }
   .survey-section-wrapper3.complete-active { height: 100%; }
+  .input-part-inside:nth-of-type(2), .input-part-inside:nth-of-type(3) { padding-top: 4px;}
 }
 
 /* Tablet */
@@ -114,14 +118,16 @@
   .survey-section-wrapper3 { bottom: 0px !important; padding-right: 48px; padding-left: 48px; box-sizing: border-box; }
   .survey-section, .survey-section-2 { min-width: 100%; max-width: 100%; min-height: 26vh; max-height: 26vh; display: flex; justify-content: flex-start; align-content: flex-end; flex-wrap: wrap; position: relative; }
   .survey-section-2 { padding-bottom: 5%; }
-  .section-combobox {padding: 1.4em 1em; margin-bottom: 0.6em;}
+  .section-combobox {padding: 1.6em 1.2em; margin-bottom: 0.6em;}
   .section-group-header {padding-bottom: 1.2em; padding-top: 1.2em; background-color: rgb(255, 255, 255); border-radius: 8px;}
-  .section-listbox { max-height: 380px;}
+  .section-listbox { max-height: 420px; height: 420px;}
+  .section-combobox.is-open {min-width: 360px; box-sizing: border-box;}
   .section-option {padding: 18px 12px;}
+  .section-picker {max-width: 420px;}
+  .section-combobox.is-open {min-width: 420px; box-sizing: border-box;}
 
   /* Onboarding Beginning */
-  .begin-title1 { font-weight: 400; }
-  .begin-title2 { padding: 0.2em; }
+  .begin-title1 { font-weight: 400; padding-bottom: 0.4em;}
   button.begin-button { width: 18em; }
   .survey-actions {display: flex; gap: 32px;}
   .shuffle-button {justify-content: center; gap: 8px; display: flex; padding: 1em 0; border-radius: 6px; cursor: pointer; border: none; margin-bottom: 6.2em; z-index: 10; pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff;}
@@ -183,7 +189,7 @@
 
   /* Onboarding Beginning */
   .begin-title1 { font-weight: 400; margin-bottom: -12px; }
-  .begin-title2 { padding: 0.3em; }
+  .begin-title2 { padding-bottom: 0.4em; }
   .survey-actions {display: flex; gap: 32px;}
   .shuffle-button {justify-content: center; gap: 8px; display: flex; padding-bottom: 1.8em; padding-top: 1.8em; margin-bottom: 2.4em; pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff;}
   .shuffle-icon {display: inline-block; vertical-align: middle; width: 16px; height: 16px;}
@@ -199,7 +205,7 @@
   .surveyStart, .questionnaire { display: flex; flex-direction: column; width: 100%; align-items: center;}
   .surveyStart { text-align: center; align-items: center; }
   .section-picker {padding-bottom: 0.8em;}
-  .section-listbox {max-height: 340px;}
+  .section-listbox {max-height: 400px; height: 400px;}
 
   .questionnaire { justify-content: flex-end; pointer-events: all;}
   .question-part { position: relative; top: 8px; left: 5px; }
@@ -207,7 +213,7 @@
   .error-container { white-space: nowrap; margin-left: 4.5vw; background-color: rgb(246, 246, 246); padding: 1.2em 2em; margin-bottom: 1.2em; border-radius: 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .error-container h2 { color: rgb(241, 84, 60); }
   .email-tag { pointer-events: all; }
-  .begin-title1 { padding-bottom: 0.3em; }
+  .begin-title1 { padding-bottom: 0.9em; }
 
   /* Label */
   label { font-size: 16px; color: #333; cursor: pointer; padding: 4px 8px; white-space: nowrap; }
@@ -236,7 +242,7 @@
   .section-picker { max-width: 520px; }
   .section-combobox { padding: 1.6em 16px; }
   .section-input { font-size: 1.05vw; font-weight: 400; }
-  .section-option { padding: 12px 14px; }
+  .section-option { padding: 14px 14px; }
   .section-label { font-size: 1rem; }
   .section-listbox { width: 340px; }
   .section-chevron { font-size: 1.2vw; border-radius: 16px; }

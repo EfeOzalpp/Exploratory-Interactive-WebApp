@@ -28,9 +28,9 @@ export default function CheckpointScale({ options, value, initialT = 1.5, resetK
   useEffect(() => { setTInternal(initialT); }, [resetKey, initialT]);
 
   // Velocity sampling for soft-magnet bypass
-  const lastSampleRef = useRef({ t: initialT, time: performance.now() });
+  const lastSampleRef = useRef({ t: initialT, time: (typeof performance !== 'undefined' ? performance.now() : 0) });
   const getVelocity = (tNow) => {
-    const now = performance.now();
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     const dt = Math.max(1, now - lastSampleRef.current.time) / 1000;
     const v = (tNow - lastSampleRef.current.t) / dt;
     lastSampleRef.current = { t: tNow, time: now };
@@ -71,7 +71,7 @@ export default function CheckpointScale({ options, value, initialT = 1.5, resetK
     const vAbs = Math.abs(getVelocity(tRaw));
     const tBiased = softMagnet(tRaw, vAbs);
     setTInternal(tBiased);
-    emitChange(tBiased, false);
+    emitChange(tBiased, false, { dragging: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options, emitChange]);
 
@@ -79,8 +79,9 @@ export default function CheckpointScale({ options, value, initialT = 1.5, resetK
     e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     setDragging(true);
-    lastSampleRef.current = { t: tInternal, time: performance.now() };
+    lastSampleRef.current = { t: tInternal, time: (typeof performance !== 'undefined' ? performance.now() : Date.now()) };
     updateFromClientX(e.clientX);
+    emitChange(tInternal, false, { dragging: true });
   };
 
   const onPointerMove = (e) => {
@@ -88,21 +89,28 @@ export default function CheckpointScale({ options, value, initialT = 1.5, resetK
     updateFromClientX(e.clientX);
   };
 
-  const onPointerUp = () => {
+  const endDrag = (commit = true) => {
     setDragging(false);
     const nearest = Math.round(tInternal);
-    if (Math.abs(tInternal - nearest) <= COMMIT_RADIUS) {
-      setTInternal(nearest);
-      emitChange(nearest, true);
+    if (commit) {
+      if (Math.abs(tInternal - nearest) <= COMMIT_RADIUS) {
+        setTInternal(nearest);
+        emitChange(nearest, true, { dragging: false });
+      } else {
+        emitChange(tInternal, true, { dragging: false });
+      }
     } else {
-      emitChange(tInternal, true);
+      emitChange(tInternal, false, { dragging: false });
     }
   };
+
+  const onPointerUp = () => endDrag(true);
+  const onPointerCancel = () => endDrag(false);
 
   const handleDotClick = (i) => (e) => {
     e.stopPropagation();
     setTInternal(i);
-    emitChange(i, true);
+    emitChange(i, true, { dragging: false });
   };
 
   // Visuals
@@ -117,7 +125,7 @@ export default function CheckpointScale({ options, value, initialT = 1.5, resetK
     if (!primedRef.current) {
       primedRef.current = true;
       setTInternal(initialT);
-      emitChange(initialT, false, { prime: true });
+      emitChange(initialT, false, { prime: true, dragging: false });
     }
   }, [initialT, emitChange]);
 
@@ -129,6 +137,7 @@ export default function CheckpointScale({ options, value, initialT = 1.5, resetK
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         style={{ touchAction: 'none' }}
       >
         {[0, 1, 2, 3].map((i) => {

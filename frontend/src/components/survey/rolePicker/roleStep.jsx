@@ -16,7 +16,7 @@ export default function RoleStep({ value, onChange, onNext, error }) {
 
   return (
     <div className="surveyStart">
-      <h3 className="begin-title1">Welcome</h3>
+      <h3 className="begin-title1">Let's get started!</h3>
       <h1 className="begin-title2">Butterfly Effect</h1>
 
       <RolePicker value={value} onChange={onChange} />
@@ -24,7 +24,7 @@ export default function RoleStep({ value, onChange, onNext, error }) {
       {/* RoleStep-specific error message */}
       {!isSelected && error && (
         <div className="error-container">
-          <h2>Choose the best fitting option</h2>
+          <h2>What option fits best?</h2>
         </div>
       )}
 

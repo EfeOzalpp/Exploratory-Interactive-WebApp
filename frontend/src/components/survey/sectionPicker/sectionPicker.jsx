@@ -185,7 +185,7 @@ export default function SectionPickerIntro({
 
   return (
     <div className="surveyStart" ref={wrapperRef}>
-      {!open && <h3 className="begin-title1">{titleOverride ?? 'Select Your Department'}</h3>}
+      {!open && <h3 className="begin-title3">{titleOverride ?? 'Select Your Department'}</h3>}
 
       <div className="section-picker">
         <div

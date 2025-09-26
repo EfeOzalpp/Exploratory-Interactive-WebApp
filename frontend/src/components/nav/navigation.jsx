@@ -186,7 +186,7 @@ const Navigation = () => {
                   onClick={toggleObserverMode}
                   aria-pressed={observerMode}
                 >
-                  {observerMode ? "Back" : "Observe All Results"}
+                  {observerMode ? "Back" : "Explore Results"}
                 </button>
               )}
             </div>

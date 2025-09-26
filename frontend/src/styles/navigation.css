@@ -84,16 +84,16 @@ div.level-one, .observe-results { z-index: 10; }
   div.level-one.burger-closed .feedback, div.level-one.burger-closed .nav-toggle { pointer-events: none; }
   .burger-toggle { width: 36px; height: 36px; border-radius: 8px; margin-top: 16px; }
   .level-two { margin-bottom: 1em; }
-  button.observe-results { padding-bottom: 1.5em; padding-top: 1.5em; width: 40vw; }
-  button.observe-results.active.is-dark {padding-bottom: 1.2em; padding-top: 1.2em;}
+  button.observe-results { padding-bottom: 1.8em; padding-top: 1.8em; width: 40vw; }
+  button.observe-results.active.is-dark {padding-bottom: 1.5em; padding-top: 1.5em;}
   button.observe-results.is-dark { width: 16vw; }
-  .feedback, .nav-toggle { padding-bottom: 1.5em; padding-top: 1.5em; }
+  .feedback, .nav-toggle { padding-bottom: 1.8em; padding-top: 1.8em; }
   .nav-toggle { width: 40vw; align-items: center; justify-content: center;}
   .nav-toggle.active {width: 27vw; display: inline-flex; align-items: center; gap: 6px; justify-content: flex-start; padding-left: 8px; padding-top: 1.28em; padding-bottom: 1.28em;}
   .feedback { width: 40vw; }
   .nav-toggle-icon {top: 2px; position: relative;}
   .gp-picker { max-width: 880px; }
-  .gp-trigger { width: 200px; font-family: Heebo, sans-serif; padding: 1.2em 18px; border-radius: 12px; font-size: 3.6vw; font-weight: 600; color: #282828; }
+  .gp-trigger { width: 200px; font-family: Heebo, sans-serif; padding: 1.4em 18px; border-radius: 12px; font-size: 3.6vw; font-weight: 600; color: #282828; }
   .gp-trigger-chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; background: rgba(0,0,0,0.04); border: 1px solid #d6dee6; box-shadow: 0 1px 2px rgba(0,0,0,.05) inset; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; pointer-events: none; }
   .gp-listbox { border-radius: 16px; max-height: 400px; width: 280px; left: -50px; }
   .gp-option { padding: 14px 16px; }
