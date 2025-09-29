@@ -63,6 +63,12 @@
   .shuffle-button { transition: none; }
   .shuffle-button.is-demo-press { transform: none; box-shadow: none; }
 }
+/* Disable transitions while ghosting (tutorial) to avoid double-easing jitter */
+.qm-stage.is-ghosting .qm-answer-abs {
+  transition: none !important;
+}
+.section-label {text-align: left;}
+
 /* Mobile */
 @media (max-width: 768px) {
   /* Main survey component */
@@ -70,11 +76,11 @@
   .survey-section, .survey-section-2 { width: 100%; display: flex; justify-content: center; align-content: flex-end; flex-wrap: wrap; }
   .section-group-header {padding-bottom: 1.4em; padding-top: 1.4em; background-color: rgb(255, 255, 255); border-radius: 8px;}
   .section-combobox.is-open {min-width: 360px; box-sizing: border-box;}
-
+  .survey-section {padding-top: 1.2em;}
   /* Onboarding Beginning */
   .begin-title1 { font-weight: 400; padding-bottom: 0em;}
-  .surveyStart .begin-title1 { padding-bottom: 0.3em;}
-  .begin-title2 { padding-bottom: 0.3em; }
+  .surveyStart .begin-title1 { padding-bottom: 0.4em;}
+  .begin-title2 { padding-bottom: 0.4em; }
   button.begin-button, button.begin-button2, button.begin-button3 { color: #fff; background-color: #292929; padding-top: 1.8em; padding-bottom: 1.8em; border-radius: 6px; cursor: pointer; border: none; z-index: 10; pointer-events: all; }
   button.begin-button, button.begin-button3 { width: 40%; }
   button.begin-button3 { width: 20% !important; margin-bottom: 13.95em !important; }
@@ -187,6 +193,7 @@
   .begin-button4 { width: 50%; margin-bottom: 0em !important; color: #ffffff00; background-color: #29292900; padding-bottom: 2em; padding-top: 2em; border-radius: 6px; cursor: pointer; border: none; margin-bottom: 2.4em; z-index: 10; pointer-events: all; }
   .begin-button4:hover { background-color: rgba(128, 128, 128, 0.114); transition: 0.2s ease-in; }
   .survey-section-wrapper3.complete-active { height: 100%; }
+  .survey-section {padding-top: 9.6em;}
 }
 
 /* Desktop */
@@ -199,9 +206,9 @@
   .section-group-header {padding-bottom: 1.2em; padding-top: 1.2em; background-color: rgb(255, 255, 255); border-radius: 6px;}
 
   /* Onboarding Beginning */
-  .begin-title1 { font-weight: 400; margin-bottom: -12px; }
-  .begin-title2 { padding-bottom: 0.33em; }
-  .survey-actions {display: flex; gap: 32px;}
+  .begin-title1 { font-weight: 400; padding-bottom: 0.4em; }
+  .begin-title2 { padding-bottom: 0.5em; }
+  .survey-actions {display: flex; gap: 24px;}
   .shuffle-button {justify-content: center; gap: 8px; display: flex; padding-bottom: 1.8em; padding-top: 1.8em; margin-bottom: 2.4em; pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff;}
   .shuffle-icon {display: inline-block; vertical-align: middle; width: 16px; height: 16px;}
   .shuffle-button:hover {background: #fbfbfb; transition: background-color 0.2s ease-in-out;}
@@ -224,7 +231,6 @@
   .error-container { white-space: nowrap; margin-left: 4.5vw; background-color: rgb(246, 246, 246); padding: 1.2em 2em; margin-bottom: 1.2em; border-radius: 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .error-container h2 { color: rgb(241, 84, 60); }
   .email-tag { pointer-events: all; }
-  .begin-title1 { padding-bottom: 0.9em; }
 
   /* Label */
   label { font-size: 16px; color: #333; cursor: pointer; padding: 4px 8px; white-space: nowrap; }
@@ -235,13 +241,13 @@
   .lottie-option { display: inline-flex; cursor: pointer; }
   .lottie-option.selected { transform: scale(1.1); transition: transform 0.2s ease-in-out; }
   .input-part-inside { display: flex; align-items: center; gap: 6px; user-select: text;}
-  .input-part-inside:nth-of-type(2), .input-part-inside:nth-of-type(3) { padding-top: 4px;}
+  .input-part-inside:nth-of-type(2), .input-part-inside:nth-of-type(3) { padding-top: 8px;}
   /* Special Cases */
   /* Special case for three/drei DOM environment context integration for z-index */
   .z-index-respective .survey-section-wrapper, .z-index-respective .survey-section-wrapper2 { display: flex; justify-content: flex-start; align-items: center; width: 100vw; position: relative; left: -59.5vw; }
   .z-index-respective .survey-section-wrapper .survey-section, .z-index-respective .survey-section-wrapper2 .survey-section { position: relative; pointer-events: none; display: flex; justify-content: center; align-content: flex-start; flex-wrap: wrap; bottom: var(--dynamic-margin); }
   .z-index-respective .survey-section-wrapper .survey-section .surveyStart .begin-button3, .z-index-respective .survey-section-wrapper2 .survey-section .surveyStart .begin-button4 { width: 20%; pointer-events: all; }
-  .z-index-respective .survey-section-wrapper .survey-section .surveyStart .begin-button3 {bottom: 11px; border: 1px solid rgba(138, 138, 138, 0.2);}
+  .z-index-respective .survey-section-wrapper .survey-section .surveyStart .begin-button3 {bottom: 20px; border: 1px solid rgba(138, 138, 138, 0.2);}
   
   /* Overlay component */
   .survey-section-wrapper2 { z-index: 6; bottom: 2px; }

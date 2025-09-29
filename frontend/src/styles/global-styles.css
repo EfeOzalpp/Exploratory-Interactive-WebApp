@@ -21,8 +21,8 @@ code {font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', mono
   h3 { font-size: clamp(4.8vw, 5vw, 5.2vw); font-weight: 400; line-height: 1em; }
   .qm-stage h3 {  font-weight: 300; }
   .qm-count, .qm-title {  font-size: clamp(3.9vw, 4.1vw, 4.3vw);  font-weight: 500;}
-  h4 { font-size: clamp(3.8vw, 4vw, 4.2vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
-  .shuffle-button span, .section-group-header, .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
+  h4 { font-size: clamp(3.8vw, 4vw, 4.2vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.4em; }
+  .shuffle-button span, .section-group-header, .begin-button span, .hb-skip, .begin-button2 span, .begin-button3 span, .begin-button4 span { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
   .observe-results, .nav-toggle, .feedback { font-size: clamp(3vw, 3.2vw, 3.4vw); font-weight: 500; letter-spacing: -0.166px; }
   p, .section-input { font-size: clamp(3vw, 3.4vw, 3.6vw); font-weight: 400; letter-spacing: -0.166px; }
   .section-label {font-size: clamp(3.6vw, 3.8vw, 4vw); font-weight: 400; letter-spacing: -0.166px; }
@@ -35,13 +35,13 @@ code {font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', mono
 
 /* Tablet */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
-  h1 { font-size: clamp(4.8vw, 5vw, 5.2vw); line-height: 1.454em; font-weight: 400; letter-spacing: -0.3px; }
+  h1 { font-size: clamp(4.8vw, 5px, 5.2vw); line-height: 1.484em; font-weight: 400; letter-spacing: -0.3px; }
   h1.begin-title2 { white-space: nowrap; }
   h2 { font-size: clamp(3.4vw, 3.6vw, 3.8vw); font-weight: 600; line-height: 1.2em; letter-spacing: 0.2px; }
   h3 { font-size: clamp(2.6vw, 2.8vw, 3vw); font-weight: 400; line-height: 1em; }
   .qm-stage h3 {  font-weight: 300; }
   .qm-count, .qm-title {  font-size: clamp(1.9vw, 2.1vw, 2.3vw);  font-weight: 500;}
-  .begin-button span, .begin-button2 span, .begin-button3 span, .begin-button4 span, .shuffle-button span { font-size: clamp(1.8vw, 2vw, 2.2vw); font-weight: 400; line-height: 1em; }
+  .begin-button span, .begin-button2 span, .hb-skip, .begin-button3 span, .begin-button4 span, .shuffle-button span { font-size: clamp(1.8vw, 2vw, 2.2vw); font-weight: 400; line-height: 1em; }
   h4, .section-group-header  { font-size: clamp(1.9vw, 2.1vw, 2.3vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
   .observe-results, .nav-toggle, .feedback { font-size: clamp(1.6vw, 1.8vw, 2.2vw); font-weight: 500; letter-spacing: 0.12px; line-height: 1.23em; }
   p, .section-input { font-size: clamp(1.5vw, 1.75vw, 1.9vw); font-weight: 400; letter-spacing: -0.166px; }
@@ -54,7 +54,7 @@ code {font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', mono
 
 /* Desktop */
 @media screen and (min-width: 1025px) {
-  h1 { font-size: 2.4vw; line-height: 1.204em; font-weight: 400; letter-spacing: -0.23px; }
+  h1 { font-size: 2.3vw; line-height: 1.224em; font-weight: 400; letter-spacing: 0.06px; }
   h2 { font-size: 2vw; font-weight: 500; line-height: 1.2em; }
   .number-part h2 { line-height: 1.6em; }
   h3 { font-size: 1.45vw; font-weight: 400; }

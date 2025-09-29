@@ -1,4 +1,3 @@
-// src/components/survey/QuestionFlowWeighted.jsx
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import CheckpointScale from '../../survey/checkpointScale';
 import QuestionMonitor from './questionMonitor';
@@ -41,24 +40,24 @@ function getStepContent(stepId) {
       return {
         title: 'Welcome!',
         body: 'Let’s start with a quick walkthrough.',
-        binder: 'Click Next:  How to answer?',
+        binder: 'Next: Selecting answers',
       };
     case 'drag':
       return {
         title: 'Drag it!',
-        body: 'Slide freely. Anywhere on the line works, doesn’t have to be right on checkpoint.',
-        binder: 'Next: Answer intuitively',
+        body: 'Answers are revealed as you drag. You can drag to anywhere you like.',
+        binder: 'Next: Text Cues',
       };
     case 'shuffle':
       return {
-        title: 'See It Move',
-        body: 'As the marker shifts, text size changes to show which answer you’re closer to.',
+        title: 'Text Cues',
+        body: 'Text grow and shrink as you blend them, choose the point where the answer matches you.',
         binder: 'Next: Shuffle',
       };
     case 'edges':
       return {
         title: 'Mix And Match',
-        body: "When the answers you like aren't intersecting, shuffle helps you!",
+        body: "When the two answers you like aren't aligning, shuffle them.",
         binder: 'Begin',
       };
     default:
@@ -95,10 +94,14 @@ export default function QuestionFlowWeighted({
   const userInteractedRef = useRef(false);
   const previewAnimRef = useRef({ raf: 0, token: 0 });
 
+  // NEW: single source of truth for ghost position during tutorial
+  const ghostTRef = useRef(1.5);
+
   useEffect(() => {
     if (tutorialMode) {
       setTutorialStepIndex(0);
       userInteractedRef.current = false;
+      ghostTRef.current = 1.5; // reset ghost on tutorial (first step)
     }
   }, [tutorialMode]);
 
@@ -123,7 +126,7 @@ export default function QuestionFlowWeighted({
           if (!cancelled && count < 1) cycleTimer = window.setTimeout(cycle, 500);
         }, 1200);
       };
-      cycleTimer = window.setTimeout(cycle, 2200);
+      cycleTimer = window.setTimeout(cycle, 3400);
     } else {
       setDemoPrimaryPress(false);
     }
@@ -151,12 +154,16 @@ export default function QuestionFlowWeighted({
   // Update preview t (affects monitor/ghost; no thumb move)
   const setPreviewT = (t) => {
     const w = weightAtTFromOptions(displayOptions, t);
+
+    // keep ghostTRef authoritative for animation starts
+    ghostTRef.current = Math.max(0, Math.min(3, t));
+
     setWeights((prev) => ({ ...prev, [q.id]: w }));
     setVizMeta((m) => ({
       ...m,
       [q.id]: {
         t,
-        index: Math.abs(t - Math.round(t)) < 1e-4 ? Math.round(t) : null,
+        index: null,            // ghost never requests "snapped"
         committed: false,
         dragging: false,
       },
@@ -164,22 +171,17 @@ export default function QuestionFlowWeighted({
     onWeightsUpdate?.({ ...weights, [q.id]: w });
   };
 
-  // Animate preview t (keep start = current t, never reset-to-center)
+  // Animate preview t (always start from ghostTRef, never fall back to 1.5 mid-loop)
   const animatePreviewTo = (targetT, duration = 900) => {
     if (previewAnimRef.current.raf) cancelAnimationFrame(previewAnimRef.current.raf);
     const token = ++previewAnimRef.current.token;
 
-    const startT =
-      typeof vizMeta[q.id]?.t === 'number'
-        ? Math.max(0, Math.min(3, vizMeta[q.id].t))
-        : 1.5;
-
+    const startT = Math.max(0, Math.min(3, ghostTRef.current)); // <— key change
     const clampedTarget = Math.max(0, Math.min(3, targetT));
     const startTime = performance.now();
     const ease = (x) => 0.5 * (1 - Math.cos(Math.PI * x));
 
     const tick = (now) => {
-      // Allow during SHUFFLE (see-it-move) and EDGES (we're not using it there now)
       if (previewAnimRef.current.token !== token || !tutorialMode || !['shuffle', 'edges'].includes(step?.id)) return;
       const u = Math.min(1, Math.max(0, (now - startTime) / duration));
       const t = startT + (clampedTarget - startT) * ease(u);
@@ -216,7 +218,6 @@ export default function QuestionFlowWeighted({
       }
     }
     setError('');
-    // NOTE: no extra animatePreviewTo here for EDGES — you asked to keep shuffle “as is”.
   }
 
   // EDGES step → cycle faux shuffle presses (no extra marker motion)
@@ -240,66 +241,65 @@ export default function QuestionFlowWeighted({
     };
   }, [demoShuffleEnabled]);
 
-    // SHUFFLE step → smooth drag-like motion, pause, and avoid checkpoints
-    useEffect(() => {
-      if (!(tutorialMode && step?.id === 'shuffle')) return;
+  // SHUFFLE (Text Cues) step → smooth drag-like motion, pause, and avoid checkpoints
+  useEffect(() => {
+    if (!(tutorialMode && step?.id === 'shuffle')) return;
 
-      let cancelled = false;
-      let holdTimer = 0;
+    let cancelled = false;
+    let holdTimer = 0;
 
-      // persistent ghost position
-      let lastT =
-        Number.isFinite(vizMeta[q.id]?.t)
-          ? Math.max(0, Math.min(3, Number(vizMeta[q.id].t)))
-          : 1.5;
+    // seed ghost from current viz (if any), else keep whatever last ghost had
+    if (Number.isFinite(vizMeta[q.id]?.t)) {
+      ghostTRef.current = Math.max(0, Math.min(3, Number(vizMeta[q.id].t)));
+    }
 
-      const MOVE_MS = 700;    // smooth move duration
-      const HOLD_MS = 2000;   // pause at destination
-      const MIN_DELTA = 0.6;  // require big jumps
-      const AVOID_RADIUS = 0.25; // avoid near 0,1,2,3
+    const MOVE_MS = 700;
+    const HOLD_MS = 2000;
+    const MIN_DELTA = 0.6;
+    const AVOID_RADIUS = 0.25;
 
-      const isNearCheckpoint = (t) =>
-        [0, 1, 2, 3].some((c) => Math.abs(t - c) < AVOID_RADIUS);
+    const isNearCheckpoint = (t) =>
+      [0, 1, 2, 3].some((c) => Math.abs(t - c) < AVOID_RADIUS);
 
-      const pickTarget = () => {
-        let candidate, tries = 0;
-        do {
-          candidate = 0.2 + Math.random() * 2.6; // keep inside [0.2, 2.8]
-          tries++;
-          if (tries > 15) break;
-        } while (
-          Math.abs(candidate - lastT) < MIN_DELTA || isNearCheckpoint(candidate)
-        );
-        return candidate;
-      };
+    const pickTarget = () => {
+      let candidate, tries = 0;
+      do {
+        candidate = 0.2 + Math.random() * 2.6; // [0.2, 2.8]
+        tries++;
+        if (tries > 20) break;
+      } while (
+        Math.abs(candidate - ghostTRef.current) < MIN_DELTA || // <— compare to ref, not local
+        isNearCheckpoint(candidate)
+      );
+      return candidate;
+    };
 
-      const hop = () => {
-        if (cancelled) return;
-        const target = pickTarget();
+    const hop = () => {
+      if (cancelled) return;
+      const target = pickTarget();
+      animatePreviewTo(target, MOVE_MS);
+      holdTimer = window.setTimeout(hop, MOVE_MS + HOLD_MS);
+    };
 
-        // drag-like easing feels like the DRAG demo
-        animatePreviewTo(target, MOVE_MS);
-        lastT = target;
+    stopDragDemo(); // don’t run both at once
+    hop();
 
-        holdTimer = window.setTimeout(hop, MOVE_MS + HOLD_MS);
-      };
+    return () => {
+      cancelled = true;
+      clearTimeout(holdTimer);
+      if (previewAnimRef.current.raf) cancelAnimationFrame(previewAnimRef.current.raf);
+      previewAnimRef.current.raf = 0;
+      previewAnimRef.current.token++;
+    };
+  }, [tutorialMode, step?.id, q.id]); 
 
-      stopDragDemo(); // don’t run both at once
-      hop();
-
-      return () => {
-        cancelled = true;
-        clearTimeout(holdTimer);
-      };
-    }, [tutorialMode, step?.id, q.id]); 
-
-    // DRAG step → synthetic drag demo
-    useEffect(() => {
-      stopDragDemo();
-      if (tutorialMode && step?.id === 'drag') startDragDemo();
-      return () => stopDragDemo();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tutorialMode, step?.id, current, order]);
+  // DRAG step → synthetic drag demo
+  useEffect(() => {
+    stopDragDemo();
+    if (tutorialMode && step?.id === 'drag') startDragDemo();
+    return () => stopDragDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialMode, step?.id, current, order]);
 
   function startDragDemo() {
     if (dragDemoRunningRef.current) return;
@@ -307,14 +307,14 @@ export default function QuestionFlowWeighted({
     userInteractedRef.current = false;
 
     const keyframes = [
-      { to: 0.6, dur: 1000 },
-      { to: 1.5, dur: 1100 },
-      { to: 2.3, dur: 1000 },
-      { to: 1.0, dur: 1100 },
+      { to: 0.60, dur: 1000 },
+      { to: 1.48, dur: 1100 }, // avoid exact midpoint
+      { to: 2.30, dur: 1000 },
+      { to: 1.02, dur: 1100 }, // avoid exact checkpoint
     ];
     let seg = 0;
     let start = performance.now();
-    let from = 1.5;
+    let from = ghostTRef.current;  // <— start from current ghost
     let to = keyframes[0].to;
     let dur = keyframes[0].dur;
     const ease = (x) => 0.5 * (1 - Math.cos(Math.PI * x));
@@ -353,6 +353,10 @@ export default function QuestionFlowWeighted({
       if (previewAnimRef.current.raf) cancelAnimationFrame(previewAnimRef.current.raf);
       previewAnimRef.current.raf = 0;
       previewAnimRef.current.token++;
+      // if the user moved the real thumb, sync ghost to that t
+      if (typeof meta?.t === 'number') {
+        ghostTRef.current = Math.max(0, Math.min(3, meta.t));
+      }
     }
     const next = { ...weights, [q.id]: w };
     setWeights(next);
@@ -410,6 +414,7 @@ export default function QuestionFlowWeighted({
     setError('');
     setCurrent(0);
     setSessionKey((k) => k + 1);
+    ghostTRef.current = 1.5;
   };
 
   const skipTutorial = () => endTutorialAndBegin();
@@ -422,6 +427,16 @@ export default function QuestionFlowWeighted({
     : current < questions.length - 1 ? 'Next' : "I'm Ready";
 
   const { title, body, binder } = getStepContent(step?.id);
+
+  // mark “ghosting” so CSS disables transitions like real drag
+  const isGhosting =
+    !!tutorialMode &&
+    (step?.id === 'drag' || step?.id === 'shuffle') &&
+    !currentMeta.dragging;
+
+  // Force ghost visible in Text Cues (disable overlap hiding)
+  const forceGhostNow =
+    !!tutorialMode && (step?.id === 'drag' || step?.id === 'shuffle');
 
   return (
     <div className={`survey-section ${fadeState}`} style={{ position: 'relative' }}>
@@ -489,10 +504,10 @@ export default function QuestionFlowWeighted({
           prompt={q.prompt}
           options={displayOptions}
           t={currentMeta.t}
-          index={currentMeta.index}
           qIndex={current}
           qTotal={questions.length}
           isDragging={!!currentMeta.dragging}
+          isGhosting={isGhosting}
         />
 
         <CheckpointScale
@@ -503,9 +518,9 @@ export default function QuestionFlowWeighted({
           onChange={handleScaleChange}
           // Use previewT for tutorial animations
           previewT={tutorialMode ? currentMeta.t : undefined}
-          // Ghost only in DRAG step; hidden in SHUFFLE/EDGES
+          // Keep ghost visible in DRAG and SHUFFLE to avoid overlap hide
           dismissGhostOnDelta={!!tutorialMode && step?.id === 'drag'}
-          forceShowGhost={!!tutorialMode && step?.id === 'drag'}
+          forceShowGhost={forceGhostNow}
         />
 
         <div className="survey-actions">

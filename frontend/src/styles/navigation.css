@@ -102,7 +102,9 @@ div.level-one, .observe-results { z-index: 10; }
   .level-two.is-dark .nav-divider .graph-picker { margin-right: calc(32vw - 116px); }
   .level-two.is-dark.is-post-complete .nav-divider { width: calc(50vw + 48px); }
   .nav-divider .observe-results { margin-left: auto; }
+  .tutorial-active-mobile .nav-right { display: none !important;}
 }
+
 /* ---------- Tablet (768px–1023px) ---------- */
 @media (min-width: 768px) and (max-width: 1024px) {
   .navigation { padding-left: 32px; padding-right: 32px; }
@@ -146,7 +148,7 @@ div.level-one, .observe-results { z-index: 10; }
   .level-two { margin-bottom: 16px; }
   .level-two.is-dark.is-post-complete { flex-direction: row; align-items: center; }
   .level-two.is-dark.is-post-complete .burger-toggle { margin-top: 0px; }
-  button.observe-results { padding-bottom: 1.8em; padding-top: 1.8em; width: 14vw; }
+  button.observe-results { padding-bottom: 1.7em; padding-top: 1.7em; width: 14vw; }
   button.observe-results.active { width: 6vw; }
   .observe-results:hover {transform: scale(1.1);}
   .feedback, .nav-toggle { padding-top: 1.8em; padding-bottom: 1.8em; }
@@ -166,7 +168,6 @@ div.level-one, .observe-results { z-index: 10; }
 }
 /* fade siblings when GraphPicker is open on phone */
 @media (max-width: 768px) {
-  .navigation.picker-open-mobile { }
   .navigation.picker-open-mobile .left { opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
   .navigation.picker-open-mobile .level-one { opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
   .navigation.picker-open-mobile .level-one .nav-toggle, .navigation.picker-open-mobile .level-one .feedback { opacity: 0 !important; pointer-events: none !important; transition: opacity 160ms ease; }

@@ -43,38 +43,39 @@
 /* Above 1024px (desktop and up) */
 @media (min-width: 1025px) {
   .cp-scale { padding: 28px 0 64px; }
-  .cp-dot { width: 36px; height: 36px; }
+  .cp-dot { width: 12px; height: 12px; }
   .cp-thumb-hitbox { width: 160px; height: 160px; }
   .cp-thumb.is-rect { width: 10px; height: 24px; }
   .qm-stage { height: 110px; width: 960px; }
   .qm-answer-abs { max-width: min(780px, 90vw); width: 100%; }
   .cp-rail { height: 4px;}
+  .cp-thumb {width: 32px; height: 32px;}
 }
 
 /* Between 769px and 1024px (tablet) */
 @media (min-width: 768px) and (max-width: 1024px) {
   .cp-scale { padding: 24px 0 52px; }
-  .cp-dot { width: 36px; height: 36px; }
+  .cp-dot { width: 12px; height: 12px; }
   .cp-thumb-hitbox { width: 160px; height: 160px; }
-  .cp-thumb { width: 24px; height: 24px; }
   .cp-thumb-hitbox.is-rect .cp-thumb {width: 25px; height: 25px;}
   .cp-thumb.is-rect { width: 9px; height: 22px; }
   .qm-stage { height: 120px; width: 200vw; }
   .qm-answer-abs { max-width: min(640px, 92vw); }
   .cp-rail { height: 3px;}
+  .cp-thumb {width: 24px; height: 24px;}
 }
 
 /* 768px and below (mobile) */
 @media (max-width: 768px) {
   .cp-scale { width: 95%; padding-bottom: 3.2em; padding-left: 5%; box-sizing: border-box;}
   .cp-rail { height: 5px; }
-  .cp-dot { width: 36px; height: 36px; border-width: 2px; }
+  .cp-dot { width: 12px; height: 12px; border-width: 2px; }
   .cp-thumb-hitbox { width: 112px; height: 112px; }
-  .cp-thumb { width: 28px; height: 28px; }
   .cp-thumb.is-rect { width: 8px; height: 20px; }
   .qm-stage { height: 92px; width: 94vw; }
   .qm-answer-chip { padding: 9px 12px; border-radius: 9px; }
   .qm-answer-abs { min-width: 120vw; max-width: 160vw; transform: translate(-50%, -50%) scale(0.95); }
+  .cp-thumb {width: 32px; height: 32px;}
 }
 
 /* Reduced motion */

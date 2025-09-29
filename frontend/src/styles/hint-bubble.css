@@ -18,21 +18,29 @@
   .hint-bubble{padding:12px 14px;}
   .edge-mode-hint h4{padding-bottom:4px;}
   .cue-bubble{bottom:5.8em;}
+  .survey-section .hint-bubble {width: 70%;}
+  .survey-section .question-hint-bubble {border-radius: 12px; border: 2px solid; border-color:rgba(222, 222, 222, 0.15); background: linear-gradient(135deg, rgb(40, 40, 40), rgb(67, 67, 67)); color: rgb(247, 247, 247); padding: 1.6em 1.6em;}
+  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
+  .binder {padding-top: 0.8em;}
 }
 
 @media (min-width:769px) and (max-width:1024px){
   .hint-bubble{padding:12px 18px;}
   .edge-mode-hint h4{padding-bottom:4px;}
   .cue-bubble{bottom:9.2em;}
+  .survey-section .hint-bubble {width: 60%;}
+  .survey-section .question-hint-bubble {border-radius: 12px; border: 2px solid; border-color:rgba(222, 222, 222, 0.15); background: linear-gradient(135deg, rgb(40, 40, 40), rgb(67, 67, 67)); color: rgb(247, 247, 247); padding: 1.6em 1.6em;}
+  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
+  .binder {padding-top: 0.8em;}
 }
 
 @media (min-width:1025px){
   .hint-bubble{padding:8px 12px;}
-  .survey-section .hint-bubble {width: 60%;}
-  .question-hint-bubble {margin-bottom: 1.2em; border-color:rgba(42, 15, 42, 0.15); background-color: rgb(40, 40, 40); color: rgb(247, 247, 247); padding: 1.6em 2.2em;}
-  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
-  .binder {padding-top: 0.8em;}
   .edge-mode-hint{padding:9px 12px; }
   .cue-bubble{bottom:7.6em;}
   .edge-mode-hint h4{padding-bottom:4px;padding-top:2px;}
+  .survey-section .hint-bubble {width: 60%;}
+  .survey-section .question-hint-bubble {border-radius: 12px; border: 2px solid; border-color:rgba(222, 222, 222, 0.15); background: linear-gradient(135deg, rgb(40, 40, 40), rgb(67, 67, 67)); color: rgb(247, 247, 247); padding: 1.6em 1.6em;}
+  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
+  .binder {padding-top: 0.8em;}
 }

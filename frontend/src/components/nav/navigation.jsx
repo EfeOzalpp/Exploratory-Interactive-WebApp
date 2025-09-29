@@ -1,4 +1,4 @@
-// nav/Navigation.jsx
+// components/nav/Navigation.jsx
 import React, { useState, useEffect } from "react";
 import Logo from "../static/left";
 import InfoPanel from "./infoPanel.jsx";
@@ -24,8 +24,10 @@ const Navigation = () => {
 
   useEffect(() => {
     const onMenuOpen = (e) => setPickerOpen(!!e?.detail?.open);
-    window.addEventListener("gp:menu-open", onMenuOpen);
-    return () => window.removeEventListener("gp:menu-open", onMenuOpen);
+    if (typeof window !== "undefined") {
+      window.addEventListener("gp:menu-open", onMenuOpen);
+      return () => window.removeEventListener("gp:menu-open", onMenuOpen);
+    }
   }, []);
 
   useEffect(() => {
@@ -51,19 +53,12 @@ const Navigation = () => {
     setSurveyActive,
     openGraph,
     closeGraph,
+    tutorialMode, // ← drives mobile hide/show
   } = useGraph();
 
   useEffect(() => {
     if (hasCompletedSurvey && observerMode) setObserverMode(false);
   }, [hasCompletedSurvey, observerMode, setObserverMode]);
-
-  const handleFeedbackClick = () => {
-    window.open(
-      "https://docs.google.com/document/d/1lBKllYBu-OS34sMtGmJuJjTZlcN09QRPo5EdhCTQueM/edit?usp=sharing",
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
 
   const showPicker = (observerMode || hasCompletedSurvey) && !isSurveyActive;
 
@@ -93,6 +88,24 @@ const Navigation = () => {
     .join(" ")
     .trim();
 
+  // Hide the right side entirely on phones during tutorial
+  const hideNavRightOnTutorialPhone = Boolean(tutorialMode && isPhone);
+
+  // When hiding the right side, also collapse any open panels to avoid stray focus
+  useEffect(() => {
+    if (hideNavRightOnTutorialPhone) {
+      setOpen(false);        // close “What’s the Idea?” panel if open
+      setBurgerOpen(true);   // collapse the level-one block
+    }
+  }, [hideNavRightOnTutorialPhone]);
+
+  const navRightClassName = [
+    "nav-right",
+    hideNavRightOnTutorialPhone ? "hide-on-tutorial-phone" : "",
+  ]
+    .join(" ")
+    .trim();
+
   return (
     <>
       <nav className={navClassName}>
@@ -100,7 +113,15 @@ const Navigation = () => {
           <Logo />
         </div>
 
-        <div className="nav-right">
+        <div
+          className={navRightClassName}
+          aria-hidden={hideNavRightOnTutorialPhone || undefined}
+          // hard remove from layout on phones during tutorial for absolute safety
+          style={{
+            display: hideNavRightOnTutorialPhone ? "none" : undefined,
+          }}
+          data-tutorial-hidden={hideNavRightOnTutorialPhone ? "1" : "0"}
+        >
           {/* LEVEL ONE — collapsible */}
           <div
             className={[
@@ -148,12 +169,20 @@ const Navigation = () => {
               )}
             </button>
 
+            {/* Optional feedback button
             <button
               className={["feedback", isDark ? "is-dark" : ""].join(" ").trim()}
-              onClick={handleFeedbackClick}
+              onClick={() => {
+                window.open(
+                  "https://docs.google.com/document/d/1lBKllYBu-OS34sMtGmJuJjTZlcN09QRPo5EdhCTQueM/edit?usp=sharing",
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
             >
               Leave Your Thoughts
             </button>
+            */}
           </div>
 
           {/* LEVEL TWO — vertical stack */}
@@ -186,7 +215,7 @@ const Navigation = () => {
                   onClick={toggleObserverMode}
                   aria-pressed={observerMode}
                 >
-                  {observerMode ? "Back" : "Explore Results"}
+                  {observerMode ? "Back" : "Explore Answers"}
                 </button>
               )}
             </div>

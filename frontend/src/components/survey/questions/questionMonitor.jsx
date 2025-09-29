@@ -5,57 +5,75 @@ export default function QuestionMonitor({
   prompt,
   options,
   t,
-  index,
   qIndex,
   qTotal,
-  // NEW
   isDragging = false,
+  isGhosting = false,
 }) {
-  // Drivers
-  const opacities = useMemo(() => getAnswerOpacities(t, index), [t, index]);
-  const scales    = useMemo(() => getScaleActivations(t, index), [t, index]);
+  const quantize = (x, step = 0.02) => {
+    if (!Number.isFinite(x)) return 0;
+    return Math.round(x / step) * step;
+  };
+  const nudgeIfCheckpoint = (x, eps = 1e-3) => {
+    const nearest = Math.round(x);
+    if (Math.abs(x - nearest) < eps) return x <= nearest ? nearest - eps : nearest + eps;
+    return x;
+  };
+  const stableT = useMemo(() => {
+    const clamped = Math.max(0, Math.min(3, Number(t ?? 0)));
+    return nudgeIfCheckpoint(quantize(clamped, 0.02), 0.001);
+  }, [t]);
 
-  const clampedT = Math.max(0, Math.min(3, t ?? 0));
-  const i = Math.floor(clampedT);  // left neighbor
-  const f = clampedT - i;          // [0..1] toward right neighbor
-  const j = Math.min(i + 1, options.length - 1); // right neighbor
+  const snappedIndexFromStable = Number.isInteger(stableT) ? Math.round(stableT) : null;
 
-  // ---- tunables ----
-  const BASE_SCALE = 0.96;
-  const GROW       = 0.50;   // slightly reduced from 0.54 to lessen shimmer
-  const Y_OFFSET   = 24;
-  const CURVE_EXP  = 1.0;
+  const opacities = useMemo(
+    () => getAnswerOpacities(stableT, snappedIndexFromStable),
+    [stableT, snappedIndexFromStable]
+  );
+  const scales = useMemo(
+    () => getScaleActivations(stableT, snappedIndexFromStable),
+    [stableT, snappedIndexFromStable]
+  );
+
+  const i = Math.floor(stableT);
+  const f = stableT - i;
+  const j = Math.min(i + 1, options.length - 1);
+
+  const BASE_SCALE = 0.965;
+  const GROW = 0.50;
+  const Y_OFFSET = 22;
+  const CURVE_EXP = 1.0;
 
   const tent = (x) => {
-    const v = 4 * x * (1 - x); // 0 at 0/1, peak at 0.5
+    const v = 4 * x * (1 - x);
     return Math.max(0, v) ** CURVE_EXP;
   };
-
-  const scaleFromActivation = (a) => BASE_SCALE + GROW * a;
-
-  // NEW: snap to device pixel to avoid micro-jitter on mobile
+  const scaleFromActivation = (a) => {
+    const raw = BASE_SCALE + GROW * a;
+    const step = 0.01;
+    return Math.round(raw / step) * step;
+  };
+  const snapPx = (px) => {
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    return Math.round(px * dpr) / dpr;
+  };
   const transformFor = (idx, activation) => {
     let dy = 0;
-    if (idx === i && idx !== j) {
-      dy = +Y_OFFSET * tent(f); // left goes down
-    } else if (idx === j && idx !== i) {
-      dy = -Y_OFFSET * tent(f); // right goes up
+    if (!Number.isInteger(stableT)) {
+      if (idx === i && idx !== j) dy = +Y_OFFSET * tent(f);
+      else if (idx === j && idx !== i) dy = -Y_OFFSET * tent(f);
     }
-    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-    const dySnapped = Math.round(dy * dpr) / dpr;
-
+    const dySnapped = snapPx(dy);
     const sc = scaleFromActivation(activation);
-    // Use translate3d to keep it on compositor
     return `translate3d(-50%, calc(-50% + ${dySnapped}px), 0) scale(${sc})`;
   };
-
   const zFor = (activation) => (activation >= 0.5 ? 2 : 1);
 
   return (
     <div className="qm-wrap">
       <div className="qm-card">
         <div className="qm-header">
-          <div className={`qm-title ${Number.isInteger(index) ? 'is-snapped' : 'is-between'}`}>
+          <div className={`qm-title ${Number.isInteger(snappedIndexFromStable) ? 'is-snapped' : 'is-between'}`}>
             {Number.isFinite(qIndex) && Number.isFinite(qTotal) && (
               <span className="qm-count">{qIndex + 1}/{qTotal} — </span>
             )}
@@ -63,11 +81,11 @@ export default function QuestionMonitor({
           </div>
         </div>
 
-        <div className={`qm-stage ${isDragging ? 'is-dragging' : ''}`}>
+        <div className={`qm-stage ${isDragging ? 'is-dragging' : ''} ${isGhosting ? 'is-ghosting' : ''}`}>
           {options.map((o, k) => {
             const opacity = opacities[k] ?? 0;
             const act     = scales[k] ?? 0;
-            const snapped = index === k;
+            const snapped = snappedIndexFromStable === k;
             return (
               <div
                 key={k}
@@ -76,6 +94,10 @@ export default function QuestionMonitor({
                   opacity,
                   transform: transformFor(k, act),
                   zIndex: zFor(act),
+                  willChange: 'transform, opacity',
+                  backfaceVisibility: 'hidden',
+                  WebkitFontSmoothing: 'antialiased',
+                  MozOsxFontSmoothing: 'grayscale',
                 }}
               >
                 <h3 className="qm-answer-chip">{o.label}</h3>

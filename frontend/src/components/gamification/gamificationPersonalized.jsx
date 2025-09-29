@@ -318,7 +318,7 @@ export default function GamificationPersonalized({
             </h4>
 
             <h1 className="personal-title">{selectedTitle}</h1>
-            {mode === 'absolute' && secondaryText ? <p className="gam-subline">{secondaryText}</p> : null}
+            {mode === 'absolute' && secondaryText ? <h4 className="gam-subline">{secondaryText}</h4> : null}
             <p>{line}</p>
           </div>
 

@@ -41,14 +41,81 @@ export default function Survey({
   const {
     setSurveyActive, setHasCompletedSurvey, setSection, setMySection, setMyEntryId,
     observerMode, openGraph, section, resetToStart,
-    // NEW tutorial wiring
     tutorialMode, setTutorialMode,
+    hasCompletedSurvey,
   } = useGraph();
 
-  // Build available sections:
-  // - student → student only
-  // - staff   → institutional header + items, then student header + items
-  // - visitor → handled by skipping the section step
+  // ---------- Phone detection ----------
+  const [isPhone, setIsPhone] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 768px)');
+    const handler = (ev) => setIsPhone(ev.matches);
+    setIsPhone(mql.matches);
+    if (mql.addEventListener) mql.addEventListener('change', handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', handler);
+      else mql.removeListener(handler);
+    };
+  }, []);
+
+  // ---------- Auto-start tutorial ONCE when entering questions on phone ----------
+  useEffect(() => {
+    if (stage !== 'questions') return;
+
+    // URL override for QA: ?tutorial=1
+    const force = (() => {
+      try {
+        if (typeof window === 'undefined') return false;
+        const qp = new URLSearchParams(window.location.search);
+        return qp.get('tutorial') === '1';
+      } catch { return false; }
+    })();
+
+    // one-shot latch so we don't auto-open every time
+    const alreadyBooted = typeof window !== 'undefined'
+      ? sessionStorage.getItem('gp.tutorialBooted') === '1'
+      : true;
+
+    // only first-time, only on phone, only if not completed, unless forced
+    if ((force || (isPhone && !alreadyBooted && !hasCompletedSurvey)) && !tutorialMode) {
+      setTutorialMode(true);
+      try { sessionStorage.setItem('gp.tutorialBooted', '1'); } catch {}
+    }
+  }, [stage, isPhone, hasCompletedSurvey, tutorialMode, setTutorialMode]);
+
+  // ---------- Resume tutorial if we refreshed while it was open ----------
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const shouldResume = sessionStorage.getItem('gp.resumeTutorial') === '1';
+    // Resume only when we (re)enter the questions stage
+    if (shouldResume && stage === 'questions' && !tutorialMode) {
+      setTutorialMode(true);
+      try { sessionStorage.removeItem('gp.resumeTutorial'); } catch {}
+    }
+  }, [stage, tutorialMode, setTutorialMode]);
+
+  // Save a flag on unload if tutorial is open (so we can resume after refresh)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onBeforeUnload = () => {
+      try {
+        if (tutorialMode) sessionStorage.setItem('gp.resumeTutorial', '1');
+        else sessionStorage.removeItem('gp.resumeTutorial');
+      } catch {}
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [tutorialMode]);
+
+  // Build available sections
   const availableSections = useMemo(() => {
     if (!audience || audience === 'visitor') return [];
     if (audience === 'student') {
@@ -237,19 +304,9 @@ export default function Survey({
             onSubmit={handleSubmitFromQuestions}
             submitting={submitting}
             error={error}
-            // NEW: Tutorial flags for the questions flow to consume
+            // tutorial wiring only
             tutorialMode={tutorialMode}
             onEndTutorial={() => setTutorialMode(false)}
-            // Optional: mock copy the tutorial can use in HintBubble(s)
-            tutorialCopy={{
-              step1: 'Welcome! Each dot is a valid answer — tap one to pick exactly.',
-              step2: 'Between dots blends neighbors. At the midpoint, you choose both equally.',
-              step3: 'Drag anywhere on the rail to preview answers in real time.',
-              step4: 'Edges pick the outer answers. You can shuffle labels anytime.',
-              ctaNext: 'Next',
-              ctaSkip: 'Skip',
-              ctaDone: 'Got it',
-            }}
           />
         )}
       </Suspense>

@@ -198,15 +198,14 @@ export default function GamificationGeneral({
       <div className="gam-general">
         <div className="gam-general-description">
           <div className="gam-description-title">
-            <h2>{title}</h2>
+            <h1>{title}</h1>
           </div>
 
           {/* Hide secondary text in relative mode (to reduce verbosity) */}
           {mode === 'absolute' && description ? (
-            <p className="gam-subline">{description}</p>
+            <h4 className="gam-subline">{description}</h4>
           ) : null}
-
-          <div className="gam-description-text"><p>{line}</p></div>
+          <p>{line}</p>
         </div>
 
         {mode === 'absolute' && (

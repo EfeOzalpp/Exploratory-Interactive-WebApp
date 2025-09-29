@@ -102,17 +102,16 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [darkMode]);
 
-  // NEW: tutorial mode (defaults ON per tab until dismissed)
-  const [tutorialMode, setTutorialMode] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    const seen = sessionStorage.getItem("gp.tutorialSeen");
-    return seen === "true" ? false : true;
-  });
+  // NEW: tutorial mode — do NOT persist; always start false after a refresh.
+  const [tutorialMode, setTutorialMode] = useState<boolean>(false);
+
+  // Cleanup any legacy flags that might force tutorial back on after refresh.
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (!tutorialMode) sessionStorage.setItem("gp.tutorialSeen", "true");
-    }
-  }, [tutorialMode]);
+    try {
+      sessionStorage.removeItem("gp.tutorialMode");
+      sessionStorage.removeItem("gp.tutorialSeen");
+    } catch {}
+  }, []);
 
   // live data
   useEffect(() => {

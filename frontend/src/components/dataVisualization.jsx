@@ -155,7 +155,26 @@ const VisualizationPage = () => {
 
   return (
     <div>
-      <Suspense fallback={<div className="graph-loading" style={{ height: '100svh' }}>Loading graph…</div>}>
+      <Suspense
+        fallback={
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 5,
+              pointerEvents: 'none',
+              height: '100vh',
+            }}
+            aria-busy="true"
+            aria-live="polite"
+          >
+            <h4 style={{ opacity: 0.85 }}>Loading…</h4>
+          </div>
+        }
+      >
         <Graph isDragging={isDragging} />
       </Suspense>
 
@@ -220,9 +239,25 @@ const VisualizationPage = () => {
               transition: 'background 200ms ease',
             }}
           >
-            <Suspense fallback={<div style={{ width: 240, height: 120 }}><h3>Loading…</h3></div>}>
-              <BarGraph isVisible />
-            </Suspense>
+          <Suspense
+            fallback={
+              <div
+                style={{
+                  width: 240,
+                  height: 120,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                aria-busy="true"
+                aria-live="polite"
+              >
+                <h4 style={{ opacity: 0.85 }}>Loading…</h4>
+              </div>
+            }
+          >
+            <BarGraph isVisible />
+          </Suspense>
           </div>
         )}
       </div>
