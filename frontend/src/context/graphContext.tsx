@@ -2,10 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { unstable_batchedUpdates as batched } from "react-dom";
 import { subscribeSurveyData } from "../utils/sanityAPI";
 
-type Mode = "relative" | "absolute";
+export type Mode = "relative" | "absolute";
 
-type GraphContextType = {
-  // picker + personalization
+export type GraphContextType = {
+  // personalization
   section: string;
   setSection: (s: string) => void;
 
@@ -15,7 +15,6 @@ type GraphContextType = {
   myEntryId: string | null;
   setMyEntryId: (id: string | null) => void;
 
-  // NEW: how the user entered (student/staff/visitor)
   myRole: string | null;
   setMyRole: (r: string | null) => void;
 
@@ -32,41 +31,39 @@ type GraphContextType = {
   observerMode: boolean;
   setObserverMode: (v: boolean) => void;
 
-  // global viz visibility
+  // viz visibility
   vizVisible: boolean;
   openGraph: () => void;
   closeGraph: () => void;
 
-  // visualization mode (relative percentiles vs absolute score)
+  // relative vs absolute scoring
   mode: Mode;
   setMode: (m: Mode) => void;
 
-  // canonical dark mode (toggled via EdgeModeHint)
+  // dark mode
   darkMode: boolean;
   setDarkMode: (v: boolean) => void;
 
-  // NEW: one-shot batched reset to initial/front-page state
+  // NEW: tutorial mode
+  tutorialMode: boolean;
+  setTutorialMode: (v: boolean) => void;
+
+  // reset
   resetToStart: () => void;
 };
 
 const GraphCtx = createContext<GraphContextType | null>(null);
 
 export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
-  // Default to "all" → shows everything by default
   const [section, setSection] = useState<string>("all");
-
-  // Initialize from sessionStorage when available
   const [mySection, setMySection] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.mySection");
   });
-
   const [myEntryId, setMyEntryId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.myEntryId");
   });
-
-  // NEW: track how the user entered (student/staff/visitor)
   const [myRole, setMyRole] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.myRole");
@@ -83,7 +80,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const openGraph = () => setVizVisible(true);
   const closeGraph = () => setVizVisible(false);
 
-  // Global visualization mode (persisted)
   const [mode, setMode] = useState<Mode>(() => {
     if (typeof window === "undefined") return "relative";
     const saved = sessionStorage.getItem("gp.mode") as Mode | null;
@@ -95,7 +91,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [mode]);
 
-  // Canonical dark mode (persisted)
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = sessionStorage.getItem("gp.darkMode");
@@ -107,7 +102,19 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [darkMode]);
 
-  // Live data subscription
+  // NEW: tutorial mode (defaults ON per tab until dismissed)
+  const [tutorialMode, setTutorialMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const seen = sessionStorage.getItem("gp.tutorialSeen");
+    return seen === "true" ? false : true;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!tutorialMode) sessionStorage.setItem("gp.tutorialSeen", "true");
+    }
+  }, [tutorialMode]);
+
+  // live data
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeSurveyData({
@@ -120,7 +127,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsub();
   }, [section]);
 
-  // NEW: central, batched reset to avoid transitional flicker
   const resetToStart = () => {
     batched(() => {
       closeGraph();
@@ -130,7 +136,7 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
       setMyEntryId(null);
       setMySection(null);
       setMyRole(null);
-      setSection("all"); // default landing section
+      setSection("all");
     });
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("gp.myEntryId");
@@ -166,6 +172,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setMode,
         darkMode,
         setDarkMode,
+        tutorialMode,
+        setTutorialMode,
         resetToStart,
       }}
     >

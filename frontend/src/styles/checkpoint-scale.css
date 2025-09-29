@@ -7,7 +7,7 @@
 .cp-thumb { width: 36px; height: 36px; background: rgb(23,23,23); border-radius: 50%; pointer-events: none; transition: width 0.14s ease, height 0.14s ease, border-radius 0.14s ease, background 0.14s ease, box-shadow 0.14s ease; }
 
 /* Circular glowing plug when hitbox has is-rect */
-.cp-thumb-hitbox.is-rect .cp-thumb { border-radius: 100%; background: rgb(35,35,35); box-shadow: 0 2px 32px rgba(193, 193, 193, 0.25); cursor: pointer;}
+.cp-thumb-hitbox.is-rect .cp-thumb { border-radius: 100%; background: rgb(35,35,35); box-shadow: 0 2px 32px rgba(180, 180, 180, 0.685); cursor: pointer;}
 
 /* Rectangular insert when thumb itself has is-rect */
 .cp-thumb.is-rect { width: 10px; height: 24px; border-radius: 3px; background: black; box-shadow: 0 0 0 1px #fff inset, 0 1px 3px rgba(0,0,0,0.22); }
@@ -45,11 +45,9 @@
   .cp-scale { padding: 28px 0 64px; }
   .cp-dot { width: 36px; height: 36px; }
   .cp-thumb-hitbox { width: 160px; height: 160px; }
-  .cp-thumb { width: 24px; height: 24px; }
-  .cp-thumb-hitbox.is-rect .cp-thumb {width: 25px; height: 25px;}
   .cp-thumb.is-rect { width: 10px; height: 24px; }
   .qm-stage { height: 110px; width: 960px; }
-  .qm-answer-abs { max-width: min(780px, 90vw); }
+  .qm-answer-abs { max-width: min(780px, 90vw); width: 100%; }
   .cp-rail { height: 4px;}
 }
 

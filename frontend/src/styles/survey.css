@@ -52,6 +52,17 @@
 .dark .section-listbox, .section-listbox.is-dark { --dd-bg:#1f2124; }
 .dark .section-listbox::after, .section-listbox.is-dark::after { background:linear-gradient(to bottom,rgba(31,33,36,0),var(--dd-bg,#1f2124)); }
 
+/* e.g., in src/styles/survey.css */
+.begin-button2.is-demo-press, .shuffle-button.is-demo-press {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shuffle-button { transition: none; }
+  .shuffle-button.is-demo-press { transform: none; box-shadow: none; }
+}
 /* Mobile */
 @media (max-width: 768px) {
   /* Main survey component */
@@ -189,7 +200,7 @@
 
   /* Onboarding Beginning */
   .begin-title1 { font-weight: 400; margin-bottom: -12px; }
-  .begin-title2 { padding-bottom: 0.4em; }
+  .begin-title2 { padding-bottom: 0.33em; }
   .survey-actions {display: flex; gap: 32px;}
   .shuffle-button {justify-content: center; gap: 8px; display: flex; padding-bottom: 1.8em; padding-top: 1.8em; margin-bottom: 2.4em; pointer-events: all; cursor: pointer; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff;}
   .shuffle-icon {display: inline-block; vertical-align: middle; width: 16px; height: 16px;}
@@ -207,7 +218,7 @@
   .section-picker {padding-bottom: 0.8em;}
   .section-listbox {max-height: 400px; height: 400px;}
 
-  .questionnaire { justify-content: flex-end; pointer-events: all;}
+  .questionnaire { padding-top: 1.2em; justify-content: flex-end; pointer-events: all;}
   .question-part { position: relative; top: 8px; left: 5px; }
   .input-part-inside { pointer-events: all; }
   .error-container { white-space: nowrap; margin-left: 4.5vw; background-color: rgb(246, 246, 246); padding: 1.2em 2em; margin-bottom: 1.2em; border-radius: 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }

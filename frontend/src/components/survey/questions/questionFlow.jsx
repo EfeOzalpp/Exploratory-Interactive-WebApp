@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+// src/components/survey/QuestionFlowWeighted.jsx
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import CheckpointScale from '../../survey/checkpointScale';
 import QuestionMonitor from './questionMonitor';
 import { WEIGHTED_QUESTIONS } from './questionsWeights';
+import HintBubble from '../../../tooltip/hintBubble.jsx';
+import { useGraph } from '../../../context/graphContext.tsx';
 
 // Fisher–Yates shuffle
 function shuffleArray(arr) {
@@ -13,7 +16,7 @@ function shuffleArray(arr) {
   return a;
 }
 
-// Compute weight at a given t using the piecewise mapping used by the scale
+// Piecewise weight for t∈[0..3]
 function weightAtTFromOptions(options, t) {
   if (t == null || Number.isNaN(t)) return null;
   const clamped = Math.max(0, Math.min(3, t));
@@ -22,6 +25,45 @@ function weightAtTFromOptions(options, t) {
   const ws = options.map((o) => o.weight);
   if (i >= 3) return ws[3];
   return ws[i] + (ws[i + 1] - ws[i]) * f;
+}
+
+const TUTORIAL_STEPS = [
+  { id: 'intro',   text: '' },
+  { id: 'drag',    text: '' },
+  { id: 'shuffle', text: '' },
+  { id: 'edges',   text: '' },
+];
+
+// Map step → h2/h4/binder copy
+function getStepContent(stepId) {
+  switch (stepId) {
+    case 'intro':
+      return {
+        title: 'Welcome!',
+        body: 'Let’s start with a quick walkthrough.',
+        binder: 'Click Next:  How to answer?',
+      };
+    case 'drag':
+      return {
+        title: 'Drag it!',
+        body: 'Slide freely. Anywhere on the line works, doesn’t have to be right on checkpoint.',
+        binder: 'Next: Answer intuitively',
+      };
+    case 'shuffle':
+      return {
+        title: 'See It Move',
+        body: 'As the marker shifts, text size changes to show which answer you’re closer to.',
+        binder: 'Next: Shuffle',
+      };
+    case 'edges':
+      return {
+        title: 'Mix And Match',
+        body: "When the answers you like aren't intersecting, shuffle helps you!",
+        binder: 'Begin',
+      };
+    default:
+      return { title: '', body: '', binder: '' };
+  }
 }
 
 export default function QuestionFlowWeighted({
@@ -35,9 +77,62 @@ export default function QuestionFlowWeighted({
   const [orders, setOrders] = useState({});
   const [error, setError] = useState('');
   const [fadeState, setFadeState] = useState('fade-in');
+  const [sessionKey, setSessionKey] = useState(0);
 
-  // NEW: lift drag state so we can disable transitions while dragging
-  const [isDragging, setIsDragging] = useState(false);
+  const { tutorialMode, setTutorialMode } = useGraph();
+
+  const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
+  const step = TUTORIAL_STEPS[tutorialStepIndex];
+
+  // Demo UI states
+  const [demoShufflePress, setDemoShufflePress] = useState(false);
+  const [demoShuffleEnabled, setDemoShuffleEnabled] = useState(false);
+  const [demoPrimaryPress, setDemoPrimaryPress] = useState(false);
+
+  // Refs
+  const dragTickerRef = useRef(0);
+  const dragDemoRunningRef = useRef(false);
+  const userInteractedRef = useRef(false);
+  const previewAnimRef = useRef({ raf: 0, token: 0 });
+
+  useEffect(() => {
+    if (tutorialMode) {
+      setTutorialStepIndex(0);
+      userInteractedRef.current = false;
+    }
+  }, [tutorialMode]);
+
+  // Enable demo shuffle loop ONLY on EDGES step
+  useEffect(() => {
+    const on = !!tutorialMode && step?.id === 'edges';
+    setDemoShuffleEnabled(on);
+    if (!on) setDemoShufflePress(false);
+  }, [tutorialMode, step?.id]);
+
+  // Intro: light CTA pulse
+  useEffect(() => {
+    let pressTimer = 0, cycleTimer = 0, cancelled = false;
+    if (tutorialMode && step?.id === 'intro') {
+      let count = 0;
+      const cycle = () => {
+        if (cancelled || count >= 2) return;
+        setDemoPrimaryPress(true);
+        pressTimer = window.setTimeout(() => {
+          setDemoPrimaryPress(false);
+          count++;
+          if (!cancelled && count < 1) cycleTimer = window.setTimeout(cycle, 500);
+        }, 1200);
+      };
+      cycleTimer = window.setTimeout(cycle, 2200);
+    } else {
+      setDemoPrimaryPress(false);
+    }
+    return () => {
+      cancelled = true;
+      window.clearTimeout(pressTimer);
+      window.clearTimeout(cycleTimer);
+    };
+  }, [tutorialMode, step?.id]);
 
   const q = questions[current];
 
@@ -53,12 +148,223 @@ export default function QuestionFlowWeighted({
 
   const resetKey = q.id;
 
+  // Update preview t (affects monitor/ghost; no thumb move)
+  const setPreviewT = (t) => {
+    const w = weightAtTFromOptions(displayOptions, t);
+    setWeights((prev) => ({ ...prev, [q.id]: w }));
+    setVizMeta((m) => ({
+      ...m,
+      [q.id]: {
+        t,
+        index: Math.abs(t - Math.round(t)) < 1e-4 ? Math.round(t) : null,
+        committed: false,
+        dragging: false,
+      },
+    }));
+    onWeightsUpdate?.({ ...weights, [q.id]: w });
+  };
+
+  // Animate preview t (keep start = current t, never reset-to-center)
+  const animatePreviewTo = (targetT, duration = 900) => {
+    if (previewAnimRef.current.raf) cancelAnimationFrame(previewAnimRef.current.raf);
+    const token = ++previewAnimRef.current.token;
+
+    const startT =
+      typeof vizMeta[q.id]?.t === 'number'
+        ? Math.max(0, Math.min(3, vizMeta[q.id].t))
+        : 1.5;
+
+    const clampedTarget = Math.max(0, Math.min(3, targetT));
+    const startTime = performance.now();
+    const ease = (x) => 0.5 * (1 - Math.cos(Math.PI * x));
+
+    const tick = (now) => {
+      // Allow during SHUFFLE (see-it-move) and EDGES (we're not using it there now)
+      if (previewAnimRef.current.token !== token || !tutorialMode || !['shuffle', 'edges'].includes(step?.id)) return;
+      const u = Math.min(1, Math.max(0, (now - startTime) / duration));
+      const t = startT + (clampedTarget - startT) * ease(u);
+      setPreviewT(t);
+      if (u < 1) previewAnimRef.current.raf = requestAnimationFrame(tick);
+    };
+
+    previewAnimRef.current.raf = requestAnimationFrame(tick);
+  };
+
+  // Shuffle (real)
+  function shuffleNow(triggeredByDemo = false) {
+    const qLoc = questions[current];
+    const orderLoc = orders[qLoc.id] ?? qLoc.options.map((_, i) => i);
+    const len = qLoc.options.length;
+    if (len < 2) return;
+
+    if (!triggeredByDemo && demoShuffleEnabled) setDemoShuffleEnabled(false);
+
+    let newOrder = orderLoc;
+    do { newOrder = shuffleArray(orderLoc); }
+    while (newOrder.every((v, i) => v === orderLoc[i]));
+
+    setOrders((prev) => ({ ...prev, [qLoc.id]: newOrder }));
+
+    const tNow = vizMeta[qLoc.id]?.t;
+    if (typeof tNow === 'number') {
+      const newDisplayOptions = newOrder.map((i) => qLoc.options[i]);
+      const newW = weightAtTFromOptions(newDisplayOptions, tNow);
+      if (newW != null) {
+        const next = { ...weights, [qLoc.id]: newW };
+        setWeights(next);
+        onWeightsUpdate?.(next);
+      }
+    }
+    setError('');
+    // NOTE: no extra animatePreviewTo here for EDGES — you asked to keep shuffle “as is”.
+  }
+
+  // EDGES step → cycle faux shuffle presses (no extra marker motion)
+  useEffect(() => {
+    if (!demoShuffleEnabled) return;
+    let cancelled = false, pressTimer = 0, cycleTimer = 0;
+    const cycle = () => {
+      if (cancelled) return;
+      setDemoShufflePress(true);
+      shuffleNow(true);
+      pressTimer = window.setTimeout(() => {
+        setDemoShufflePress(false);
+        if (!cancelled && demoShuffleEnabled) cycleTimer = window.setTimeout(cycle, 1200);
+      }, 200);
+    };
+    cycleTimer = window.setTimeout(cycle, 700);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(pressTimer);
+      window.clearTimeout(cycleTimer);
+    };
+  }, [demoShuffleEnabled]);
+
+    // SHUFFLE step → smooth drag-like motion, pause, and avoid checkpoints
+    useEffect(() => {
+      if (!(tutorialMode && step?.id === 'shuffle')) return;
+
+      let cancelled = false;
+      let holdTimer = 0;
+
+      // persistent ghost position
+      let lastT =
+        Number.isFinite(vizMeta[q.id]?.t)
+          ? Math.max(0, Math.min(3, Number(vizMeta[q.id].t)))
+          : 1.5;
+
+      const MOVE_MS = 700;    // smooth move duration
+      const HOLD_MS = 2000;   // pause at destination
+      const MIN_DELTA = 0.6;  // require big jumps
+      const AVOID_RADIUS = 0.25; // avoid near 0,1,2,3
+
+      const isNearCheckpoint = (t) =>
+        [0, 1, 2, 3].some((c) => Math.abs(t - c) < AVOID_RADIUS);
+
+      const pickTarget = () => {
+        let candidate, tries = 0;
+        do {
+          candidate = 0.2 + Math.random() * 2.6; // keep inside [0.2, 2.8]
+          tries++;
+          if (tries > 15) break;
+        } while (
+          Math.abs(candidate - lastT) < MIN_DELTA || isNearCheckpoint(candidate)
+        );
+        return candidate;
+      };
+
+      const hop = () => {
+        if (cancelled) return;
+        const target = pickTarget();
+
+        // drag-like easing feels like the DRAG demo
+        animatePreviewTo(target, MOVE_MS);
+        lastT = target;
+
+        holdTimer = window.setTimeout(hop, MOVE_MS + HOLD_MS);
+      };
+
+      stopDragDemo(); // don’t run both at once
+      hop();
+
+      return () => {
+        cancelled = true;
+        clearTimeout(holdTimer);
+      };
+    }, [tutorialMode, step?.id, q.id]); 
+
+    // DRAG step → synthetic drag demo
+    useEffect(() => {
+      stopDragDemo();
+      if (tutorialMode && step?.id === 'drag') startDragDemo();
+      return () => stopDragDemo();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tutorialMode, step?.id, current, order]);
+
+  function startDragDemo() {
+    if (dragDemoRunningRef.current) return;
+    dragDemoRunningRef.current = true;
+    userInteractedRef.current = false;
+
+    const keyframes = [
+      { to: 0.6, dur: 1000 },
+      { to: 1.5, dur: 1100 },
+      { to: 2.3, dur: 1000 },
+      { to: 1.0, dur: 1100 },
+    ];
+    let seg = 0;
+    let start = performance.now();
+    let from = 1.5;
+    let to = keyframes[0].to;
+    let dur = keyframes[0].dur;
+    const ease = (x) => 0.5 * (1 - Math.cos(Math.PI * x));
+
+    const tick = (now) => {
+      if (!dragDemoRunningRef.current || !tutorialMode || step?.id !== 'drag') {
+        dragDemoRunningRef.current = false;
+        return;
+      }
+      const u = Math.min(1, (now - start) / dur);
+      const t = from + (to - from) * ease(u);
+      setPreviewT(t);
+
+      if (u >= 1) {
+        seg = (seg + 1) % keyframes.length;
+        from = to;
+        to = keyframes[seg].to;
+        dur = keyframes[seg].dur;
+        start = now;
+      }
+      dragTickerRef.current = requestAnimationFrame(tick);
+    };
+    dragTickerRef.current = requestAnimationFrame(tick);
+  }
+
+  function stopDragDemo() {
+    dragDemoRunningRef.current = false;
+    cancelAnimationFrame(dragTickerRef.current);
+  }
+
+  // On user interaction cancel demos/animations
   const handleScaleChange = (w, meta) => {
+    if (meta?.dragging || meta?.committed) {
+      userInteractedRef.current = true;
+      stopDragDemo();
+      if (previewAnimRef.current.raf) cancelAnimationFrame(previewAnimRef.current.raf);
+      previewAnimRef.current.raf = 0;
+      previewAnimRef.current.token++;
+    }
     const next = { ...weights, [q.id]: w };
     setWeights(next);
-    setVizMeta((m) => ({ ...m, [q.id]: { t: meta?.t, index: meta?.index ?? null } }));
-    // NEW: watch dragging flag coming from the scale
-    if (typeof meta?.dragging === 'boolean') setIsDragging(meta.dragging);
+    setVizMeta((m) => ({
+      ...m,
+      [q.id]: {
+        t: meta?.t,
+        index: meta?.index ?? null,
+        committed: !!meta?.committed,
+        dragging: !!meta?.dragging,
+      },
+    }));
     setError('');
     onWeightsUpdate?.(next);
   };
@@ -71,44 +377,54 @@ export default function QuestionFlowWeighted({
     setFadeState('fade-out');
     setTimeout(() => {
       setFadeState('fade-in');
-      if (current < questions.length - 1) {
-        setCurrent((c) => c + 1);
-      } else {
-        onSubmit?.(weights);
-      }
+      if (current < questions.length - 1) setCurrent((c) => c + 1);
+      else onSubmit?.(weights);
     }, 70);
   };
 
-  const handleShuffle = () => {
-    const len = q.options.length;
-    if (len < 2) return;
-
-    let newOrder = order;
-    do {
-      newOrder = shuffleArray(order);
-    } while (newOrder.every((v, i) => v === order[i]));
-
-    setOrders((prev) => ({ ...prev, [q.id]: newOrder }));
-
-    const tNow = vizMeta[q.id]?.t;
-    if (typeof tNow === 'number') {
-      const newDisplayOptions = newOrder.map((i) => q.options[i]);
-      const newW = weightAtTFromOptions(newDisplayOptions, tNow);
-      if (newW != null) {
-        const next = { ...weights, [q.id]: newW };
-        setWeights(next);
-        onWeightsUpdate?.(next);
-      }
+  const handlePrimaryAction = () => {
+    if (tutorialMode) {
+      const isLastStep = tutorialStepIndex >= TUTORIAL_STEPS.length - 1;
+      if (!isLastStep) setTutorialStepIndex((i) => i + 1);
+      else endTutorialAndBegin();
+      return;
     }
-
-    setError('');
+    handleNext();
   };
 
+  const endTutorialAndBegin = () => {
+    stopDragDemo();
+    setDemoShuffleEnabled(false);
+    setDemoShufflePress(false);
+    setDemoPrimaryPress(false);
+    setTutorialMode(false);
+    userInteractedRef.current = false;
+
+    if (previewAnimRef.current.raf) cancelAnimationFrame(previewAnimRef.current.raf);
+    previewAnimRef.current.raf = 0;
+    previewAnimRef.current.token++;
+
+    setOrders({});
+    setVizMeta({});
+    setWeights({});
+    setError('');
+    setCurrent(0);
+    setSessionKey((k) => k + 1);
+  };
+
+  const skipTutorial = () => endTutorialAndBegin();
+
   const currentWeight = weights[q.id] ?? null;
-  const currentMeta = vizMeta[q.id] ?? { t: undefined, index: null };
+  const currentMeta = vizMeta[q.id] ?? { t: undefined, index: null, committed: false, dragging: false };
+
+  const primaryCtaLabel = tutorialMode
+    ? (tutorialStepIndex >= TUTORIAL_STEPS.length - 1 ? 'Begin' : 'Next')
+    : current < questions.length - 1 ? 'Next' : "I'm Ready";
+
+  const { title, body, binder } = getStepContent(step?.id);
 
   return (
-    <div className={`survey-section`}>
+    <div className={`survey-section ${fadeState}`} style={{ position: 'relative' }}>
       {error && (
         <div className={`error-container ${fadeState}`}>
           <h2>Heads up</h2>
@@ -116,30 +432,87 @@ export default function QuestionFlowWeighted({
         </div>
       )}
 
-      <div className="questionnaire">
+      {/* Tutorial bubble */}
+      <HintBubble
+        show={!!tutorialMode}
+        placement="top"
+        bubbleId="weighted-flow"
+        stepId={step?.id}
+      >
+        <div>
+          {title ? <h2 style={{ margin: 0 }}>{title}</h2> : null}
+          {body ? <h4 className="tip" style={{ margin: '6px 0 0 0' }}>{body}</h4> : null}
+          {binder ? (
+            <h4
+              className="binder"
+              style={{ textDecoration: 'underline', cursor: 'pointer' }}
+              onClick={() => {
+                if (tutorialMode && step?.id === 'intro') {
+                  setDemoPrimaryPress(true);
+                  setTimeout(() => setDemoPrimaryPress(false), 200);
+                }
+                const isLastStep = tutorialStepIndex >= TUTORIAL_STEPS.length - 1;
+                if (!isLastStep) setTutorialStepIndex((i) => i + 1);
+                else endTutorialAndBegin();
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              {binder}
+            </h4>
+          ) : null}
+        </div>
+
+        <div style={{ marginTop: 10, textAlign: 'right' }}>
+          <h4
+            className="hb-skip"
+            onClick={skipTutorial}
+            aria-label="Skip tutorial"
+            style={{
+              display: 'inline-block',
+              opacity: 0.75,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            Skip
+          </h4>
+        </div>
+      </HintBubble>
+
+      <div className="questionnaire" key={`qwrap-${sessionKey}-${current}`}>
         <QuestionMonitor
+          key={`monitor-${resetKey}-${sessionKey}`}
           prompt={q.prompt}
           options={displayOptions}
           t={currentMeta.t}
           index={currentMeta.index}
           qIndex={current}
           qTotal={questions.length}
-          // NEW
-          isDragging={isDragging}
+          isDragging={!!currentMeta.dragging}
         />
 
         <CheckpointScale
+          key={`scale-${resetKey}-${sessionKey}`}
           options={displayOptions}
           value={currentWeight}
           resetKey={resetKey}
           onChange={handleScaleChange}
+          // Use previewT for tutorial animations
+          previewT={tutorialMode ? currentMeta.t : undefined}
+          // Ghost only in DRAG step; hidden in SHUFFLE/EDGES
+          dismissGhostOnDelta={!!tutorialMode && step?.id === 'drag'}
+          forceShowGhost={!!tutorialMode && step?.id === 'drag'}
         />
 
         <div className="survey-actions">
           <button
             type="button"
-            className="shuffle-button"
-            onClick={handleShuffle}
+            className={`shuffle-button ${demoShufflePress ? 'is-demo-press' : ''}`}
+            onClick={() => shuffleNow(false)}
             title="Shuffle answers"
             aria-label="Shuffle answers"
           >
@@ -163,8 +536,11 @@ export default function QuestionFlowWeighted({
             </svg>
           </button>
 
-          <button className="begin-button2" onClick={handleNext}>
-            {current < questions.length - 1 ? <span>Next</span> : <span>I'm Ready</span>}
+          <button
+            className={`begin-button2 ${demoPrimaryPress ? 'is-demo-press' : ''}`}
+            onClick={handlePrimaryAction}
+          >
+            <span>{primaryCtaLabel}</span>
           </button>
         </div>
       </div>

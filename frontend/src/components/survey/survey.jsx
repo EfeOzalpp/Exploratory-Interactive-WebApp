@@ -41,6 +41,8 @@ export default function Survey({
   const {
     setSurveyActive, setHasCompletedSurvey, setSection, setMySection, setMyEntryId,
     observerMode, openGraph, section, resetToStart,
+    // NEW tutorial wiring
+    tutorialMode, setTutorialMode,
   } = useGraph();
 
   // Build available sections:
@@ -216,6 +218,7 @@ export default function Survey({
             error={error}
           />
         )}
+
         {stage === 'section' && (
           <SectionPickerIntro
             value={surveySection}
@@ -227,12 +230,26 @@ export default function Survey({
             titleOverride={audience === 'student' ? 'Select Your Major' : undefined}
           />
         )}
+
         {stage === 'questions' && (
           <QuestionFlow
             onAnswersUpdate={onAnswersUpdate}
             onSubmit={handleSubmitFromQuestions}
             submitting={submitting}
             error={error}
+            // NEW: Tutorial flags for the questions flow to consume
+            tutorialMode={tutorialMode}
+            onEndTutorial={() => setTutorialMode(false)}
+            // Optional: mock copy the tutorial can use in HintBubble(s)
+            tutorialCopy={{
+              step1: 'Welcome! Each dot is a valid answer — tap one to pick exactly.',
+              step2: 'Between dots blends neighbors. At the midpoint, you choose both equally.',
+              step3: 'Drag anywhere on the rail to preview answers in real time.',
+              step4: 'Edges pick the outer answers. You can shuffle labels anytime.',
+              ctaNext: 'Next',
+              ctaSkip: 'Skip',
+              ctaDone: 'Got it',
+            }}
           />
         )}
       </Suspense>

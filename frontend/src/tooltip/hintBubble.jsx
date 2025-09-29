@@ -1,15 +1,17 @@
-// src/components/ui/HintBubble.jsx
+// src/components/tooltip/hintBubble.jsx
 import React from "react";
-import '../styles/hint-bubble.css';
+import "../styles/hint-bubble.css";
 
 export default function HintBubble({
   show = false,
-  placement = "left", // "left" | "right" | "top" | "bottom"
+  placement = "left",      // "left" | "right" | "top" | "bottom"
   offsetX = 0,
   offsetY = 0,
   className,
   children,
-  ...rest
+  bubbleId,               
+  stepId,                 
+  ...domProps            
 }) {
   const classes = [
     "question-hint-bubble",
@@ -25,8 +27,10 @@ export default function HintBubble({
     <div
       aria-hidden={!show}
       className={classes}
+      data-bubble-id={bubbleId}        
+      data-step-id={stepId}          
       style={{ "--offset-x": `${offsetX}px`, "--offset-y": `${offsetY}px` }}
-      {...rest}
+      {...domProps}
     >
       {children}
     </div>
