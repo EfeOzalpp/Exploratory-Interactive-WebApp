@@ -10,7 +10,5 @@ const root = ReactDOM.createRoot(document.getElementById('butterfly-habits'));
 
 // Render the App component
 root.render(
-  <React.StrictMode>
     <App />
-  </React.StrictMode>
 );

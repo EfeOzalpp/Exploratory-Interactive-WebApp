@@ -13,9 +13,9 @@
       "sizes": "192x192"
     },
     {
-      "src": "butterfly-habits-logo-tp.svg",
+      "src": "butterfly-habits-logo-mini.svg",
       "type": "image/svg",
-      "sizes": "1024x1024"
+      "sizes": "768x768"
     },
     {
       "src": "butterfly-habits-logo.png",

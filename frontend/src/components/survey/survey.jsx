@@ -82,7 +82,7 @@ export default function Survey({
       : true;
 
     // only first-time, only on phone, only if not completed, unless forced
-    if ((force || (isPhone && !alreadyBooted && !hasCompletedSurvey)) && !tutorialMode) {
+    if ((force || (!alreadyBooted && !hasCompletedSurvey)) && !tutorialMode) {
       setTutorialMode(true);
       try { sessionStorage.setItem('gp.tutorialBooted', '1'); } catch {}
     }

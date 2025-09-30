@@ -51,7 +51,7 @@ function getStepContent(stepId) {
     case 'shuffle':
       return {
         title: 'Text Cues',
-        body: 'Text grow and shrink as you blend them, choose the point where the answer matches you.',
+        body: 'Text grow and shrink as you blend them, choose the point where the answer reflects you.',
         binder: 'Next: Shuffle',
       };
     case 'edges':

@@ -1,0 +1,6 @@
+canvas {
+  background-color: transparent !important; z-index: 5;
+}
+#canvas-root canvas {
+  background-color: transparent !important; z-index: 5;
+}

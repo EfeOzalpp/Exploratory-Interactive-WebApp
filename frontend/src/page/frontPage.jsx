@@ -3,22 +3,23 @@ import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import RadialBackground from '../components/static/radialBackground';
 import Survey from '../components/survey/survey.jsx';
 import Navigation from '../components/nav/navigation.jsx';
-import Canvas from '../components/decoy';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider, useGraph } from "../context/graphContext.tsx";
 import GamificationCopyPreloader from '../utils/gamificationCopyPreloader.tsx';
 import '../styles/global-styles.css';
 
-// NOTE: defer these so they only load when the viz actually opens
+// Lazy-load the q5 canvas entry so it stays out of the main bundle
+const CanvasEntry = React.lazy(() =>
+  import(/* webpackChunkName: "canvas-entry" */ '../canvas')
+);
+// HUD bits (lazy)
 const EdgeCue = React.lazy(() =>
   import(/* webpackChunkName: "edge-cue" */ '../components/dotGraph/darkMode.jsx')
 );
 const EdgeModeHint = React.lazy(() =>
   import(/* webpackChunkName: "edge-mode-hint" */ '../cues/EdgeModeHint')
 );
-
-// Keep ModeToggle lazy as before
 const ModeToggle = React.lazy(() =>
   import(/* webpackChunkName: "mode-toggle" */ '../components/nav-bottom/modeToggle')
 );
@@ -46,24 +47,37 @@ const FrontPageInner = () => {
   const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
 
-  // gate for when the 3D viz + HUD should mount
+  // when to allow the heavy viz
   const readyForViz = useMemo(
     () => vizVisible && (observerMode || hasCompletedSurvey),
     [vizVisible, observerMode, hasCompletedSurvey]
   );
 
-  // if you want auto-open when conditions met (optional)
+  // optional auto-open once allowed
   useEffect(() => {
     if (observerMode || hasCompletedSurvey) openGraph();
   }, [observerMode, hasCompletedSurvey, openGraph]);
 
-  // only show (and thus load) ModeToggle when relevant
+  // optional: idle prefetch of the canvas chunk if we aren't ready for viz yet
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (readyForViz) return;
+    const prefetch = () => {
+      import(/* webpackPrefetch: true, webpackChunkName: "canvas-entry" */ '../canvas');
+    };
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(prefetch, { timeout: 1500 });
+    } else {
+      const t = setTimeout(prefetch, 0);
+      return () => clearTimeout(t);
+    }
+  }, [readyForViz]);
+
   const showModeToggle = readyForViz;
 
-  // tighten the global zoom-preventer so it never interferes with the R3F canvas
+  // keep the zoom-preventer from interfering with R3F canvas
   useEffect(() => {
     const preventZoom = (event) => {
-      // Respect interactions that originate from inside the R3F graph container
       const isInsideGraph = event.target.closest('.graph-container, .dot-graph-container');
       if (!isInsideGraph && (event.ctrlKey || event.touches?.length > 1)) {
         event.preventDefault();
@@ -89,7 +103,7 @@ const FrontPageInner = () => {
 
   return (
     <div className="app-content">
-      {/* Defer HUD mounting until the viz is actually shown & allowed */}
+      {/* Defer HUD mount until viz is shown & allowed */}
       {readyForViz && (
         <Suspense fallback={null}>
           <EdgeCue />
@@ -100,10 +114,11 @@ const FrontPageInner = () => {
       <DeferredGamificationPreloader />
       <Navigation />
 
-      {/* Show the lightweight decoy canvas only when the heavy viz is NOT mounted */}
-      {!animationVisible && !readyForViz && <Canvas answers={answers} />}
+      <Suspense fallback={null}>
+        <CanvasEntry answers={answers} visible={!readyForViz && !animationVisible} />
+      </Suspense>
 
-      {/* Only MOUNT the heavy viz when fully allowed */}
+      {/* Heavy viz mounts only when fully allowed */}
       {readyForViz && (
         <div className={`graph-wrapper ${vizVisible ? 'visible' : ''}`}>
           <DataVisualization />

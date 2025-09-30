@@ -460,6 +460,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
           const showHalo = isInSelectedTie || showAbsEqualHoverHalo || showRankChainHalos;
 
+          const visibleR = 1.4;
+          const hitR = useDesktopLayout ? 2.2 : 4; // dot hitbox
+
           return (
             <group
               key={point._id ?? `${point.position[0]}-${point.position[1]}-${point.position[2]}` }
@@ -472,7 +475,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   active
                 />
               )}
-
+            {/* Invisible hit area */}
               <mesh
                 onPointerOver={(e) => { e.stopPropagation(); if (!suppressHover) onHoverStart(point, e); }}
                 onPointerOut={(e) =>  { e.stopPropagation(); if (!suppressHover) onHoverEnd(); }}
@@ -481,14 +484,16 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   if (!suppressHover) onHoverStart(point, e);
                   if (mode !== 'relative') return;
                   const key = getTieKeyForId(point._id);
-                  if (key) {
-                    setSelectedTieKey(prev => (prev === key ? null : key));
-                  } else {
-                    setSelectedTieKey(null);
-                  }
+                  setSelectedTieKey(prev => (prev === key ? null : key || null));
                 }}
               >
-                <sphereGeometry args={[1.4, 48, 48]} />
+                <sphereGeometry args={[hitR, 24, 24]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} depthTest={false} />
+              </mesh>
+
+              {/* Visible dot */}
+              <mesh>
+                <sphereGeometry args={[visibleR, 48, 48]} />
                 <meshStandardMaterial color={point.color} />
               </mesh>
             </group>
