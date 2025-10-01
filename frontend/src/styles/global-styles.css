@@ -11,7 +11,29 @@ html, body {margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; 
 #butterfly-habits {width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column;}   
 .q5Canvas {z-index: 2;}
 code {font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;}
+/* Ensure the overlay and its canvas never intercept input */
+#decoy-container,
+#decoy-container canvas {
+  pointer-events: none !important;
+  touch-action: auto !important;
+}
 
+/* General safety: let the page handle normal gestures */
+html, body, #root {
+  touch-action: auto;
+}
+
+/* If you have purely visual full-screen layers, keep them non-interactive */
+.radial-background,
+.edge-cue,
+.edge-mode-hint {
+  pointer-events: none;
+}
+
+/* If your graph is hidden until visible, don't let it eat events */
+.graph-wrapper:not(.visible) {
+  pointer-events: none;
+}
 
 /* Mobile */
 @media screen and (max-width: 768px) {

@@ -26,6 +26,7 @@ export default function Survey({
   setGraphVisible,
   setSurveyWrapperClass,
   onAnswersUpdate,
+  onLiveAverageChange,
 }) {
   const [stage, setStage] = useState('role'); // 'role' | 'section' | 'questions'
   const [audience, setAudience] = useState('');
@@ -304,9 +305,11 @@ export default function Survey({
             onSubmit={handleSubmitFromQuestions}
             submitting={submitting}
             error={error}
+            onLiveAverageChange={onLiveAverageChange} 
             // tutorial wiring only
             tutorialMode={tutorialMode}
             onEndTutorial={() => setTutorialMode(false)}
+            
           />
         )}
       </Suspense>

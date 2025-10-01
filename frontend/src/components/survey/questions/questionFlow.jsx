@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { computeRealtimeAverage } from '../../../utils/liveAverage.ts';
 import CheckpointScale from '../../survey/checkpointScale';
 import QuestionMonitor from './questionMonitor';
 import { WEIGHTED_QUESTIONS } from './questionsWeights';
-import HintBubble from '../../../tooltip/hintBubble.jsx';
+import HintBubble from '../../../tooltip/hintBubble';
 import { useGraph } from '../../../context/graphContext.tsx';
 
 // Fisher–Yates shuffle
@@ -69,6 +70,7 @@ export default function QuestionFlowWeighted({
   questions = WEIGHTED_QUESTIONS,
   onWeightsUpdate,
   onSubmit,
+  onLiveAverageChange,
 }) {
   const [current, setCurrent] = useState(0);
   const [weights, setWeights] = useState({});
@@ -215,6 +217,7 @@ export default function QuestionFlowWeighted({
         const next = { ...weights, [qLoc.id]: newW };
         setWeights(next);
         onWeightsUpdate?.(next);
+        onLiveAverageChange?.(computeRealtimeAverage(next));
       }
     }
     setError('');
@@ -358,6 +361,8 @@ export default function QuestionFlowWeighted({
         ghostTRef.current = Math.max(0, Math.min(3, meta.t));
       }
     }
+
+    // Treat the current slider’s value as the truth while moving.
     const next = { ...weights, [q.id]: w };
     setWeights(next);
     setVizMeta((m) => ({
@@ -371,6 +376,10 @@ export default function QuestionFlowWeighted({
     }));
     setError('');
     onWeightsUpdate?.(next);
+    
+    // NEW: emit a live average every time the slider moves
+    const liveAvg = computeRealtimeAverage(next); // 0..1
+    onLiveAverageChange?.(liveAvg);
   };
 
   const handleNext = () => {

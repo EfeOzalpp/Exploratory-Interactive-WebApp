@@ -2,9 +2,11 @@
 import React, { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AdaptiveDpr, AdaptiveEvents, Preload } from '@react-three/drei';
+import * as THREE from 'three';
 import DotGraph from './dotGraph';
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRealMobileViewport } from '../real-mobile.ts';
+import Effects from './effects.jsx'; // <-- correct casing & path
 import '../../styles/graph.css';
 
 const Graph = ({ isDragging }) => {
@@ -16,8 +18,7 @@ const Graph = ({ isDragging }) => {
   const safeData = Array.isArray(surveyData) ? surveyData : [];
 
   // Heuristics for “low” vs “high” fidelity
-  const isNarrow =
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  const isNarrow = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
   // Keep the original “low” idea for heavier features,
   // but don’t punish text/circles on mobile.
@@ -27,24 +28,25 @@ const Graph = ({ isDragging }) => {
   const dpr = useMemo(() => {
     const device = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
 
-    // On touch devices, bump sharpness but cap for perf.
-    //  - min ~1.4 so UI/circles aren’t blurry
-    //  - max ~2 on mobile to avoid melting GPUs
+    // Mobile: keep crispness but reduce the cap slightly to avoid GPU-bound
+    // min ~1.3 so UI/circles aren’t blurry; max ~1.7 for perf
     if (isRealMobile) {
-      const min = Math.min(1.5, Math.max(1, device));
-      const max = Math.min(2, device);
+      const min = Math.min(1.3, Math.max(1, device));
+      const max = Math.min(1.7, device);
       return [min, max];
     }
 
-    // Desktop: allow a bit higher cap, but still clamp
-    const maxCap = Math.min(2.5, device);
-    return lowFidelity ? [1, Math.min(2, maxCap)] : [1, maxCap];
+    // Desktop: reasonable cap, still a bit conservative
+    const maxCap = Math.min(2.2, device);
+    return lowFidelity ? [1, Math.min(1.9, maxCap)] : [1, maxCap];
   }, [isRealMobile, lowFidelity]);
 
-  // Antialiasing:
-  //  - Enable on mobile to clean up circle edges.
-  //  - On desktop keep it on unless you truly need the perf.
   const wantAA = true;
+  const enableShadows = false;
+
+  // Lighting: keep close to your originals but a touch brighter
+  const ambientIntensity = lowFidelity ? 1.0 : 1.15;
+  const dirIntensity = lowFidelity ? 0.9 : 1.1;
 
   return (
     <div className="graph-container" style={{ height: '100svh', width: '100%' }}>
@@ -56,30 +58,32 @@ const Graph = ({ isDragging }) => {
         <Canvas
           camera={{ position: [0, 0, 25], fov: 20 }}
           dpr={dpr}
-          shadows={!lowFidelity}
+          shadows={enableShadows}
           gl={{
             antialias: wantAA,
             powerPreference: 'high-performance',
             stencil: false,
             depth: true,
-            alpha: true,
+            alpha: true, // transparent background
             preserveDrawingBuffer: false,
+          }}
+          onCreated={({ gl }) => {
+            // Preserve native CSS rgb look
+            gl.outputColorSpace = THREE.SRGBColorSpace;
+            gl.toneMapping = THREE.NoToneMapping;
           }}
           frameloop="always"
         >
           {/* Lights */}
-          <ambientLight intensity={lowFidelity ? 0.9 : 1.2} />
+          <ambientLight intensity={ambientIntensity} />
           <directionalLight
             position={[13, 13, 13]}
-            intensity={lowFidelity ? 0.8 : 1.1}
-            castShadow={!lowFidelity}
-            shadow-mapSize-width={lowFidelity ? 1024 : 2048}
-            shadow-mapSize-height={lowFidelity ? 1024 : 2048}
-            shadow-bias={-0.0005}
+            intensity={dirIntensity}
+            castShadow={false}
           />
           <spotLight
             position={[0, 0, 0]}
-            intensity={lowFidelity ? 1.2 : 2.1}
+            intensity={lowFidelity ? 1.2 : 2.0}
             angle={Math.PI / 1}
             distance={10000}
             decay={0.2}
@@ -89,8 +93,18 @@ const Graph = ({ isDragging }) => {
           {/* Graph */}
           <DotGraph data={safeData} isDragging={isDragging} />
 
+          {/* Post FX — tune here */}
+          <Effects
+            saturation={0.6}     // subtle color pop
+            contrast={800.25}       // slight separation
+            brightness={0.2}      // keep neutral
+            bloom={true}          // highlight glow
+            bloomStrength={0.26}  // very light glow
+            bloomRadius={0.12}    // softness of glow
+            bloomThreshold={0.88} // only brightest parts glow
+          />
+
           {/* Perf helpers */}
-          {/* Important: avoid pixelated scaling on mobile to prevent blocky circles */}
           {isRealMobile ? <AdaptiveDpr /> : <AdaptiveDpr /* pixelated */ />}
           <AdaptiveEvents />
           <Preload all />

@@ -1,25 +1,24 @@
-import React, { useEffect, useRef } from 'react';
-import { startQ5 } from './q5';
+// src/canvas/index.jsx
+import React from 'react';
+import { useQ5Engine } from './hooks/useQ5Engine.ts';
+import { useColor } from './hooks/useColor.ts';
+import { useShapeFromAvg } from './hooks/useShape.ts';
+import { useGridDotField } from './hooks/useGridDotField.ts';
 
-export default function CanvasEntry({ visible = true, answers }) {
-  const controlsRef = useRef(null);
+export default function CanvasEntry({ visible = true, liveAvg = 0.5 }) {
+  const engine = useQ5Engine({ visible, dprMode: 'fixed1' });
 
-  useEffect(() => {
-    controlsRef.current = startQ5({
-      mount: '#canvas-root',
-      onReady: ({ trigger }) => {
-        if (answers && Object.keys(answers).length) {
-          trigger('answers/init', { count: Object.keys(answers).length });
-        }
-      }
-    });
-    return () => { controlsRef.current?.stop?.(); controlsRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // positions (no style here — styles come from the hooks below)
+  useGridDotField(engine, liveAvg, { cap: 20, manageStyle: false });
 
-  useEffect(() => {
-    controlsRef.current?.setVisible?.(Boolean(visible));
-  }, [visible]);
+  // global + per-shape style
+  useColor(engine, liveAvg);
+  useShapeFromAvg(engine, liveAvg, {
+    min: 8,
+    max: 28,
+    // optional: make triangles/octagons feel same visual weight as circles
+    perShapeScale: { circle: 1.00, triangle: 1.12, square: 0.98, octagon: 1.05 },
+  });
 
-  return null; // canvas is body-level
+  return null;
 }

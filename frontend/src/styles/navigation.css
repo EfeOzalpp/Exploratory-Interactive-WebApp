@@ -74,7 +74,7 @@ div.level-one, .observe-results { z-index: 10; }
 /* ---------- Mobile (<768px) ---------- */
 @media (max-width: 768px) {
   .navigation { padding-left: 16px; padding-right: 16px; align-items: flex-start; }
-  .logo-divider { aspect-ratio: 10 / 9; height: 2.8em; width: auto; margin-top: 0.8em;}
+  .logo-divider { aspect-ratio: 10 / 9; height: 2.8em; width: auto; margin-top: 0.6em;}
   .nav-right { flex-direction: column-reverse; }
   .level-two.is-dark.is-post-complete .burger-toggle { margin-top: 0px; }
   .level-two { margin-bottom: 1.1em; }

@@ -43,6 +43,7 @@ const FrontPageInner = () => {
   const [animationVisible, setAnimationVisible] = useState(false);
   const [surveyWrapperClass, setSurveyWrapperClass] = useState('');
   const [answers, setAnswers] = useState({});
+  const [liveAvg, setLiveAvg] = useState(0.5); // <-- default to 0.5 every load
 
   const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
@@ -58,7 +59,7 @@ const FrontPageInner = () => {
     if (observerMode || hasCompletedSurvey) openGraph();
   }, [observerMode, hasCompletedSurvey, openGraph]);
 
-  // optional: idle prefetch of the canvas chunk if we aren't ready for viz yet
+  // idle prefetch of the canvas chunk if we aren't ready for viz yet
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (readyForViz) return;
@@ -78,16 +79,28 @@ const FrontPageInner = () => {
   // keep the zoom-preventer from interfering with R3F canvas
   useEffect(() => {
     const preventZoom = (event) => {
-      const isInsideGraph = event.target.closest('.graph-container, .dot-graph-container');
-      if (!isInsideGraph && (event.ctrlKey || event.touches?.length > 1)) {
-        event.preventDefault();
+      const target = event.target;
+      const isInsideGraph = target.closest('.graph-container, .dot-graph-container');
+      // NEW: treat the canvas overlay as “not special” (i.e., allow gestures)
+      const isCanvasOverlay = target.closest('#canvas-root');
+
+      // Only block if NOT inside graph AND NOT over the canvas overlay
+      if (!isInsideGraph && !isCanvasOverlay) {
+        // Block ctrl+wheel zoom or multi-touch pinch zoom
+        const multiTouch = Array.isArray(event.touches) ? event.touches.length > 1 : false;
+        if (event.ctrlKey || multiTouch) {
+          event.preventDefault();
+        }
       }
     };
+
+    // Use passive:false only where we might call preventDefault
     document.addEventListener('wheel', preventZoom, { passive: false });
-    document.addEventListener('gesturestart', preventZoom);
-    document.addEventListener('gesturechange', preventZoom);
-    document.addEventListener('gestureend', preventZoom);
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
     document.addEventListener('touchmove', preventZoom, { passive: false });
+
     return () => {
       document.removeEventListener('wheel', preventZoom);
       document.removeEventListener('gesturestart', preventZoom);
@@ -97,8 +110,12 @@ const FrontPageInner = () => {
     };
   }, []);
 
+  // reset transient UI state when the overlay animation plays
   useEffect(() => {
-    if (animationVisible) setAnswers({});
+    if (animationVisible) {
+      setAnswers({});
+      setLiveAvg(0.5); // reset to default on restart
+    }
   }, [animationVisible]);
 
   return (
@@ -115,7 +132,11 @@ const FrontPageInner = () => {
       <Navigation />
 
       <Suspense fallback={null}>
-        <CanvasEntry answers={answers} visible={!readyForViz && !animationVisible} />
+        <CanvasEntry
+          answers={answers}
+          liveAvg={liveAvg}
+          visible={!readyForViz && !animationVisible}
+        />
       </Suspense>
 
       {/* Heavy viz mounts only when fully allowed */}
@@ -131,6 +152,7 @@ const FrontPageInner = () => {
           setGraphVisible={setGraphVisible}
           setSurveyWrapperClass={setSurveyWrapperClass}
           onAnswersUpdate={setAnswers}
+          onLiveAverageChange={setLiveAvg} // <-- wire live avg up from QuestionFlowWeighted
         />
       </div>
 
