@@ -1,12 +1,11 @@
-// src/components/Logo.tsx
 import React from "react";
 import { useGraph } from "../../context/graphContext.tsx";
 
 const Logo = () => {
-  const { observerMode, hasCompletedSurvey, darkMode } = useGraph();
+  const { observerMode, hasCompletedSurvey, darkMode, navPanelOpen } = useGraph();
 
-  // Gate: dark logo only if observerMode or survey ended is true
-  const gate = observerMode || hasCompletedSurvey;
+  // Gate: dark logo only if observerMode or survey ended is true — BUT NOT when the panel is open
+  const gate = (observerMode || hasCompletedSurvey) && !navPanelOpen;
   const useDarkLogo = gate && darkMode;
 
   // Background style

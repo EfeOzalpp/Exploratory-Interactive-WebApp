@@ -2,11 +2,10 @@
 import React, { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AdaptiveDpr, AdaptiveEvents, Preload } from '@react-three/drei';
-import * as THREE from 'three';
 import DotGraph from './dotGraph';
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRealMobileViewport } from '../real-mobile.ts';
-import Effects from './effects.jsx'; // <-- correct casing & path
+import * as THREE from 'three';
 import '../../styles/graph.css';
 
 const Graph = ({ isDragging }) => {
@@ -18,94 +17,65 @@ const Graph = ({ isDragging }) => {
   const safeData = Array.isArray(surveyData) ? surveyData : [];
 
   // Heuristics for “low” vs “high” fidelity
-  const isNarrow = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
-
-  // Keep the original “low” idea for heavier features,
-  // but don’t punish text/circles on mobile.
-  const lowFidelity = isNarrow && !isRealMobile;
+  const isNarrow =
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  const lowFidelity = isRealMobile || isNarrow;
 
   // Renderer DPR (memoized)
   const dpr = useMemo(() => {
-    const device = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    const max = typeof window !== 'undefined' ? window.devicePixelRatio || 1.5 : 1.5;
+    return lowFidelity ? [1, 1.5] : [1, Math.min(2, max)];
+  }, [lowFidelity]);
 
-    // Mobile: keep crispness but reduce the cap slightly to avoid GPU-bound
-    // min ~1.3 so UI/circles aren’t blurry; max ~1.7 for perf
-    if (isRealMobile) {
-      const min = Math.min(1.3, Math.max(1, device));
-      const max = Math.min(1.7, device);
-      return [min, max];
-    }
-
-    // Desktop: reasonable cap, still a bit conservative
-    const maxCap = Math.min(2.2, device);
-    return lowFidelity ? [1, Math.min(1.9, maxCap)] : [1, maxCap];
-  }, [isRealMobile, lowFidelity]);
-
-  const wantAA = true;
-  const enableShadows = false;
-
-  // Lighting: keep close to your originals but a touch brighter
-  const ambientIntensity = lowFidelity ? 1.0 : 1.15;
-  const dirIntensity = lowFidelity ? 0.9 : 1.1;
-
+  // ---- Single return; conditionals handled inside JSX ----
   return (
     <div className="graph-container" style={{ height: '100svh', width: '100%' }}>
       {!section ? (
         <p className="graph-loading">Pick a section to begin.</p>
       ) : loading ? (
+        // Keep layout stable while loading
         <div className="graph-loading" aria-busy="true" />
       ) : (
         <Canvas
           camera={{ position: [0, 0, 25], fov: 20 }}
           dpr={dpr}
-          shadows={enableShadows}
+          shadows={!lowFidelity}
           gl={{
-            antialias: wantAA,
+            antialias: true,
             powerPreference: 'high-performance',
             stencil: false,
             depth: true,
-            alpha: true, // transparent background
+            alpha: true,
             preserveDrawingBuffer: false,
-          }}
-          onCreated={({ gl }) => {
-            // Preserve native CSS rgb look
-            gl.outputColorSpace = THREE.SRGBColorSpace;
-            gl.toneMapping = THREE.NoToneMapping;
+            toneMapping: THREE.ACESFilmicToneMapping,
+            outputColorSpace: THREE.SRGBColorSpace, //
           }}
           frameloop="always"
         >
           {/* Lights */}
-          <ambientLight intensity={ambientIntensity} />
+          <ambientLight intensity={lowFidelity ? 1.4 : 1.6} />
           <directionalLight
             position={[13, 13, 13]}
-            intensity={dirIntensity}
-            castShadow={false}
+            intensity={lowFidelity ? 0.9 : 1.1}
+            castShadow={!lowFidelity}
+            shadow-mapSize-width={lowFidelity ? 1624 : 2048}
+            shadow-mapSize-height={lowFidelity ? 1624 : 2048}
+            shadow-bias={-0.0005}
           />
           <spotLight
-            position={[0, 0, 0]}
-            intensity={lowFidelity ? 1.2 : 2.0}
+            position={[6, 4, 8]}
+            intensity={lowFidelity ? 4 : 4}
             angle={Math.PI / 1}
-            distance={10000}
-            decay={0.2}
-            castShadow={false}
+            distance={100}
+            decay={0.4}
+            castShadow={true}
           />
 
           {/* Graph */}
           <DotGraph data={safeData} isDragging={isDragging} />
 
-          {/* Post FX — tune here */}
-          <Effects
-            saturation={0.6}     // subtle color pop
-            contrast={800.25}       // slight separation
-            brightness={0.2}      // keep neutral
-            bloom={true}          // highlight glow
-            bloomStrength={0.26}  // very light glow
-            bloomRadius={0.12}    // softness of glow
-            bloomThreshold={0.88} // only brightest parts glow
-          />
-
           {/* Perf helpers */}
-          {isRealMobile ? <AdaptiveDpr /> : <AdaptiveDpr /* pixelated */ />}
+          <AdaptiveDpr pixelated />
           <AdaptiveEvents />
           <Preload all />
         </Canvas>

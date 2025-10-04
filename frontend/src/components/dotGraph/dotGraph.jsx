@@ -1,7 +1,7 @@
 // src/components/dotGraph/dotGraph.jsx
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { Html, Line } from '@react-three/drei';
-
+import * as THREE from 'three';
 import CompleteButton from '../completeButton.jsx';
 import GamificationPersonalized from '../gamification/gamificationPersonalized';
 import GamificationGeneral from '../gamification/gamificationGeneral';
@@ -88,8 +88,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       isTabletLike,
       xOffset: 0,
       yOffset: 0,
-      xOffsetPx: wantsSkew ? -168 : 0,
-      yOffsetPx: wantsSkew ? 24 : 0,
+      xOffsetPx: wantsSkew ? -112 : 0,
+      yOffsetPx: wantsSkew ? 12 : 0,
     },
     bounds: { minRadius: isSmallScreen ? 2 : 20, maxRadius: 800 },
     dataCount: safeData.length,
@@ -107,7 +107,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   }, [safeData.length]);
 
   const colorForAverage = useMemo(
-    () => (avg /* 0..1 */) => rgbString(sampleStops(avg)),
+  () => (avg) => boostColor(rgbString(sampleStops(avg))),
     []
   );
 
@@ -335,6 +335,24 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
         Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius)))
       );
 
+  // Perceptual "pop": move a bit toward fully saturated, slightly darker version
+  const boostColor = (rgbHexOrCss) => {
+    const c = new THREE.Color(rgbHexOrCss);
+    const hsl = { h: 0, s: 0, l: 0 };
+    c.getHSL(hsl);
+
+    // Target = same hue, max saturation, a touch darker
+    const target = new THREE.Color().setHSL(hsl.h, 1, Math.max(0, hsl.l * 0.9));
+
+    // Amount depends on how desaturated the source is:
+    // - If it's already saturated, move a little
+    // - If it's pastel, move more
+    const t = 0.9 * (1 - hsl.s); // 0..0.35
+
+    c.lerp(target, t); // lerp in RGB space; avoids HSL s=1 clamp
+    return `#${c.getHexString()}`;
+  };
+
   // -------- tie-aware stats (shared for both panels) --------
   const myStats = effectiveMyEntry && myEntry
     ? getTieStats({ data: safeData, targetId: myEntry._id })
@@ -494,7 +512,13 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               {/* Visible dot */}
               <mesh>
                 <sphereGeometry args={[visibleR, 48, 48]} />
-                <meshStandardMaterial color={point.color} />
+                <meshStandardMaterial     
+                  color={point.color}
+                  roughness={0.34}
+                  metalness={0.12}
+                  emissive={point.color}
+                  emissiveIntensity={0.08}
+                  envMapIntensity={0.35}/>
               </mesh>
             </group>
           );
@@ -508,18 +532,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
             dashed={false}
             toneMapped={false}
             transparent
-            opacity={0.85}
-          />
-        )}
-        {mode === 'relative' && !selectedTieKey && rankChainPoints.length >= 2 && (
-          <Line
-            points={rankChainPoints}
-            color="#7b7b7b"
-            lineWidth={1.5}
-            dashed={false}
-            toneMapped={false}
-            transparent
-            opacity={0.6}
+            opacity={0.75}
           />
         )}
 

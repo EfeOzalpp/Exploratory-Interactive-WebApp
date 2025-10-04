@@ -43,7 +43,8 @@ const FrontPageInner = () => {
   const [animationVisible, setAnimationVisible] = useState(false);
   const [surveyWrapperClass, setSurveyWrapperClass] = useState('');
   const [answers, setAnswers] = useState({});
-  const [liveAvg, setLiveAvg] = useState(0.5); // <-- default to 0.5 every load
+  const [liveAvg, setLiveAvg]   = useState(0.5); // drives visual lerps
+  const [allocAvg, setAllocAvg] = useState(0.5); // drives shape reallocation only on commit
 
   const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
@@ -114,7 +115,8 @@ const FrontPageInner = () => {
   useEffect(() => {
     if (animationVisible) {
       setAnswers({});
-      setLiveAvg(0.5); // reset to default on restart
+      setLiveAvg(0.5);
+      setAllocAvg(0.5);
     }
   }, [animationVisible]);
 
@@ -134,7 +136,8 @@ const FrontPageInner = () => {
       <Suspense fallback={null}>
         <CanvasEntry
           answers={answers}
-          liveAvg={liveAvg}
+          liveAvg={liveAvg}     // visuals (per-shape lerps, color, etc.)
+          allocAvg={allocAvg}   // allocation (placement) – updates on commit only
           visible={!readyForViz && !animationVisible}
         />
       </Suspense>
@@ -152,7 +155,12 @@ const FrontPageInner = () => {
           setGraphVisible={setGraphVisible}
           setSurveyWrapperClass={setSurveyWrapperClass}
           onAnswersUpdate={setAnswers}
-          onLiveAverageChange={setLiveAvg} // <-- wire live avg up from QuestionFlowWeighted
+          onLiveAverageChange={(avg, meta) => {
+           // always update visuals
+           if (typeof avg === 'number') setLiveAvg(avg);
+           // only re-allocate when the gesture commits
+           if (meta?.committed && typeof avg === 'number') setAllocAvg(avg);
+         }}
         />
       </div>
 

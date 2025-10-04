@@ -46,7 +46,7 @@ function getStepContent(stepId) {
     case 'drag':
       return {
         title: 'Drag it!',
-        body: 'Answers are revealed as you drag. You can drag to anywhere you like.',
+        body: 'Text appears as you drag. Anywhere on the line is a correct answer.',
         binder: 'Next: Text Cues',
       };
     case 'shuffle':
@@ -58,7 +58,7 @@ function getStepContent(stepId) {
     case 'edges':
       return {
         title: 'Mix And Match',
-        body: "When the two answers you like aren't aligning, shuffle them.",
+        body: "When the two answers you like aren't aligning, shuffle them so they do.",
         binder: 'Begin',
       };
     default:
@@ -193,6 +193,35 @@ export default function QuestionFlowWeighted({
 
     previewAnimRef.current.raf = requestAnimationFrame(tick);
   };
+  
+  // Guarantees at least one of the currently visible answers changes after shuffle.
+  // If t is snapped to an integer (exact checkpoint), we only ensure THAT index changes.
+  function shuffleForVisibleChange(order, tNow, len) {
+    // If no t yet (e.g., first render), fall back to “not identical” shuffle
+    if (!Number.isFinite(tNow)) {
+      let out = order;
+      do { out = shuffleArray(order); } while (out.every((v, i) => v === order[i]));
+      return out;
+    }
+
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    const i = Math.floor(clamp(tNow, 0, len - 1));
+    const j = Math.min(i + 1, len - 1);
+
+    const snapped = Math.abs(tNow - Math.round(tNow)) < 1e-4;
+    const visiblePositions = snapped ? [i] : Array.from(new Set([i, j])); // de-dupe when i==j
+
+    // Pick which visible position we’ll change
+    const pos = visiblePositions[Math.floor(Math.random() * visiblePositions.length)];
+
+    // Pick any other index to swap with
+    let k = pos;
+    while (k === pos) k = Math.floor(Math.random() * len);
+
+    const out = order.slice();
+    [out[pos], out[k]] = [out[k], out[pos]];
+    return out;
+  }
 
   // Shuffle (real)
   function shuffleNow(triggeredByDemo = false) {
@@ -203,13 +232,15 @@ export default function QuestionFlowWeighted({
 
     if (!triggeredByDemo && demoShuffleEnabled) setDemoShuffleEnabled(false);
 
-    let newOrder = orderLoc;
-    do { newOrder = shuffleArray(orderLoc); }
-    while (newOrder.every((v, i) => v === orderLoc[i]));
+    // Current “t” that the monitor/preview is using
+    const tNow = vizMeta[qLoc.id]?.t;
+
+    // Compute a new order that guarantees at least one visible change
+    const newOrder = shuffleForVisibleChange(orderLoc, tNow, len);
 
     setOrders((prev) => ({ ...prev, [qLoc.id]: newOrder }));
 
-    const tNow = vizMeta[qLoc.id]?.t;
+    // Recompute the weight at the SAME t using the new display order
     if (typeof tNow === 'number') {
       const newDisplayOptions = newOrder.map((i) => qLoc.options[i]);
       const newW = weightAtTFromOptions(newDisplayOptions, tNow);
@@ -220,6 +251,7 @@ export default function QuestionFlowWeighted({
         onLiveAverageChange?.(computeRealtimeAverage(next));
       }
     }
+
     setError('');
   }
 
@@ -379,7 +411,7 @@ export default function QuestionFlowWeighted({
     
     // NEW: emit a live average every time the slider moves
     const liveAvg = computeRealtimeAverage(next); // 0..1
-    onLiveAverageChange?.(liveAvg);
+    onLiveAverageChange?.(liveAvg, meta);
   };
 
   const handleNext = () => {

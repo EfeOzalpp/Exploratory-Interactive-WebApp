@@ -1,9 +1,22 @@
 // src/canvas/grid/occupancy.ts
 export type Place = { r0: number; c0: number; w: number; h: number };
 
-export function createOccupancy(rows: number, cols: number) {
+export function createOccupancy(
+  rows: number,
+  cols: number,
+  isForbidden?: (r: number, c: number) => boolean
+) {
   const used = new Array(rows * cols).fill(false);
   const idx = (r: number, c: number) => r * cols + c;
+
+  // mark forbidden upfront (treated as already "used")
+  if (isForbidden) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (isForbidden(r, c)) used[idx(r, c)] = true;
+      }
+    }
+  }
 
   function canPlace(r0: number, c0: number, w: number, h: number) {
     if (r0 < 0 || c0 < 0 || r0 + h > rows || c0 + w > cols) return false;

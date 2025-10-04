@@ -24,7 +24,7 @@
 .dot-green { animation: greenFluctuation 3s ease-in-out infinite; }
 
 /* Triangle “dot” marker */
-.dot { width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 35px solid rgba(0, 0, 0, 0.2); margin: 0 auto; display: inline-block; position: relative; box-shadow: 0 0 6px rgba(0, 0, 0, 0.3); }
+.dot { filter: brightness(0.9); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 35px solid rgba(0, 0, 0, 0.2); margin: 0 auto; display: inline-block; position: relative; box-shadow: 0 0 6px rgba(0, 0, 0, 0.3); }
 
 /* ===== Info Overlay / Panel ===== */
 .info-overlay, .info-panel { position: fixed; inset: 0; width: 100vw; height: 100dvh; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; z-index: 8; pointer-events: auto; background: transparent; }

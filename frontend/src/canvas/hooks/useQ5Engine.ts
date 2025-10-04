@@ -1,6 +1,6 @@
 // src/canvas/hooks/useQ5Engine.ts
-import { useEffect, useRef } from 'react';
-import { startQ5 } from '../q5';
+import { useEffect, useRef, useState } from 'react';
+import { startQ5, type Q5Controls } from '../q5.js';
 
 type EngineOpts = {
   visible?: boolean;
@@ -9,8 +9,11 @@ type EngineOpts = {
 
 export function useQ5Engine(opts: EngineOpts = {}) {
   const { visible = true, dprMode = 'fixed1' } = opts;
-  const controlsRef = useRef<ReturnType<typeof startQ5> | null>(null);
+
+  // Use the declared controls type from q5.js.d.ts
+  const controlsRef = useRef<Q5Controls | null>(null);
   const readyRef = useRef(false);
+  const [readyTick, setReadyTick] = useState(0);
 
   useEffect(() => {
     controlsRef.current = startQ5({
@@ -18,8 +21,10 @@ export function useQ5Engine(opts: EngineOpts = {}) {
       dprMode,
       onReady: () => {
         readyRef.current = true;
+        setReadyTick((t) => t + 1); // signal “ready” to React
       },
     });
+
     return () => {
       readyRef.current = false;
       controlsRef.current?.stop?.();
@@ -34,5 +39,6 @@ export function useQ5Engine(opts: EngineOpts = {}) {
   return {
     ready: readyRef,
     controls: controlsRef,
+    readyTick,
   };
 }

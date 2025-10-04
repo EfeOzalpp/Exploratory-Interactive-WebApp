@@ -1,4 +1,3 @@
-// components/nav/Navigation.jsx
 import React, { useState, useEffect } from "react";
 import Logo from "../static/left";
 import InfoPanel from "./infoPanel.jsx";
@@ -54,7 +53,13 @@ const Navigation = () => {
     openGraph,
     closeGraph,
     tutorialMode, // ← drives mobile hide/show
+    setNavPanelOpen, // ← NEW: sync panel open state to context
   } = useGraph();
+
+  // keep context in sync with this component's "What's the Idea?" panel
+  useEffect(() => {
+    setNavPanelOpen(open);
+  }, [open, setNavPanelOpen]);
 
   useEffect(() => {
     if (hasCompletedSurvey && observerMode) setObserverMode(false);

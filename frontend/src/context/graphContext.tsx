@@ -48,6 +48,10 @@ export type GraphContextType = {
   tutorialMode: boolean;
   setTutorialMode: (v: boolean) => void;
 
+  // NEW: nav panel open (controls logo gating)
+  navPanelOpen: boolean;
+  setNavPanelOpen: (v: boolean) => void;
+
   // reset
   resetToStart: () => void;
 };
@@ -104,6 +108,9 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
   // NEW: tutorial mode — do NOT persist; always start false after a refresh.
   const [tutorialMode, setTutorialMode] = useState<boolean>(false);
+
+  // NEW: nav panel open (drives logo gating)
+  const [navPanelOpen, setNavPanelOpen] = useState<boolean>(false);
 
   // Cleanup any legacy flags that might force tutorial back on after refresh.
   useEffect(() => {
@@ -173,6 +180,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setDarkMode,
         tutorialMode,
         setTutorialMode,
+        navPanelOpen,
+        setNavPanelOpen,
         resetToStart,
       }}
     >

@@ -29,7 +29,7 @@ export default function useOrbit(params = {}) {
     dataCount = params.dataCount ?? (Array.isArray(params.data) ? params.data.length : 0),
 
     idle = {},
-    thresholds = { mobile: 60, tablet: 65, desktop: 70 },
+    thresholds = { mobile: 60, tablet: 65, desktop: 120 },
   } = params;
 
   const {
@@ -218,7 +218,7 @@ export default function useOrbit(params = {}) {
       const nearInsetX = insetX + NEAR_MARGIN_PX;
       const nearInsetY = insetY + NEAR_MARGIN_PX;
 
-      // === NEW: top/bottom center "dead zone" across middle 20% of width ===
+      // top/bottom center "dead zone" across middle 20% of width ===
       const CENTER_GAP_START = w * 0.38;
       const CENTER_GAP_END   = w * 0.62;
       const inCenterGapX = x >= CENTER_GAP_START && x <= CENTER_GAP_END;

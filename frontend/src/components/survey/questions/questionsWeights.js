@@ -4,10 +4,10 @@ export const WEIGHTED_QUESTIONS = [
     id: 'q1',
     prompt: 'What is your usual commute?',
     options: [
-      { key: 'A', label: 'Public Transportation',     weight: 0.82 },
-      { key: 'B', label: 'Electric or hybrid car',    weight: 0.67 },
-      { key: 'C', label: 'Gas-powered car',           weight: 0.23 },
-      { key: 'D', label: 'Walking and or biking',     weight: 0.91 },
+      { key: 'A', label: 'Public Transportation',     weight: 0.25 },
+      { key: 'B', label: 'Electric or hybrid car',    weight: 1 },
+      { key: 'C', label: 'Gas-powered car',           weight: 0 },
+      { key: 'D', label: 'Walking and or biking',     weight: 0.75 },
     ],
   },
   {
