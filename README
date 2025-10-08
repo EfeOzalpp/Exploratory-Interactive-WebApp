@@ -2,9 +2,7 @@ from pathlib import Path
 
 readme_text = """# 🌍 Climate Gamification — 3D Interactive Survey Experience
 
-<p align="center">
-  <img src="./project_screenshots/canvas1.png" width="600" alt="Climate Gamification Screenshot">
-</p>
+<img src="./project_screenshots/canvas1.png" width="600" alt="Climate Gamification Screenshot">
 
 **Climate Gamification** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
 
