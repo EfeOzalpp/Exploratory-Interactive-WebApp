@@ -105,7 +105,7 @@ function rand01(seed) {
 
 /* Factory smoke config (purple-tinted, house-like params) */
 const FACTORY_SMOKE = {
-  spawnX: [0.20, 0.80],
+  spawnX: [0, 0.80],
   spawnY: [0.30, 0.30],
   count:  [48, 16],
   sizeMin:[3, 0],
@@ -123,7 +123,7 @@ const FACTORY_SMOKE = {
   jitterAngle: [0.06, 0.16],
   fadeInFrac: 0.22,
   fadeOutFrac: 0.38,
-  edgeFadePx: { left: 6, right: 6, top: 2, bottom: 0 },
+  edgeFadePx: { left: 2, right: 2, top: 2, bottom: 4 },
   sizeHz: 4,
   base: blendRGB(POWER_BASE_PALETTE.bladeLine, { r: 60, g: 60, b: 80 }, 0.65),
   blendK: [0.05, 0.60],
@@ -285,7 +285,7 @@ export function drawPower(p, cx, cy, r, opts = {}) {
 
     // 3) particles
     const tSec = (typeof opts.timeMs === 'number' ? opts.timeMs : p.millis()) / 1000;
-    const emitW = Math.max(10, Math.round(bodyW * 0.40));
+    const emitW = Math.max(10, Math.round(bodyW * 0.20));
     const emitH = Math.max(48, Math.round(cell * 2.2));
     const emitX = (isLeftChimney ? xL : xR) - (isLeftChimney ? -Math.round(emitW / 2) : Math.round(emitW / 2));
     const emitY = (yTop - roofRise) - Math.round(cell * 1.0);
@@ -348,7 +348,7 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     p.rect(chimX, chimY - 2, chimW, 3);
 
     const capOver = Math.round(chimW * 0.15);
-    p.strokeWeight(2);
+    p.strokeWeight(4);
     strokeRgb(p, POWER_BASE_PALETTE.mastCore, 255);
     const capX0 = chimX - capOver / 2;
     const capX1 = chimX + chimW + capOver / 2;

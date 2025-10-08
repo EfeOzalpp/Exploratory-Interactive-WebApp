@@ -6,7 +6,6 @@ export default function SectionPickerIntro({
   onBegin,
   error,
   sections = [],
-  // NEW:
   placeholderOverride,        // e.g., "Your Major..."
   titleOverride,              // e.g., "Select Your Major"
 }) {

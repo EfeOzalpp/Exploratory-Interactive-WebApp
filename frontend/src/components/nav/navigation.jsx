@@ -52,14 +52,23 @@ const Navigation = () => {
     setSurveyActive,
     openGraph,
     closeGraph,
-    tutorialMode, // ← drives mobile hide/show
-    setNavPanelOpen, // ← NEW: sync panel open state to context
+    setNavPanelOpen, // sync panel open state to context
+    navVisible,      // NEW: global “should nav be visible?”
   } = useGraph();
+
+  // Hide the entire nav on phones when navVisible=false
+  const navClassName = [
+    "navigation",
+    (isPhone && pickerOpen && !open) ? "picker-open-mobile" : "",
+    !navVisible ? "nav-hidden-mobile" : "",
+  ]
+    .join(" ")
+    .trim();
 
   // keep context in sync with this component's "What's the Idea?" panel
   useEffect(() => {
-    setNavPanelOpen(open);
-  }, [open, setNavPanelOpen]);
+    if (isPhone && !navVisible) setOpen(false);
+  }, [isPhone, navVisible]);
 
   useEffect(() => {
     if (hasCompletedSurvey && observerMode) setObserverMode(false);
@@ -85,32 +94,6 @@ const Navigation = () => {
   const isDark = observerMode || hasCompletedSurvey;
   const postCompleteOnly = hasCompletedSurvey && !observerMode;
 
-  // IMPORTANT: fade only when picker is open on phone AND the info panel is NOT open
-  const navClassName = [
-    "navigation",
-    isPhone && pickerOpen && !open ? "picker-open-mobile" : "",
-  ]
-    .join(" ")
-    .trim();
-
-  // Hide the right side entirely on phones during tutorial
-  const hideNavRightOnTutorialPhone = Boolean(tutorialMode && isPhone);
-
-  // When hiding the right side, also collapse any open panels to avoid stray focus
-  useEffect(() => {
-    if (hideNavRightOnTutorialPhone) {
-      setOpen(false);        // close “What’s the Idea?” panel if open
-      setBurgerOpen(true);   // collapse the level-one block
-    }
-  }, [hideNavRightOnTutorialPhone]);
-
-  const navRightClassName = [
-    "nav-right",
-    hideNavRightOnTutorialPhone ? "hide-on-tutorial-phone" : "",
-  ]
-    .join(" ")
-    .trim();
-
   return (
     <>
       <nav className={navClassName}>
@@ -118,15 +101,7 @@ const Navigation = () => {
           <Logo />
         </div>
 
-        <div
-          className={navRightClassName}
-          aria-hidden={hideNavRightOnTutorialPhone || undefined}
-          // hard remove from layout on phones during tutorial for absolute safety
-          style={{
-            display: hideNavRightOnTutorialPhone ? "none" : undefined,
-          }}
-          data-tutorial-hidden={hideNavRightOnTutorialPhone ? "1" : "0"}
-        >
+        <div className="nav-right">
           {/* LEVEL ONE — collapsible */}
           <div
             className={[
@@ -173,21 +148,6 @@ const Navigation = () => {
                 "What's the Idea?"
               )}
             </button>
-
-            {/* Optional feedback button
-            <button
-              className={["feedback", isDark ? "is-dark" : ""].join(" ").trim()}
-              onClick={() => {
-                window.open(
-                  "https://docs.google.com/document/d/1lBKllYBu-OS34sMtGmJuJjTZlcN09QRPo5EdhCTQueM/edit?usp=sharing",
-                  "_blank",
-                  "noopener,noreferrer"
-                );
-              }}
-            >
-              Leave Your Thoughts
-            </button>
-            */}
           </div>
 
           {/* LEVEL TWO — vertical stack */}
@@ -241,12 +201,24 @@ const Navigation = () => {
               aria-label={burgerOpen ? "Hide options" : "Show options"}
             >
               {burgerOpen ? (
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                >
                   <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
                   <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                >
                   <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
                 </svg>
               )}
@@ -255,6 +227,7 @@ const Navigation = () => {
         </div>
       </nav>
 
+      {/* Also gate the panel when nav is hidden on phone */}
       <InfoPanel open={open} onClose={() => setOpen(false)}>
         <InfoGraph />
       </InfoPanel>

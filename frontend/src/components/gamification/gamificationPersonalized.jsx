@@ -27,6 +27,7 @@ export default function GamificationPersonalized({
   // kept but unused now (per request to remove group/section phrasing)
   selectedSectionId,
 }) {
+  // Title removed — keep CMS contract stable but do not render it
   const [selectedTitle, setSelectedTitle] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
   const [open, setOpen] = useState(true);
@@ -138,8 +139,8 @@ export default function GamificationPersonalized({
     if (percentage === undefined || !userData) return;
 
     const fallbackBuckets = {
-      '0-20':   { titles: ['Carbon Culprit', 'Planet Polluter', 'Sustainability Enemy'], secondary: ['Low effort—just ahead of a few'] },
-      '21-40':  { titles: ['I Have a Backup Planet!', 'Nature? Is it Edible?'],           secondary: ['Slow start—keep going'] },
+      '0-20':   { titles: ['Carbon Culprit', 'Planet Polluter', 'Sustainability Enemy'], secondary: ['Low effort, just ahead of a few'] },
+      '21-40':  { titles: ['I Have a Backup Planet!', 'Nature? Is it Edible?'],           secondary: ['Slow start, keep going'] },
       '41-60':  { titles: ['Middle Spot is Yours', 'Is it trendy to like nature?'],       secondary: ['Right in the pack'] },
       '61-80':  { titles: ['Humble-Green MF', 'Sustainability and Whatnot'],              secondary: ['Solid progress'] },
       '81-100': { titles: ["Nature's Humble Savior", 'Damn! Larger than life habits'],    secondary: ['Top of the class'] },
@@ -191,7 +192,7 @@ export default function GamificationPersonalized({
   let relativeLine = null;
   if (mode === 'relative') {
     if (isSolo) {
-      relativeLine = <>Hurray! You’re the first one here.</>;
+      relativeLine = <>You’re the first one here.</>;
     } else if (isTopBand) {
       if (canonicalTie === 'tiedTop') {
         if (e === 1)       relativeLine = <>You’re sharing the very top with <Strong>one other person</Strong>.</>;
@@ -205,15 +206,15 @@ export default function GamificationPersonalized({
         if (e === 1 && a === 1)
           relativeLine = <>You’re close to the top, tied with <Strong>one person</Strong> and behind only <Strong>one</Strong>.</>;
         else if (e === 1)
-          relativeLine = <>You’re close to the top, tied with <Strong>one person</Strong> and behind <Strong>{a}</Strong> people.</>;
+          relativeLine = <>You’re close to the top, tied with <Strong>one</Strong> and behind <Strong>{a}</Strong> people.</>;
         else if (a === 1)
-          relativeLine = <>You’re close to the top, tied with <Strong>{e}</Strong> others and behind only <Strong>one</Strong>.</>;
+          relativeLine = <>You’re close to the top, tied with <Strong>{e}</Strong> and behind only <Strong>one</Strong>.</>;
         else
-          relativeLine = <>You’re close to the top, tied with <Strong>{e}</Strong> others and behind <Strong>{a}</Strong> people.</>;
+          relativeLine = <>You’re close to the top, tied with <Strong>{e}</Strong> and behind <Strong>{a}</Strong> people.</>;
       } else {
         relativeLine =
           a === 1
-            ? <>Almost there, behind only <Strong>one person</Strong>.</>
+            ? <>You’re almost there, behind only <Strong>one person</Strong>.</>
             : <>You’re close to the top, behind <Strong>{a}</Strong> people.</>;
       }
     } else if (isBottomBand) {
@@ -227,35 +228,27 @@ export default function GamificationPersonalized({
     } else if (isNearBottom) {
       if (e > 0) {
         if (e === 1 && b === 1)
-          relativeLine = <>You’re near the bottom, tied with <Strong>one person</Strong> and ahead of only <Strong>one</Strong>.</>;
+          relativeLine = <>You’re near the bottom, tied with <Strong>one</Strong> and ahead of only <Strong>one</Strong>.</>;
         else if (e === 1)
-          relativeLine = <>You’re near the bottom, tied with <Strong>one person</Strong> and ahead of <Strong>{b}</Strong> people.</>;
+          relativeLine = <>You’re near the bottom, tied with <Strong>one</Strong> and ahead of <Strong>{b}</Strong>.</>;
         else if (b === 1)
-          relativeLine = <>You’re near the bottom, tied with <Strong>{e}</Strong> others and ahead of only <Strong>one</Strong>.</>;
+          relativeLine = <>You’re near the bottom, tied with <Strong>{e}</Strong> and ahead of only <Strong>one</Strong>.</>;
         else
-          relativeLine = <>You’re near the bottom, tied with <Strong>{e}</Strong> others and ahead of <Strong>{b}</Strong> people.</>;
+          relativeLine = <>You’re near the bottom, tied with <Strong>{e}</Strong> and ahead of <Strong>{b}</Strong>.</>;
       } else {
         relativeLine =
           b === 1
-            ? <>You’re near the bottom, ahead of only <Strong>one person</Strong>.</>
-            : <>You’re close to the bottom, ahead of <Strong>{b}</Strong> people.</>;
+            ? <>You’re near the bottom, ahead of only <Strong>one</Strong>.</>
+            : <>You’re near the bottom, ahead of <Strong>{b}</Strong>.</>;
       }
     } else if (isMiddleBand) {
       if (canonicalTie === 'tiedMiddle') {
-        if (e === 1)       relativeLine = <>You’re in the middle, tied with <Strong>one other person</Strong>.</>;
-        else if (e === 2)  relativeLine = <>You’re in the middle, tied with <Strong>two others</Strong>.</>;
-        else               relativeLine = <>You’re in the middle, tied with <Strong>{e}</Strong> others.</>;
+        relativeLine = <>You’re in the middle, tied with <Strong>{e}</Strong>.</>;
       } else {
         if (a < b) {
-          relativeLine =
-            a === 1
-              ? <>You’re in the middle, behind only <Strong>one person</Strong>.</>
-              : <>You’re in the middle, behind <Strong>{a}</Strong> people.</>;
+          relativeLine = <>You’re in the middle, behind <Strong>{a}</Strong>.</>;
         } else if (b < a) {
-          relativeLine =
-            b === 1
-              ? <>You’re in the middle, ahead of only <Strong>one person</Strong>.</>
-              : <>You’re in the middle, ahead of <Strong>{b}</Strong> people.</>;
+          relativeLine = <>You’re in the middle, ahead of <Strong>{b}</Strong>.</>;
         } else {
           relativeLine = <>You’re in the middle, ahead of <Strong>{b}</Strong> and behind <Strong>{a}</Strong>.</>;
         }
@@ -263,7 +256,7 @@ export default function GamificationPersonalized({
     }
 
     if (!relativeLine) {
-      relativeLine = <>You’re somewhere in the group, keeping pace with everyone else.</>;
+      relativeLine = <>You’re in the mix.</>;
     }
   }
 
@@ -272,7 +265,6 @@ export default function GamificationPersonalized({
       ? relativeLine
       : (
         <>
-          Score:{' '}
           <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>
             {safePct}
           </strong>
@@ -311,15 +303,32 @@ export default function GamificationPersonalized({
           style={{ pointerEvents: 'none', transition: `opacity ${FADE_MS}ms ease` }}
         >
           <div className="gamification-text">
-            <h4 className="gam-title">
-              {mode === 'relative'
-                ? 'Compared to others, you are:'
-                : 'Your score VS unrealistic standards:'}
-            </h4>
+                        {mode === 'absolute' && secondaryText ? (
+              <h4 className="gam-subline">{secondaryText}</h4>
+            ) : null}
+          <h4 className="gam-title">
+            {mode === 'relative' ? (
+              'Within the Community'
+            ) : (
+              <>
+                Your score:{' '}
+                <strong
+                  style={{
+                    textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}`,
+                  }}
+                >
+                  {safePct}
+                </strong>
+                /100
+              </>
+            )}
+          </h4>
 
-            <h1 className="personal-title">{selectedTitle}</h1>
-            {mode === 'absolute' && secondaryText ? <h4 className="gam-subline">{secondaryText}</h4> : null}
-            <p>{line}</p>
+          {mode === 'relative' && <p>{relativeLine}</p>}
+
+            {/* Title removed by request */}
+            {/* <h1 className="personal-title">{selectedTitle}</h1> */}
+
           </div>
 
           {mode === 'absolute' && (

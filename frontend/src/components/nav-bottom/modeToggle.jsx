@@ -84,8 +84,8 @@ export default function ModeToggle() {
         title={title}
       >
         <div className={`mode-toggle-thumb ${isAbsolute ? "absolute" : "relative"}`} />
-        <div className={`mode-toggle-label ${!isAbsolute ? "active" : ""}`}>Rankings</div>
-        <div className={`mode-toggle-label ${isAbsolute ? "active" : ""}`}>Scores</div>
+        <div className={`mode-toggle-label ${!isAbsolute ? "active" : ""}`}>Versus</div>
+        <div className={`mode-toggle-label ${isAbsolute ? "active" : ""}`}>Solo</div>
       </div>
     </div>
   );

@@ -46,6 +46,23 @@ export interface AppearMod {
   backOvershoot?: number;
 }
 
+/* ───────────────────────────────────────────────────────────
+   NEW: Per-axis translation utilities
+   ─────────────────────────────────────────────────────────── */
+export interface TranslateClampX { min?: number; max?: number; }
+export interface TranslateClampY { min?: number; max?: number; }
+
+export interface TranslateOscX {
+  amp?: number;      // px amplitude (default 0)
+  speed?: number;    // Hz (cycles/sec), default 0.25
+  phase?: number;    // radians, default 0
+}
+export interface TranslateOscY {
+  amp?: number;      // px amplitude (default 0)
+  speed?: number;    // Hz (cycles/sec), default 0.25
+  phase?: number;    // radians, default Math.PI/2
+}
+
 export interface ShapeMods {
   /* NEW */ appear?: AppearMod;
 
@@ -58,6 +75,12 @@ export interface ShapeMods {
   rotation?: Rotation;
   rotationOsc?: RotationOsc;
   saturationOsc?: SaturationOsc;
+
+  /* NEW position-only per-axis controls */
+  translateClampX?: TranslateClampX;
+  translateClampY?: TranslateClampY;
+  translateOscX?: TranslateOscX;
+  translateOscY?: TranslateOscY;
 }
 
 export interface Scale {
@@ -116,6 +139,12 @@ export interface ShapeMods {
   rotation?: Rotation;
   rotationOsc?: RotationOsc;
   saturationOsc?: SaturationOsc;
+
+  // keep new props merged via TS interface merging
+  translateClampX?: TranslateClampX;
+  translateClampY?: TranslateClampY;
+  translateOscX?: TranslateOscX;
+  translateOscY?: TranslateOscY;
 }
 
 export interface ApplyShapeModsOpts {
@@ -320,6 +349,44 @@ export function applyShapeMods({ p, x, y, r, opts = {}, mods = {} }: ApplyShapeM
 
     scaleX *= Math.max(0, kx);
     scaleY *= Math.max(0, ky);
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     NEW: Position-only per-axis oscillation, then clamps
+     ───────────────────────────────────────────────────────── */
+
+  // X oscillation (additive)
+  if (mods.translateOscX) {
+    const amp = Number.isFinite(mods.translateOscX.amp as number) ? (mods.translateOscX.amp as number) : 0;
+    const speed = Number.isFinite(mods.translateOscX.speed as number) ? (mods.translateOscX.speed as number) : 0.25;
+    const phase = Number.isFinite(mods.translateOscX.phase as number) ? (mods.translateOscX.phase as number) : 0;
+    const w = speed * 2 * Math.PI;
+    mx += amp * Math.sin(w * t + phase);
+  }
+
+  // Y oscillation (additive)
+  if (mods.translateOscY) {
+    const amp = Number.isFinite(mods.translateOscY.amp as number) ? (mods.translateOscY.amp as number) : 0;
+    const speed = Number.isFinite(mods.translateOscY.speed as number) ? (mods.translateOscY.speed as number) : 0.25;
+    const phase = Number.isFinite(mods.translateOscY.phase as number) ? (mods.translateOscY.phase as number) : Math.PI / 2;
+    const w = speed * 2 * Math.PI;
+    my += amp * Math.sin(w * t + phase);
+  }
+
+  // Clamp X after all position offsets
+  if (mods.translateClampX) {
+    const hasMin = Number.isFinite(mods.translateClampX.min as number);
+    const hasMax = Number.isFinite(mods.translateClampX.max as number);
+    if (hasMin) mx = Math.max((mods.translateClampX.min as number), mx);
+    if (hasMax) mx = Math.min((mods.translateClampX.max as number), mx);
+  }
+
+  // Clamp Y after all position offsets
+  if (mods.translateClampY) {
+    const hasMin = Number.isFinite(mods.translateClampY.min as number);
+    const hasMax = Number.isFinite(mods.translateClampY.max as number);
+    if (hasMin) my = Math.max((mods.translateClampY.min as number), my);
+    if (hasMax) my = Math.min((mods.translateClampY.max as number), my);
   }
 
   // opacity / rotation / sat (unchanged)

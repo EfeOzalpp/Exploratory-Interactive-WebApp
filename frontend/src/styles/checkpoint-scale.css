@@ -72,9 +72,9 @@
   .cp-dot { width: 12px; height: 12px; border-width: 2px; }
   .cp-thumb-hitbox { width: 112px; height: 112px; }
   .cp-thumb.is-rect { width: 8px; height: 20px; }
-  .qm-stage { height: 92px; width: 94vw; }
-  .qm-answer-chip { padding: 9px 12px; border-radius: 9px; }
-  .qm-answer-abs { min-width: 120vw; max-width: 160vw; transform: translate(-50%, -50%) scale(0.95); }
+  .qm-stage { height: 124px; width: 92vw; margin-bottom: -1px;}
+  .qm-answer-chip { padding: 9px 12px; border-radius: 9px; width: 80%;}
+  .qm-answer-abs { min-width: 80%; transform: translate(-50%, -50%) scale(0.95); }
   .cp-thumb {width: 32px; height: 32px;}
 }
 

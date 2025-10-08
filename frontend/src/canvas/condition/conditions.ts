@@ -6,8 +6,11 @@ export type ShapeKind =
   | 'power'
   | 'sun'
   | 'villa'
-  | 'plus'
-  | 'line';
+  | 'car'
+  | 'sea'
+  | 'carFactory'
+  | 'bus'
+  | 'trees';
 
 export type ConditionKind = 'A' | 'B' | 'C' | 'D';
 
@@ -17,7 +20,7 @@ export type Variant = {
 };
 
 export type ConditionSpec = {
-  variants: [Variant, Variant]; // 50/50
+  variants: Variant[];
 };
 
 export const CONDITIONS: Record<ConditionKind, ConditionSpec> = {
@@ -25,12 +28,14 @@ export const CONDITIONS: Record<ConditionKind, ConditionSpec> = {
     variants: [
       { shape: 'clouds', footprint: { w: 2, h: 3 } },
       { shape: 'sun',    footprint: { w: 2, h: 2 } },
+      { shape: 'bus',    footprint: { w: 2, h: 1 } },
     ],
   },
   B: {
     variants: [
       { shape: 'snow', footprint: { w: 1, h: 3 } },
       { shape: 'villa', footprint: { w: 2, h: 2 } },
+      { shape: 'trees', footprint: { w: 1, h: 1 } },
     ],
   },
   C: {
@@ -41,8 +46,9 @@ export const CONDITIONS: Record<ConditionKind, ConditionSpec> = {
   },
   D: {
     variants: [
-      { shape: 'plus', footprint: { w: 1, h: 1 } },
-      { shape: 'line',    footprint: { w: 1, h: 1 } }, // horizontal line glyph
+      { shape: 'car', footprint: { w: 1, h: 1 } },
+      { shape: 'sea',    footprint: { w: 2, h: 1 } }, 
+      { shape: 'carFactory',    footprint: { w: 2, h: 2 } }, 
     ],
   },
 };
@@ -75,16 +81,20 @@ function fmix32(h: number): number {
  */
 export function pickVariant(kind: ConditionKind, id: number, salt = 0) {
   const spec = CONDITIONS[kind];
+  const n = spec.variants.length;
+  if (n === 0) throw new Error(`No variants for kind ${kind}`);
 
-  // Compose a stable seed from kind, id, and an optional salt
-  // Knuth’s constant 0x9e3779b9 helps decorrelate sequential ids
   const seed =
-    (hashStr(kind) ^
-      Math.imul((id >>> 0) + (salt >>> 0), 0x9e3779b9)) >>> 0;
-
-  // Thoroughly mix, then use a single high-quality bit for 50/50
+    (hashStr(kind) ^ Math.imul((id >>> 0) + (salt >>> 0), 0x9e3779b9)) >>> 0;
   const h = fmix32(seed);
-  const useFirst = (h & 1) === 0;
 
-  return useFirst ? spec.variants[0] : spec.variants[1];
+  // If exactly 2, keep the old 50/50 behavior (stable with your existing seeds)
+  if (n === 2) {
+    const useFirst = (h & 1) === 0;
+    return useFirst ? spec.variants[0] : spec.variants[1];
+  }
+
+  // N-way pick (uniform-ish, deterministic)
+  const idx = h % n;
+  return spec.variants[idx];
 }

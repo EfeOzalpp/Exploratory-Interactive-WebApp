@@ -1,3 +1,4 @@
+// sun.js
 import { clamp01, val } from './utils/useLerp.ts';
 import { blendRGB } from './utils/colorBlend.ts';
 import { oscillateSaturation } from '../color/colorUtils.ts';
@@ -24,28 +25,62 @@ const SUN_BASE = SUN_BASE_PALETTE.default;
 const SUN_RAY  = SUN_BASE_PALETTE.ray;
 
 const SUN = {
-  colorBlend: [0.40, 0.00],
+  colorBlend: [0.30, 0.00],
   oscAmp:     [0.12, 0.06],
-  oscSpeed:   [0.06, 0.16],
+  oscSpeed:   [0.4, 0.02],
 
-  rayCount:        [3, 7],
-  rayLenK:         [1.6, 1],
-  rayThickK:       [0.38, 0.22],
+  // geometry (interpreted against caller's r)
+  rayCount:        [6, 10],
+  rayLenK:         [0.80, 0.52],
+  rayThickK:       [0.06, 0.04],
 
-  coreScale:       [62,  42],
-  rayAnchorScale:  [54,  26],
+  // “base” core diameter and the older anchor (kept so visuals stay familiar)
+  coreDiamK:       [0.6, 0.45],
+  rayAnchorDiamK:  [0.46, 0.28],
 };
 
-export function drawSun(p, x, y, r, opts = {}) {
+/**
+ * drawSun(p, x, y, r, opts)
+ *
+ * Important opts:
+ * - alpha (0..255)
+ * - exposure, contrast
+ * - liveAvg (0..1)
+ * - gradientRGB / sunGradientRGB / sunCss
+ * - timeMs
+ * - rootAppearK
+ * - fitToFootprint + {cell, footprint}
+ *
+ * Fixed-gap ray control:
+ * - rayGapPx         (number, pixels) — default ties to stroke
+ * - rayLen           (number, pixels) — overrides computed length
+ * - rayLenMult       (number)         — scales computed length
+ * - rayThickness     (number, px)     — overrides stroke weight
+ * - rayThicknessMult (number)         — scales computed stroke
+ * - rayCount         (integer)
+ * - coreScaleMult    (number)         — multiplies core base diameter (before osc)
+ */
+export function drawSun(p, xIn, yIn, rIn, opts = {}) {
   const u = clamp01(opts?.liveAvg ?? 0.5);
   const t = ((typeof opts?.timeMs === 'number' ? opts.timeMs : p.millis()) / 1000);
 
   const ex = typeof opts?.exposure === 'number' ? opts.exposure : 1;
   const ct = typeof opts?.contrast === 'number' ? opts.contrast : 1;
 
+  // allow footprint fit (convenience for grid users)
+  let x = xIn, y = yIn, r = rIn;
+  if (opts.fitToFootprint && opts.cell && opts.footprint) {
+    const { r0, c0, w, h } = opts.footprint;
+    const cell = opts.cell;
+    const cx = (c0 + w / 2) * cell;
+    const cy = (r0 + h / 2) * cell;
+    const diam = Math.min(w, h) * cell;
+    x = cx; y = cy; r = diam;
+  }
+
+  // color blending setup
   const sunBlendDefault = val(SUN.colorBlend, u);
   const sunBlend = (typeof opts.sunBlend === 'number') ? clamp01(opts.sunBlend) : sunBlendDefault;
-
   const oscAmp   = (typeof opts.oscAmp   === 'number') ? opts.oscAmp   : val(SUN.oscAmp,   u);
   const oscSpeed = (typeof opts.oscSpeed === 'number') ? opts.oscSpeed : val(SUN.oscSpeed, u);
   const oscPhase = opts.oscPhase ?? 0;
@@ -63,29 +98,42 @@ export function drawSun(p, x, y, r, opts = {}) {
   let pulsedCore = oscillateSaturation(baseTint, t, { amp: oscAmp, speed: oscSpeed, phase: oscPhase });
   pulsedCore = applyExposureContrast(pulsedCore, ex, ct);
 
-  // rays tint
-  let rayTintBase = blendRGB(SUN_RAY, opts.gradientRGB, sunBlend);
+  // ray tint
+  let rayTintBase = opts.gradientRGB ? blendRGB(SUN_RAY, opts.gradientRGB, sunBlend) : SUN_RAY;
   rayTintBase = applyExposureContrast(rayTintBase, ex, ct);
   const pulsedRay = oscillateSaturation(rayTintBase, t, { amp: oscAmp, speed: oscSpeed, phase: oscPhase });
 
-  const rayCount     = Math.max(6, Math.floor(opts.rayCount ?? val(SUN.rayCount,  u)));
-  const rayThickBase = Math.max(1, opts.rayThickness ?? Math.round(r * val(SUN.rayThickK, u)));
-  const coreDiamBase = val(SUN.coreScale, u);
-  const rayAnchorDiam = val(SUN.rayAnchorScale, u);
-  const baseCoreRadius = rayAnchorDiam / 2;
+  // geometry knobs
+  const rayCount = Math.max(6, Math.floor(opts.rayCount ?? val(SUN.rayCount, u)));
 
-  // --- Apply shape mods (now with APPEAR) ---
-  const desiredAbsOsc = val([0.7, 0.08], u);
+  // base sizes (core + anchor), with explicit override multiplier for the core
+  const coreBase = r * val(SUN.coreDiamK, u) * (opts.coreScaleMult ?? 5);
+  const anchorBase = r * val(SUN.rayAnchorDiamK, u); // older anchor measure (kept for feel)
+
+  // default derived sizes for rays
+  const rayLenBaseRaw = r * val(SUN.rayLenK, u);
+  const rayLenBase = Math.max(0,
+    (typeof opts.rayLen === 'number' ? opts.rayLen : rayLenBaseRaw) * (opts.rayLenMult ?? 1)
+  );
+
+  const rayThickBaseRaw = Math.round(r * val(SUN.rayThickK, u));
+  const rayThickness = Math.max(1,
+    (typeof opts.rayThickness === 'number'
+      ? opts.rayThickness
+      : rayThickBaseRaw * (opts.rayThicknessMult ?? 1))
+  );
+
+  // appear + core breathing (only the core's diameter uses sizeOsc; rays use stable gap to core edge)
+  const desiredAbsOsc = r * val([0.10, 0.02], u);
   const m = applyShapeMods({
-    p, x, y, r,
+    p, x, y, r: coreBase,
     opts: {
       alpha: Number.isFinite(opts.alpha) ? opts.alpha : 235,
       timeMs: opts.timeMs,
       liveAvg: opts.liveAvg,
-      rootAppearK: opts.rootAppearK, // <- provided by reconciler
+      rootAppearK: opts.rootAppearK,
     },
     mods: {
-      // appear: grow & fade from nothing, centered (sun is sky object)
       appear: {
         scaleFrom: 0.0,
         alphaFrom: 0.0,
@@ -93,11 +141,10 @@ export function drawSun(p, x, y, r, opts = {}) {
         ease: 'back',
         backOvershoot: 1.6,
       },
-      // gentle breathing of the core diameter
       sizeOsc: {
         mode:   'absolute',
-        biasAbs: coreDiamBase,
-        ampAbs:  desiredAbsOsc,
+        biasAbs: coreBase,      // base core diameter
+        ampAbs:  desiredAbsOsc, // breathing amplitude (in pixels)
         speed:   val([10.5, 0.18], u),
         anchor: 'center',
       },
@@ -106,26 +153,27 @@ export function drawSun(p, x, y, r, opts = {}) {
     }
   });
 
-  // Everything below is drawn in a local space at (0,0), then scaled by appear (scaleX/Y)
+  // drawing context
   const ctx = p.drawingContext;
   p.push();
   p.translate(m.x, m.y);
-  p.scale(m.scaleX, m.scaleY); // appear envelope (and any 2D scaling) affects rays & core
+  p.scale(m.scaleX, m.scaleY); // appear envelope scales both core + rays uniformly
 
-  // Ray geometry computed in local space
-  const rayLenBase = Math.max(0, opts.rayLen ?? r * val(SUN.rayLenK, u));
-  const rayThickness = rayThickBase; // thickness follows scale via canvas transform
-  const rayGap = Number.isFinite(opts.rayGap) ? opts.rayGap : Math.max(12, Math.round(rayThickness * 2));
+  // rays: start at (live core radius) + fixed pixel gap (no breathing of the gap)
+  const coreRadiusNow = m.r * 0.5;
+  const rayGapPx = Number.isFinite(opts.rayGapPx)
+    ? opts.rayGapPx
+    : Math.max(8, Math.round(rayThickness * 1.6)); // default gap ties gently to stroke
+
   const a = (typeof m.alpha === 'number' ? m.alpha : 235) / 255;
-
-  // Rays
   p.noFill();
   p.strokeWeight(rayThickness);
+
   for (let i = 0; i < rayCount; i++) {
     const theta = (i / rayCount) * Math.PI * 2 + m.rotation;
     const len = (i % 2 === 0) ? rayLenBase * 0.7 : rayLenBase * 1.2;
 
-    const startR = baseCoreRadius + rayGap;
+    const startR = coreRadiusNow + rayGapPx;
     const endR   = startR + len;
 
     const x1 = Math.cos(theta) * startR;
@@ -144,9 +192,10 @@ export function drawSun(p, x, y, r, opts = {}) {
     ctx.stroke();
   }
 
-  // Core
+  // core (uses m.r which already includes breathing)
   p.noStroke();
   p.fill(pulsedCore.r, pulsedCore.g, pulsedCore.b, (typeof m.alpha === 'number' ? m.alpha : 235));
-  p.circle(0, 0, m.r); // m.r already includes the sizeOsc; appear scaling comes from p.scale above
+  p.circle(0, 0, m.r);
+
   p.pop();
 }

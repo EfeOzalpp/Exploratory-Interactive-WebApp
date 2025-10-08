@@ -52,6 +52,10 @@ export type GraphContextType = {
   navPanelOpen: boolean;
   setNavPanelOpen: (v: boolean) => void;
 
+  // NEW: global nav visibility (hide/show entire nav)
+  navVisible: boolean;
+  setNavVisible: (v: boolean) => void;
+
   // reset
   resetToStart: () => void;
 };
@@ -111,6 +115,9 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
   // NEW: nav panel open (drives logo gating)
   const [navPanelOpen, setNavPanelOpen] = useState<boolean>(false);
+
+  // NEW: global nav visibility (entire nav shown/hidden)
+  const [navVisible, setNavVisible] = useState<boolean>(true);
 
   // Cleanup any legacy flags that might force tutorial back on after refresh.
   useEffect(() => {
@@ -182,6 +189,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setTutorialMode,
         navPanelOpen,
         setNavPanelOpen,
+        navVisible,
+        setNavVisible,
         resetToStart,
       }}
     >

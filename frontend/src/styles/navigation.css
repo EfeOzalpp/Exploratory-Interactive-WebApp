@@ -102,7 +102,21 @@ div.level-one, .observe-results { z-index: 10; }
   .level-two.is-dark .nav-divider .graph-picker { margin-right: calc(32vw - 116px); }
   .level-two.is-dark.is-post-complete .nav-divider { width: calc(50vw + 48px); }
   .nav-divider .observe-results { margin-left: auto; }
-  .tutorial-active-mobile .nav-right { display: none !important;}
+      .navigation {
+    transition: transform 0.4s ease, opacity 0.3s ease;
+    will-change: transform, opacity;
+  }
+  .navigation.nav-hidden-mobile {
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .navigation {
+  transform: translateY(0);
+  opacity: 1;
+  z-index: 55;
+  transition: transform 260ms cubic-bezier(.22,.61,.36,1), opacity 200ms ease;
+}
 }
 
 /* ---------- Tablet (768px–1023px) ---------- */

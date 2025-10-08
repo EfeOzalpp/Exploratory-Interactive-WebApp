@@ -52,7 +52,7 @@ const HOUSE = {
 };
 
 const SMOKE = {
-  spawnX: [0.20, 0.80],
+  spawnX: [0.10, 0.80],
   spawnY: [0.30, 0.30],
   count: [36, 22],
   sizeMin: [3, 0],
@@ -305,7 +305,7 @@ export function drawHouse(p, _cx, _cy, _r, opts = {}) {
       const smokeColW = Math.max(8, Math.round(cW * 0));
       const smokeColH = Math.max(48, Math.round(cell * 2));
       const smokeX = cx + cW / 2 - smokeColW / 2;
-      const smokeY = cy - cH - Math.round(cell * 0.5);
+      const smokeY = cy - cH - Math.round(cell * 0.7);
 
       const spawnX0 = Math.min(val(SMOKE.spawnX, 0), val(SMOKE.spawnX, u));
       const spawnX1 = Math.max(val(SMOKE.spawnX, u), 1 - (1 - val(SMOKE.spawnX, u)));

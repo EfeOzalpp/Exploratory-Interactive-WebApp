@@ -52,7 +52,7 @@ const SGROUND = {
 
 /* Snow puffs */
 const SNOW = {
-  spawnX: [0.0, 1.0],
+  spawnX: [0.0, 0.9],
   spawnY: [0.00, 0.30],
 
   count:   [14, 26],
@@ -62,7 +62,7 @@ const SNOW = {
   lifeMin: [1.4, 8.0],
   lifeMax: [2.4, 12.0],
 
-  emitterOverflowFrac: [0.00, 0.60],
+  emitterOverflowFrac: [0.00, 0.50],
 
   alpha: [210, 255],
 
@@ -117,8 +117,8 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
   const cell = opts?.cell, f = opts?.footprint;
   if (!cell || !f) return;
 
-  const ex = Number.isFinite(opts?.exposure) ? opts.exposure : 1;
-  const ct = Number.isFinite(opts?.contrast) ? opts.contrast : 1;
+  const exposure = Number.isFinite(opts?.exposure) ? opts.exposure : 1;
+  const contrast = Number.isFinite(opts?.contrast) ? opts.contrast : 1;
 
   const t = ((typeof opts?.timeMs === 'number' ? opts.timeMs : p.millis()) / 1000);
   const u = clamp01(opts?.liveAvg ?? 0.5);
@@ -174,7 +174,7 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
     const base    = oscillateSaturation(SNOW_BASE_PALETTE.ground, t, { amp: gSatAmp, speed: gSatSpd, phase: 0 });
     const mixed   = opts?.gradientRGB ? blendRGB(base, opts.gradientRGB, gBlend) : base;
     let clamped   = clampBrightness(mixed, SGROUND.lightnessRange[0], SGROUND.lightnessRange[1]);
-    clamped       = applyExposureContrast(clamped, ex, ct);
+    clamped       = applyExposureContrast(clamped, exposure, contrast);
 
     const rTop = Math.round(cell * 0.06);
 
@@ -183,7 +183,7 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
     p.translate(appear.x, appear.y);
     p.scale(appear.scaleX, appear.scaleY);
     p.noStroke();
-    p.fill(clamped.r, clamped.g, clamped.b, 235);
+    p.fill(clamped.r, clamped.g, clamped.b, aDraw); // ← use appear alpha
     p.rect(
       (x0 - cx),
       (topY - cy),
@@ -223,7 +223,7 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
     phase: 0,
   });
   cloudRgb = clampBrightness(cloudRgb, SCLOUD.lightnessRange[0], SCLOUD.lightnessRange[1]);
-  cloudRgb = applyExposureContrast(cloudRgb, ex, ct);
+  cloudRgb = applyExposureContrast(cloudRgb, exposure, contrast);
 
   /* ───────── PARTICLES (translate only; no scale) ───────── */
   const of     = Math.max(0, Math.min(1, val(SNOW.emitterOverflowFrac, u)));
@@ -262,7 +262,7 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
   let flakeBase  = oscillateSaturation(SNOW_BASE_PALETTE.flake, t, { amp: satAmp, speed: satSpd, phase: 0 });
   flakeBase      = opts?.gradientRGB ? blendRGB(flakeBase, opts.gradientRGB, blendK) : flakeBase;
   flakeBase      = clampBrightness(flakeBase, SNOW.lightnessRange[0], SNOW.lightnessRange[1]);
-  flakeBase      = applyExposureContrast(flakeBase, ex, ct);
+  flakeBase      = applyExposureContrast(flakeBase, exposure, contrast);
 
   const snowColor  = { r: flakeBase.r, g: flakeBase.g, b: flakeBase.b, a: alpha };
   const dt = Math.max(0.001, (p.deltaTime || 16) / 1000);

@@ -137,7 +137,7 @@ function resilientListen({ query, params, onPing, onError, poller }) {
 // Queries
 // -------------------
 function buildQueryAndParams(section, limit) {
-  const BASE = "*[!(_id in path('drafts.**')) && _type == 'userResponseV3'";
+  const BASE = "*[!(_id in path('drafts.**')) && _type == 'userResponseV4'";
   if (!section || section === 'all') {
     return { query: `${BASE}] | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }`, params: { limit } };
   }
@@ -183,7 +183,7 @@ export const subscribeSurveyData = ({ section, limit = 300, onData }) => {
 
 export const fetchSurveyData = (callback, { limit = 300 } = {}) => {
   const query = `
-    *[!(_id in path('drafts.**')) && _type == "userResponseV3"]
+    *[!(_id in path('drafts.**')) && _type == "userResponseV4"]
       | order(coalesce(submittedAt, _createdAt) desc)[0...$limit]{ ${PROJECTION} }
   `;
   const pump = (rows) => callback(rows.map(normalizeRow));
@@ -209,7 +209,7 @@ export const fetchSurveyData = (callback, { limit = 300 } = {}) => {
 };
 
 export const subscribeSectionCounts = ({ onData }) => {
-  const query = `*[!(_id in path('drafts.**')) && _type == "userResponseV3"]{ section }`;
+  const query = `*[!(_id in path('drafts.**')) && _type == "userResponseV4"]{ section }`;
 
   const pump = (rows) => {
     const counts = new Map();

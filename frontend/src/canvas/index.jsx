@@ -2,6 +2,7 @@ import React from 'react';
 import { useQ5Engine } from './hooks/useQ5Engine.ts';
 import { useColor } from './hooks/useColor.ts';
 import { useGridDotField } from './hooks/useGridDotField.ts';
+import { useViewportKey } from './hooks/useViewportKey.ts';
 
 /**
  * CanvasEntry
@@ -13,10 +14,13 @@ export default function CanvasEntry({
   liveAvg = 0.5,
   allocAvg = 0.5,
 }) {
-  const engine = useQ5Engine({ visible, dprMode: 'fixed1' });
+  const engine = useQ5Engine({ visible, dprMode: 'auto' });
 
-  // Placement (houses/clouds/etc.) — trigger only when allocAvg changes
-  useGridDotField(engine, allocAvg);
+  // Debounced key that bumps on viewport resize/orientation
+  const viewportKey = useViewportKey(120);
+
+  // Placement (houses/clouds/etc.) — trigger on allocAvg and viewport changes
+  useGridDotField(engine, allocAvg, viewportKey);
 
   // Global palette + per-shape lerps (read continuously during drag)
   useColor(engine, liveAvg);

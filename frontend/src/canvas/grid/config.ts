@@ -1,4 +1,3 @@
-// src/canvas/grid/config.ts
 export type BreakBand = 'small' | 'medium' | 'large';
 
 export type GridSpec = {
@@ -60,60 +59,69 @@ export function makeRowForbidden(rules: RowRule[]) {
 
 /* ------------------ Your sculpted map ------------------ */
 
+// Non-overlapping breakpoints:
+// small:  <= 767
+// medium: 768–1023
+// large:  >= 1024
 export function bandFromWidth(w: number): BreakBand {
-  if (w < 768) return 'small';
-  if (w <= 1024) return 'medium';
+  if (w <= 767) return 'small';
+  if (w <= 1023) return 'medium';
   return 'large';
 }
 
 export const GRID_MAP: Record<BreakBand, GridSpec> = {
   // Phones
   small:  {
-    rows: 18,               // fewer rows => taller cells (better tap targets)
-    useTopRatio: 0.8,     // use less sky; keep UI header clear
+    rows: 18,             
+    useTopRatio: 0.85,     
     cap: 28,
-    cellPadding: 0.20,
+    cellPadding: 0,
     jitter: 6,
     forbidden: makeRowForbidden([
-      { center: '100%' },     // r=0:
-      { center: '100%' },     // r=1:       
-      { left: '2%', right: '2%' },   // r=2 
-      { left: '2%', right: '2%' },   // r=3 
-      { left: '2%', right: '2%' },   // r=4
-      { left: '2%', right: '2%' },   // r=5:
-      { left: '2%', right: '2%' },   // r=2 
-      { left: '2%', right: '2%' },   // r=3 
-      { left: '2%', right: '2%' },   // r=4
-      { left: '2%', right: '2%' },   // r=5:
-      { center: '100%' },                  // r=6: big center keep-out (question text)
-      { center: '100%' },                  // r=7: even bigger (slider zone)
-      { center: '100%' },                 // r=7: fully block (buttons row)
-      { center: '100%' },                 // r=8: bottom safe area
-      { center: '100%' },                  // r=6: big center keep-out (question text)
-      { center: '100%' },                  // r=7: even bigger (slider zone)
-      { center: '100%' },                 // r=7: fully block (buttons row)
-      { center: '100%' },                 // r=8: bottom safe area
+      { left: '0%', right: '4%' },     // r=0:
+      { left: '0%', right: '4%' },     // r=1:
+      { left: '0%', right: '4%' },   // r=2
+      { left: '0%', right: '4%' },   // r=3
+      { left: '0%', right: '4%' },   // r=4
+      { left: '0%', right: '4%' },   // r=5
+      { left: '0%', right: '4%' },   // r=6
+      { left: '0%', right: '4%' },   // r=7
+      { left: '0%', right: '4%' },   // r=8
+      { center: '100%' },  
+      { center: '100%' },     // r=10: big center keep-out (question text)
+      { center: '100%' },     // r=11: even bigger (slider zone)
+      { center: '100%' },     // r=12: fully block (buttons row)
+      { center: '100%' },     // r=13: bottom safe area
+      { center: '100%' },     // r=14
+      { center: '100%' },     // r=15
+
     ]),
   },
 
   // Tablets / small laptops
   medium: {
-    rows: 12,
-    useTopRatio: 0.6,
+    rows: 18,
+    useTopRatio: 0.8,
     cap: 56,
-    cellPadding: 0.18,
+    cellPadding: 0,
     jitter: 8,
     forbidden: makeRowForbidden([
-      { center: '100%' },                // r=0
-      { left: '16%', right: '18%' },     // r=1
-      { left: '14%', right: '16%' },     // r=2
-      { left: '12%', right: '14%' },     // r=3
-      { left: '10%', right: '12%' },     // r=4
-      { center: '40%' },                  // r=5: headline area
-      { center: '55%' },                  // r=6: slider area
-      { center: '80%' },                  // r=7: CTA zone
-      {}, {}, {},                         // r=8..10: open for art
-      { center: '100%' },                 // r=11: bottom gutter
+      { center: '100%' }, 
+      { center: '100%' }, 
+      { left: '6%', right: '12%' }, 
+      { left: '6%', right: '12%' },  
+      { left: '6%', right: '12%' },     
+      { left: '6%', right: '12%' },     
+      { left: '6%', right: '12%' },     
+      { left: '6%', right: '12%' },     
+      { left: '6%', right: '12%' },  
+      { left: '6%', right: '12%' },
+      { left: '6%', right: '12%' },
+      { center: '100%' },  
+      { center: '100%' }, 
+      { center: '100%' }, 
+      { center: '100%' },
+      { center: '100%' },   
     ]),
   },
 
@@ -123,12 +131,12 @@ export const GRID_MAP: Record<BreakBand, GridSpec> = {
     forbidden: makeRowForbidden([
       { center: '100%' },            // r=0
       { left: '28%', right: '30%' }, // r=1
-      { left: '22%', right: '22%' }, // r=2
-      { left: '18%', right: '20%' }, // r=3
-      { left: '13%', right: '15%' }, // r=4
-      { left: '13%', right: '15%', center: '10%' }, // r=5
-      { left: '13%', right: '15%', center: '30%' }, // r=6
-      { left: '11%', right: '12%', center: '50%' }, // r=7
+      { left: '14%', right: '22%' }, // r=2
+      { left: '10%', right: '20%' }, // r=3
+      { left: '8%', right: '15%' }, // r=4
+      { left: '8%', right: '15%' }, // r=5
+      { left: '8%', right: '15%', center: '30%' }, // r=6
+      { left: '6%', right: '12%', center: '50%' }, // r=7
       { center: '100%' }, // r=8
       { center: '100%' }, // r=9
       { center: '100%' }, // r=10
@@ -137,4 +145,3 @@ export const GRID_MAP: Record<BreakBand, GridSpec> = {
     ]),
   },
 };
-

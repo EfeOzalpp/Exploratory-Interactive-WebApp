@@ -452,7 +452,7 @@ export function drawVilla(p, _cx, _cy, _r, opts = {}) {
     if (!isSide) {
       const ridgeY = iround(Math.max(pxY, bodyY - roofH));
       const apexX = ix + iColW / 2;
-      const baseY = iBodyY;
+      const baseY = iBodyY + 2;
 
       const strokeCol = applyExposureContrast(darken(bodyTint, 0.72), ex, ct);
 

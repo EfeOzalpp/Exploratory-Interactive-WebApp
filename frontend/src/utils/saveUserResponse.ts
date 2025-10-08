@@ -40,7 +40,7 @@ export async function saveUserResponse(section: string, weights: Weights) {
   const avgWeight = round3(avgRaw);
 
   const doc: any = {
-    _type: 'userResponseV3',
+    _type: 'userResponseV4',
     section,
     ...clamped,                // q1..q5
     ...(typeof avgWeight === 'number' ? { avgWeight } : {}), // ensure it’s saved

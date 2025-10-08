@@ -1,5 +1,4 @@
-// useGridDotField.ts
-// (unchanged; included for completeness)
+// src/canvas/hooks/useGridDotField.ts
 import { useEffect, useRef } from 'react';
 import { bandFromWidth, GRID_MAP, type GridSpec } from '../grid/config.ts';
 import { makeCenteredSquareGrid } from '../grid/layoutCentered.ts';
@@ -14,28 +13,31 @@ import {
 } from '../condition/conditionMix.ts';
 
 import { CONDITIONS } from '../condition/conditions.ts';
+import { RowRules } from './rowRules.ts';
+
+// NEW: bring in planner helpers
+import {
+  planForBucket,
+  type PoolItem as PlannerPoolItem,
+  type ShapeName,
+  type Size,
+} from '../condition/conditionPlanner.ts';
+
+type FootRect = { r0: number; c0: number; w: number; h: number };
+
+// Extend the planner item for this hook:
+type PoolItem = PlannerPoolItem & {
+  shape?: ShapeName;
+  size?: Size;
+  footprint?: FootRect;
+  x?: number;
+  y?: number;
+};
 
 type Engine = { ready: React.MutableRefObject<boolean>; controls: React.MutableRefObject<any> };
 
 const POOL_SIZE = 24;
 const clamp01 = (v?: number) => (typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5);
-
-type FootRect = { r0: number; c0: number; w: number; h: number };
-type Size = { w: number; h: number };
-
-type ShapeName =
-  | 'clouds' | 'snow' | 'house' | 'power'
-  | 'sun' | 'villa' | 'plus' | 'line';
-
-type PoolItem = {
-  id: number;
-  cond: ConditionKind;
-  size?: Size;
-  footprint?: FootRect;
-  x?: number;
-  y?: number;
-  shape?: ShapeName;
-};
 
 /** Center-clumped candidate ordering within the usable top region. */
 function buildCandidates(rows: number, cols: number, spec: GridSpec) {
@@ -80,19 +82,7 @@ function footprintAllowed(r0:number,c0:number,w:number,h:number,rows:number,cols
   return true;
 }
 
-/* ---------------- Sky band helpers (clouds/snow/sun) ---------------- */
-
-function skyBandFor(shape: ShapeName | undefined, usedRows: number) {
-  const cloudsMax = Math.max(0, Math.floor(usedRows * 0.4));
-  const snowMax   = Math.max(0, Math.floor(usedRows * 0.5));
-  const sunMax    = Math.max(0, Math.floor(usedRows * 0.1));
-  switch (shape) {
-    case 'clouds': return { rMin: 0, rMax: cloudsMax };
-    case 'snow':   return { rMin: 0, rMax: snowMax   };
-    case 'sun':    return { rMin: 0, rMax: sunMax    };
-    default:       return { rMin: 0, rMax: usedRows - 1 };
-  }
-}
+/* ---------------- helpers kept (no device rules here) ---------------- */
 
 function isSky(shape?: ShapeName) {
   return shape === 'clouds' || shape === 'snow' || shape === 'sun';
@@ -104,6 +94,7 @@ function rand01Keyed(key:string) {
   return ((h >>> 8) & 0xffff) / 0xffff;
 }
 
+/* ====== SKY scoring ====== */
 function scoreSkyCandidate(
   r0:number, c0:number, wCell:number, hCell:number,
   rows:number, cols:number, usedRows:number,
@@ -133,13 +124,7 @@ function scoreSkyCandidate(
   return spread + centerPenalty + jitter;
 }
 
-/* ---------------- House/Villa helpers ---------------- */
-
-function preferredRowBand(_rows: number, usedRows: number, hCell: number) {
-  const top = Math.max(0, Math.floor(usedRows * 0.25));
-  const bot = Math.min(usedRows - hCell, Math.floor(usedRows * 0.4));
-  return { top, bot };
-}
+/* ---------------- Ground helpers ---------------- */
 
 function rowOrderFromBand(top: number, bot: number) {
   if (top > bot) return [];
@@ -158,6 +143,7 @@ function rowOrderFromBand(top: number, bot: number) {
   return out;
 }
 
+/** >>> RESTORED <<< */
 function allowedSegmentsForRow(
   r0:number, wCell:number, hCell:number, rows:number, cols:number, spec:GridSpec
 ): Array<{cStart:number; cEnd:number}> {
@@ -174,12 +160,19 @@ function allowedSegmentsForRow(
   return segs;
 }
 
+/* ====== GROUND scoring (band clamp + car bias) ====== */
 function scoreGroundCandidate(
   _rows: number, cols: number, usedRows: number,
   r0: number, c0: number, wCell: number, hCell: number,
   lane: number | null,
-  segCenterC: number
+  segCenterC: number,
+  bandTop: number,
+  bandBot: number,
+  shape?: ShapeName
 ) {
+  // HARD band clamp
+  if (r0 < bandTop || (r0 + hCell - 1) > bandBot) return -1e9;
+
   const colCenter = c0 + wCell / 2;
   const rowCenter = r0 + hCell / 2;
   const gridColCenter = (cols - 1) / 2;
@@ -200,10 +193,18 @@ function scoreGroundCandidate(
 
   const jitter = (hash32(`g|${r0},${c0},${wCell},${hCell}`) & 0xff) / 255 * 0.2;
 
-  return -(wCol * dCol2 + wRow * dRow2) - lanePenalty - edgePenalty + segPull + jitter;
+  // cars prefer lower part of their ground band
+  let carBias = 0;
+  if (shape === 'car') {
+    const bandBotCenter = bandBot + 0.5;
+    const dist = (rowCenter - bandBotCenter);
+    carBias = -0.25 * (dist * dist);
+  }
+
+  return -(wCol * dCol2 + wRow * dRow2) - lanePenalty - edgePenalty + segPull + jitter + carBias;
 }
 
-/* ---------------- Hash + variants ---------------- */
+/* ---------------- Hash + misc ---------------- */
 
 function hash32(s: string): number {
   let h = 2166136261 >>> 0;
@@ -218,49 +219,18 @@ function pickLane(key: 'house'|'villa', id: number, salt: number) {
   return hash32(`${key}|${id}|${salt}`) % 3;
 }
 
-function balancedVariantsForKind(
-  kind: ConditionKind,
-  items: PoolItem[],
-  salt: number
-): Array<{ id: number; shape: ShapeName; size: Size }> {
-  const spec = CONDITIONS[kind];
-  const v0 = spec.variants[0];
-  const v1 = spec.variants[1];
-
-  const arr = items
-    .map(it => ({ it, key: hash32(`${kind}|${it.id}|${salt}`) }))
-    .sort((a, b) => (a.key - b.key));
-
-  const n = arr.length;
-  if (n === 0) return [];
-
-  const flip = ((hash32(`${kind}|flip|${salt}`) & 1) === 1);
-  const half = Math.floor(n / 2);
-  const firstCount = (n % 2 === 0) ? half : (flip ? (half + 1) : half);
-
-  const out: Array<{ id: number; shape: ShapeName; size: Size }> = [];
-  for (let i = 0; i < n; i++) {
-    const v = i < firstCount ? v0 : v1;
-    out.push({
-      id: arr[i].it.id,
-      shape: v.shape as ShapeName,
-      size: { w: Math.max(1, v.footprint.w), h: Math.max(1, v.footprint.h) }
-    });
-  }
-  return out;
-}
-
-/* ---------------- Sun-at-low-avg helper ---------------- */
+/* ---------------- Sun-at-low-avg helper (device-aware) ---------------- */
 
 function ensureAtLeastOneSunAtLowAvg(
   placed: Array<{ shape?: ShapeName; footprint: FootRect }>,
   u: number,
-  usedRows: number
+  usedRows: number,
+  band: ReturnType<typeof bandFromWidth>
 ) {
   if (u > 0.02) return;
   if (placed.some(it => it.shape === 'sun')) return;
 
-  const { rMin, rMax } = skyBandFor('sun', usedRows);
+  const { rMin, rMax } = RowRules.skyBand('sun', usedRows, band);
 
   let idx = placed.findIndex(it =>
     it.shape !== 'clouds' &&
@@ -313,7 +283,8 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
     const w = Math.round(rect?.width ?? window.innerWidth);
     const h = Math.round(rect?.height ?? window.innerHeight);
 
-    const spec = GRID_MAP[bandFromWidth(w)];
+    const band = bandFromWidth(w);
+    const spec = GRID_MAP[band];
     const { cell, rows, cols } = makeCenteredSquareGrid({
       w, h, rows: spec.rows, useTopRatio: spec.useTopRatio ?? 1,
     });
@@ -341,12 +312,12 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
     const salt = (rows * 73856093) ^ (cols * 19349663);
     const nextPool: PoolItem[] = pool.map(p => ({ ...p, shape: undefined, size: undefined, footprint: undefined, x: undefined, y: undefined }));
 
+    // deterministic planning instead of random/hashed 50-50
     (['A','B','C','D'] as ConditionKind[]).forEach((kind) => {
       const items = byKind[kind];
       if (!items.length) return;
-      const balanced = balancedVariantsForKind(kind, items, salt);
-      const map = new Map<number, { shape: ShapeName; size: Size }>();
-      for (const a of balanced) map.set(a.id, { shape: a.shape, size: a.size });
+      const u = tRef.current; // normalized liveAvg
+      const map = planForBucket(kind, items, u /* ← required */, salt);
       for (const p of nextPool) {
         if (p.cond !== kind) continue;
         const asn = map.get(p.id);
@@ -355,7 +326,12 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
     });
 
     // occupancy + placement
-    const occ = createOccupancy(rows, cols);
+    const occ = createOccupancy(
+      rows,
+      cols,
+      (r, c) => cellForbidden(r, c, rows, cols, spec)
+    );
+
     const fallbackCells = buildCandidates(rows, cols, spec);
 
     const placed: Array<{ id:number; x:number; y:number; shape?: ShapeName; footprint: FootRect }> = [];
@@ -368,32 +344,53 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
 
       let rectHit: FootRect | null = null;
 
-      if (item.shape === 'house' || item.shape === 'villa') {
+      // GROUND shapes include: house, villa, power, car
+      if (item.shape === 'house' || item.shape === 'villa' || item.shape === 'power' || item.shape === 'car') {
         const isHouse = item.shape === 'house';
         const lane = pickLane(isHouse ? 'house' : 'villa', item.id, salt);
 
-        const { top: bandTop, bot: bandBot } = preferredRowBand(rows, usedRows, hCell);
+        const { top: bandTop, bot: bandBot } =
+          RowRules.preferredGroundBand(item.shape, usedRows, band, hCell);
         const rowOrder = rowOrderFromBand(bandTop, bandBot);
 
         const candidates: Array<{ r0:number; c0:number; score:number }> = [];
+        // STRICT within-band scan
         for (const r0 of rowOrder) {
+          if (r0 < bandTop || (r0 + hCell - 1) > bandBot) continue;
           const segs = allowedSegmentsForRow(r0, wCell, hCell, rows, cols, spec);
           for (const seg of segs) {
             const segCenterC = (seg.cStart + seg.cEnd + wCell) / 2;
             for (let c0 = seg.cStart; c0 <= seg.cEnd; c0++) {
-              const score = scoreGroundCandidate(rows, cols, usedRows, r0, c0, wCell, hCell, lane, segCenterC);
+              const score = scoreGroundCandidate(
+                rows, cols, usedRows,
+                r0, c0, wCell, hCell,
+                lane, segCenterC,
+                bandTop, bandBot,
+                item.shape
+              );
               candidates.push({ r0, c0, score });
             }
           }
         }
 
+        // BAND-AWARE gentle fallback
         if (candidates.length === 0) {
-          for (let r0 = 0; r0 <= rows - hCell; r0++) {
+          const pad = 2; // allow ±2 rows around band
+          const fTop = Math.max(0, bandTop - pad);
+          const fBot = Math.min(rows - hCell, bandBot + pad);
+
+          for (let r0 = fTop; r0 <= fBot; r0++) {
             const segs = allowedSegmentsForRow(r0, wCell, hCell, rows, cols, spec);
             for (const seg of segs) {
               const segCenterC = (seg.cStart + seg.cEnd + wCell) / 2;
               for (let c0 = seg.cStart; c0 <= seg.cEnd; c0++) {
-                const score = scoreGroundCandidate(rows, cols, usedRows, r0, c0, wCell, hCell, lane, segCenterC) - 8;
+                const score = scoreGroundCandidate(
+                  rows, cols, usedRows,
+                  r0, c0, wCell, hCell,
+                  lane, segCenterC,
+                  bandTop, bandBot,
+                  item.shape
+                ) - 4;
                 candidates.push({ r0, c0, score });
               }
             }
@@ -406,8 +403,8 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
           if (hit) { rectHit = hit; break; }
         }
       } else {
-        // SKY
-        const { rMin, rMax } = skyBandFor(item.shape, usedRows);
+        // SKY placement (clouds, snow, sun) — device-aware band
+        const { rMin, rMax } = RowRules.skyBand(item.shape, usedRows, band);
 
         const placedSky = placed
           .filter(p => isSky(p.shape))
@@ -449,6 +446,7 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
       const cc = rectHit.c0 + Math.floor(rectHit.w / 2);
       let { x, y } = cellCenterToPx(cell, cr, cc);
 
+      // sun wants strict top-left anchoring (to center of its rect)
       if (item.shape === 'sun') {
         x = (rectHit.c0 + rectHit.w / 2) * cell;
         y = (rectHit.r0 + rectHit.h / 2) * cell;
@@ -463,7 +461,7 @@ export function useGridDotField(engine: Engine, liveAvg: number | undefined) {
     poolRef.current = nextPool;
 
     const u = clamp01(liveAvg);
-    ensureAtLeastOneSunAtLowAvg(placed, u, usedRows);
+    ensureAtLeastOneSunAtLowAvg(placed, u, usedRows, band);
 
     engine.controls.current?.setFieldItems?.(placed);
     engine.controls.current?.setFieldVisible?.(true);

@@ -43,7 +43,7 @@ export default function Survey({
     setSurveyActive, setHasCompletedSurvey, setSection, setMySection, setMyEntryId,
     observerMode, openGraph, section, resetToStart,
     tutorialMode, setTutorialMode,
-    hasCompletedSurvey,
+    hasCompletedSurvey, setNavVisible,
   } = useGraph();
 
   // ---------- Phone detection ----------
@@ -63,6 +63,14 @@ export default function Survey({
       else mql.removeListener(handler);
     };
   }, []);
+
+  // Handle global nav visibility (mobile only): hide only on the questions screen
+  useEffect(() => {
+    // Hide only on phones, only on the Questions stage,
+    // and ONLY while the survey hasn't been completed yet.
+    const shouldHideNav = isPhone && stage === 'questions' && !hasCompletedSurvey;
+    setNavVisible(!shouldHideNav);
+  }, [isPhone, stage, hasCompletedSurvey, setNavVisible]);
 
   // ---------- Auto-start tutorial ONCE when entering questions on phone ----------
   useEffect(() => {
@@ -230,6 +238,8 @@ export default function Survey({
       setSurveyWrapperClass('');
     });
     resetToStart();
+    // ensure nav comes back down after full exit on mobile
+    setNavVisible(true);
     Promise.resolve().then(() => { exitingRef.current = false; });
   };
 

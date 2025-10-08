@@ -33,19 +33,19 @@
   /* =============================================
   Generalized Gamification
   ============================================= */
-  .gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
+  .gam-general { align-items: center; display: flex; flex-wrap: nowrap; width: 100%; }
   .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
   .gam-general-description { min-height: fit-content; text-align: left; width: 80%; padding-left: 0.4em; }
   .gam-description-title { padding: 0.6em 0 0.4em 0.1em; }
   .gam-description-text { padding: 0.3em 0 0.4em; }
-  .gam-visualization { width: 20%; display: flex; position: relative; flex-wrap: nowrap; justify-content: flex-end; }
+  .gam-visualization { align-items: center; height: 100%; margin-top: 8%; width: 20%; display: flex; position: relative; flex-wrap: nowrap; justify-content: flex-end; }
   .gam-percentage-knob { position: relative; width: 6px; height: 100%; }
-  .gam-percentage-bar { width: 60%; height: 108%; margin-top: -35%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 3px 12px 3px; }
+  .gam-percentage-bar { width: 76%; height: 108%; margin-top: -35%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 9px 9px 3px; }
   .gam-knob-arrow { position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
   /* =============================================
   Generalized Gamification Edge Cases
   ============================================= */
-  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fafdee; padding: 12px 12px 12px 8px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 180px; max-width: 180px; min-width: 180px; left: -20px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result { min-height: 96px; transform: translateX(var(--offset-px)); background-color: #f4fafdee; padding: 12px 12px 12px 8px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 180px; max-width: 180px; min-width: 180px; left: -20px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
   .generalized-result::after { content: ""; position: absolute; top: 50%; left: -14px; transform: translateY(-50%) rotate(90deg); border-width: 8px; border-style: solid; border-color: #f3ffffe0 transparent transparent transparent; }
   .is-top .generalized-result { height: 200px !important; width: 200px !important; max-width: 200px !important; min-width: 200px !important; max-height: 200px; height: 180px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: -16px !important; }
   .is-top .generalized-result::after { transform: translateY(-50%) rotate(360deg) !important; left: 46% !important; top: -7.5px !important; border-color: transparent transparent #f7ffffe7 transparent; }
@@ -79,19 +79,19 @@
   /* =============================================
   Generalized Gamification
   ============================================= */
-  .gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
+  .gam-general { align-items: center; display: flex; flex-wrap: nowrap; width: 100%; height: 100%; }
   .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
   .gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
   .gam-description-title { padding: 0.8em 0 0.2em 0em; }
   .gam-description-text { padding: 0.3em 0 0.4em; }
-  .gam-visualization { width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
+  .gam-visualization { margin-top: 5.5%; height: 100%; align-items: center; justify-content: flex-end; width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
   .gam-percentage-knob { position: relative; left: -8px; height: 100%; }
-  .gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
+  .gam-percentage-bar { min-height: 146px; width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
   .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
   /* =============================================
   Generalized Gamification Edge Cases
   ============================================= */
-  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 240px; max-width: 240px; min-width: 240px; left: 65px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result { align-items: center; min-height: 146px; transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: column; flex-wrap: wrap; justify-content: center; position: relative; width: 240px; max-width: 240px; min-width: 240px; left: 65px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
   .generalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
   .is-top .generalized-result { height: 200px !important; min-height: 200px !important; max-height: 200px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 52px !important; }
   .is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: -4% !important; }
@@ -123,12 +123,12 @@
   /* =============================================
     Generalized Gamification
     ============================================= */
-  .gam-general { display: flex; flex-wrap: nowrap; width: 100%; }
+  .gam-general { align-items: center; flex-direction: row; display: flex; flex-wrap: nowrap; width: 100%; }
   .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
   .gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
   .gam-description-title { padding: 0.8em 0 0.2em 0em; }
   .gam-description-text { padding: 0.3em 0 0.4em; }
-  .gam-visualization { width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
+  .gam-visualization { align-items: center; margin-top: 12px; height: 100%; width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
   .gam-percentage-knob { position: relative; left: -8px; height: 100%; }
   .gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
   .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
@@ -142,7 +142,7 @@
    Generalized Gamification Edge Cases
    ============================================= */
 @media screen and (min-width: 1025px) and (max-width: 1320px) {
-  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 160px; max-width: 160px; min-width: 160px; left: 30px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result { min-height: 96px; transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; color: rgb(51, 51, 51); text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 160px; max-width: 160px; min-width: 160px; left: 30px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
   .generalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
   .is-top .generalized-result { height: 160px !important; min-height: 160px !important; max-height: 160px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 32px !important; }
   .is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 44.5% !important; top: -4% !important; }
@@ -160,7 +160,7 @@
 }
 
 @media screen and (min-width: 1320px) {
-  .generalized-result { transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 220px; max-width: 220px; min-width: 220px; left: 50px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
+  .generalized-result { min-height: 96px; transform: translateX(var(--offset-px)); background-color: #f4fdfcc6; padding: 12px; border-radius: 18px; text-align: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: row; flex-wrap: wrap; position: relative; width: 220px; max-width: 220px; min-width: 220px; left: 50px; pointer-events: none; z-index: 10; box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.055), inset -1px -1px 1px rgba(255, 255, 255, 0.9); }
   .generalized-result::after { content: ""; position: absolute; top: 50%; left: -20px; transform: translateY(-50%) rotate(90deg); border-width: 11px; border-style: solid; border-color: #f3ffffdc transparent transparent transparent; }
   .is-top .generalized-result { min-width: 250px !important; width: 250px !important; max-width: 260px !important; height: 180px !important; min-height: 180px !important; max-height: 180px !important; transform: translateY(var(--offset-px)) !important; left: 0px !important; top: 25px !important; }
   .is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; left: 46% !important; top: -4% !important; }
@@ -171,7 +171,7 @@
   .is-left .generalized-result { top: 0px; }
   .is-left .generalized-result::after { transform: translateY(-50%) rotate(90deg); }
   .is-left.is-top .generalized-result::after { transform: translateY(-50%) rotate(180deg) !important; }
-  .personalized-result { padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; min-height: 233px; width: 280px; max-width: 280px; min-width: 280px; left: 160px; pointer-events: all; z-index: 10; }
+  .personalized-result { padding: 0px 0px 0px 12px; border-radius: 24px; color: rgb(51, 51, 51); text-align: center; display: flex; flex-direction: row; flex-wrap: nowrap; position: relative; min-height: 159px; width: 280px; max-width: 280px; min-width: 280px; left: 160px; pointer-events: all; z-index: 10; }
   .personalized-result::before { border-radius: 24px; content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4fdfcc6; z-index: -1; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(60px); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.6); }
   .knob-arrow { left: 9px; position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid; border-radius: 2px; transition: bottom 0.3s ease; }
   .personal-title { padding: 0.3em 0 0.3em 0.03em; }
