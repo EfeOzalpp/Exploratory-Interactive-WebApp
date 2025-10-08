@@ -1,8 +1,10 @@
-from pathlib import Path
+# 🌍 Climate Gamification — 3D Interactive Survey Experience
 
-readme_text = """# 🌍 Climate Gamification — 3D Interactive Survey Experience
+<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 1rem;">
+  <img src="./project_screenshots/canvas2.png" style="max-width: 45%; height: auto;" alt="Climate Gamification Screenshot">
+  <img src="./project_screenshots/canvas3.png" style="max-width: 45%; height: auto;" alt="Climate Gamification Screenshot">
+</div>
 
-<img src="./project_screenshots/canvas1.png" width="600" alt="Climate Gamification Screenshot">
 
 **Climate Gamification** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
 
