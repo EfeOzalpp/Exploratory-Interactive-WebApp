@@ -41,7 +41,7 @@ function getStepContent(stepId) {
       return {
         title: 'Welcome!',
         body: 'Let’s start with a quick walkthrough.',
-        binder: 'Next: Selecting answers',
+        binder: 'Next: You can pick in between',
       };
     case 'drag':
       return {

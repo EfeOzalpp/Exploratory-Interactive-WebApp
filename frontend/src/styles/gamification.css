@@ -13,6 +13,7 @@
 /* Open (panel visible): show minus, hide plus */
 .gp-toggle-icon.is-open .icon-plus { opacity: 0; transform: scale(0.85) rotate(90deg); }
 .gp-toggle-icon.is-open .icon-minus { opacity: 1; transform: scale(1) rotate(0deg); }
+.gam-knob-arrow, .knob-arrow {filter: saturate(0.8) brightness(1.2); }
 
 /* Mobile */
 @media screen and (max-width: 767px) {
@@ -29,7 +30,27 @@
   .percentage-knob { height: 89%; position: relative; background: none; }
   .knob-arrow { position: absolute; bottom: 0; left: -50%; transform: translateX(-83%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
   .gamification-bar { width: 15%; }
-  .percentage-bar { width: 100%; height: 100%; border-radius: 3px 16px 16px 3px; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); }
+  .percentage-bar {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px 16px 16px 3px;
+    background: linear-gradient(
+      in oklch to bottom,
+      /* lighter clean green top */
+      oklch(0.85 0.17 148) 0%,
+      oklch(0.83 0.13 150) 20%,
+
+      /* golden mid */
+      oklch(0.88 0.08 124.6) 40%,
+      oklch(0.85 0.15 75) 62%,
+
+      /* orange */
+      oklch(0.80 0.18 40) 81%,
+
+      /* deep red bottom */
+      oklch(0.68 0.18 25) 100%
+    );
+  }
   /* =============================================
   Generalized Gamification
   ============================================= */
@@ -40,7 +61,28 @@
   .gam-description-text { padding: 0.3em 0 0.4em; }
   .gam-visualization { align-items: center; height: 100%; margin-top: 8%; width: 20%; display: flex; position: relative; flex-wrap: nowrap; justify-content: flex-end; }
   .gam-percentage-knob { position: relative; width: 6px; height: 100%; }
-  .gam-percentage-bar { width: 76%; height: 108%; margin-top: -35%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 9px 9px 3px; }
+  .gam-percentage-bar {
+    width: 76%;
+    height: 108%;
+    margin-top: -35%;
+    border-radius: 3px 9px 9px 3px;
+    background: linear-gradient(
+      in oklch to bottom,
+      /* lighter clean green top */
+      oklch(0.85 0.17 148) 0%,
+      oklch(0.83 0.13 150) 20%,
+
+      /* golden mid */
+      oklch(0.88 0.08 124.6) 40%,
+      oklch(0.85 0.15 75) 62%,
+
+      /* orange */
+      oklch(0.80 0.18 40) 81%,
+
+      /* deep red bottom */
+      oklch(0.68 0.18 25) 100%
+    );
+  }
   .gam-knob-arrow { position: absolute; bottom: 0; transform: translateX(-50%) rotate(90deg) scale(0.8); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
   /* =============================================
   Generalized Gamification Edge Cases
@@ -75,7 +117,27 @@
   .percentage-knob { height: 94%; width: 10px; position: relative; background: none; }
   .knob-arrow { position: absolute; bottom: 0; left: 9px; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 18px solid rgb(73, 140, 143); border-radius: 2px; transition: bottom 0.3s ease; }
   .gamification-bar { width: 15%; }
-  .percentage-bar { width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 12px 12px 3px; }
+  .percentage-bar {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px 12px 12px 3px;
+    background: linear-gradient(
+      in oklch to bottom,
+      /* lighter clean green top */
+      oklch(0.85 0.17 148) 0%,
+      oklch(0.83 0.13 150) 20%,
+
+      /* golden mid */
+      oklch(0.88 0.08 124.6) 40%,
+      oklch(0.85 0.15 75) 62%,
+
+      /* orange */
+      oklch(0.80 0.18 40) 81%,
+
+      /* deep red bottom */
+      oklch(0.68 0.18 25) 100%
+    );
+  }
   /* =============================================
   Generalized Gamification
   ============================================= */
@@ -86,7 +148,29 @@
   .gam-description-text { padding: 0.3em 0 0.4em; }
   .gam-visualization { margin-top: 5.5%; height: 100%; align-items: center; justify-content: flex-end; width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
   .gam-percentage-knob { position: relative; left: -8px; height: 100%; }
-  .gam-percentage-bar { min-height: 146px; width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
+  .gam-percentage-bar {
+    min-height: 146px;
+    width: 30%;
+    height: 106%;
+    margin-top: -15%;
+    border-radius: 3px;
+    background: linear-gradient(
+      in oklch to bottom,
+      /* lighter clean green top */
+      oklch(0.85 0.17 148) 0%,
+      oklch(0.83 0.13 150) 20%,
+
+      /* golden mid */
+      oklch(0.88 0.08 124.6) 40%,
+      oklch(0.85 0.15 75) 62%,
+
+      /* orange */
+      oklch(0.80 0.18 40) 81%,
+
+      /* deep red bottom */
+      oklch(0.68 0.18 25) 100%
+    );
+  }
   .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
   /* =============================================
   Generalized Gamification Edge Cases
@@ -119,18 +203,61 @@
   .gamification-knob { position: relative; width: 15%; display: flex; justify-content: center; align-items: flex-end; }
   .percentage-knob { height: 94%; width: 0px; position: relative; background: none; }
   .gamification-bar { width: 15%; }
-  .percentage-bar { width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px 24px 24px 3px; }
+  .percentage-bar {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px 24px 24px 3px;
+    background: linear-gradient(
+      in oklch to bottom,
+      /* lighter clean green top */
+      oklch(0.85 0.17 148) 0%,
+      oklch(0.83 0.13 150) 20%,
+
+      /* golden mid */
+      oklch(0.88 0.08 124.6) 40%,
+      oklch(0.85 0.15 75) 62%,
+
+      /* orange */
+      oklch(0.80 0.18 40) 81%,
+
+      /* deep red bottom */
+      oklch(0.68 0.18 25) 100%
+    );
+  }
   /* =============================================
     Generalized Gamification
     ============================================= */
   .gam-general { align-items: center; flex-direction: row; display: flex; flex-wrap: nowrap; width: 100%; }
   .gam-general-title { padding-left: 0.4em; padding-top: 0.2em; }
-  .gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; }
-  .gam-description-title { padding: 0.8em 0 0.2em 0em; }
+  .gam-general-description { min-height: fit-content; text-align: left; width: 70%; padding-left: 0.4em; padding-bottom: 0.6em; }
+  .gam-description-title { padding: 0.3em 0 0.2em 0em; }
   .gam-description-text { padding: 0.3em 0 0.4em; }
+  .gam-subline {padding-bottom: 0.3em; padding-top: 0.2em;}
   .gam-visualization { align-items: center; margin-top: 12px; height: 100%; width: 30%; display: flex; position: relative; right: 0.4em; flex-wrap: nowrap; justify-content: flex-end; }
   .gam-percentage-knob { position: relative; left: -8px; height: 100%; }
-  .gam-percentage-bar { width: 30%; height: 106%; margin-top: -15%; background: linear-gradient(to bottom, rgba(1, 238, 0, 0.9) 0%, rgba(0, 253, 156, 1) 25%, rgba(245, 252, 95, 1) 50%, rgba(252, 159, 29, 1) 75%, rgba(249, 14, 33, 0.9) 100%); border-radius: 3px; }
+  .gam-percentage-bar {
+    width: 30%;
+    height: 106%;
+    margin-top: -15%;
+    border-radius: 3px;
+    background: linear-gradient(
+      in oklch to bottom,
+      /* lighter clean green top */
+      oklch(0.85 0.17 148) 0%,
+      oklch(0.83 0.13 150) 20%,
+
+      /* golden mid */
+      oklch(0.88 0.08 124.6) 40%,
+      oklch(0.85 0.15 75) 62%,
+
+      /* orange */
+      oklch(0.80 0.18 40) 81%,
+
+      /* deep red bottom */
+      oklch(0.68 0.18 25) 100%
+    );
+  }
+
   .gam-knob-arrow { position: absolute; bottom: 0; left: -74%; transform: translateX(-50%) rotate(90deg); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-radius: 2px; transition: bottom 0.3s ease; }
   .toggle-button.gp-toggle { position: absolute; top: -48px; right: 76px; z-index: 3; pointer-events: all; }
   .toggle-button.gp-toggle:hover, .toggle-button:hover { transform: translateY(-1px); }

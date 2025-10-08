@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import '../../styles/gamification.css';
 
-import { useGradientColor, BRAND_STOPS } from '../../utils/hooks.ts';
+import {
+  useGradientColor,
+  DEFAULT_COLOR_OPTS, // <-- use the shared mapping
+} from '../../utils/hooks.ts';
 import { useGeneralPools } from '../../utils/useGamificationPools.ts';
 
 const NEUTRAL = 'rgba(255,255,255,0.95)';
@@ -18,11 +21,16 @@ export default function GamificationGeneral({
   tieContext,
 }) {
   const [currentText, setCurrentText] = useState({ title: '', description: '' });
-
+  
   const safePct = Math.max(0, Math.min(100, Math.round(Number(percentage) || 0)));
-  const knobSample = useGradientColor(safePct, { stops: BRAND_STOPS });
+
+  // small visual bias so the knob matches the lighter bar mid
+  const knobPct = Math.min(100, safePct + 5);
+
+  const knobSample = useGradientColor(knobPct, DEFAULT_COLOR_OPTS);
+  const knobColor  = mode === 'absolute' ? knobSample.css : NEUTRAL;
+    
   const { pick, loaded } = useGeneralPools();
-  const knobColor = mode === 'absolute' ? knobSample.css : NEUTRAL;
 
   const Strong = useMemo(
     () =>
@@ -108,21 +116,12 @@ export default function GamificationGeneral({
       relativeLine = <>First one here! 🎉</>;
     } else if (isTopBand) {
       if (canonicalTie === 'tiedTop') {
-        if (e === 1) {
-          relativeLine = (
-            <>
-              Top spot ⬆️<br />
-              Tied with <Strong>1</Strong>
-            </>
-          );
-        } else {
-          relativeLine = (
-            <>
-              Top spot ⬆️<br />
-              Tied with <Strong>{e}</Strong>
-            </>
-          );
-        }
+        relativeLine = (
+          <>
+            Top spot ⬆️<br />
+            Tied with <Strong>{e}</Strong>
+          </>
+        );
       } else {
         relativeLine = <>Top of the group ⬆️</>;
       }
@@ -171,7 +170,6 @@ export default function GamificationGeneral({
       }
     } else if (isMiddleBand) {
       if (canonicalTie === 'tiedMiddle') {
-        // Updated: include both sides counts when tied in the middle
         relativeLine = (
           <>
             Middle =<br />
@@ -215,8 +213,8 @@ export default function GamificationGeneral({
     ) : (
       <>
         Score{' '}
-        <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>
-          {safePct}
+        <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobSample.css}` }}>
+          {Math.round(safePct)}
         </strong>
         /100
       </>

@@ -1,14 +1,64 @@
-/* Graph Styles */
+/* ===== Effects & Dot Animations (lightened to match OKLCH bars) ===== */
 
-/* Global */
-.fade-in { opacity: 1; transform: scale(1); transition: opacity 0.2s ease-in, transform 0.2s ease-in; }
-.fade-out { opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease-out, transform 0.2s ease-out; pointer-events: none; }
-.green-animation { animation-name: greenFluctuation; }
-.yellow-animation { animation-name: yellowFluctuation; }
-.red-animation { animation-name: redFluctuation; }
-@keyframes greenFluctuation { 50% { background-color: rgb(0, 238, 163); } 0%, 100% { background-color: rgb(0, 253, 84); } }
-@keyframes yellowFluctuation { 50% { background-color: rgb(243, 249, 116); } 0%, 100% { background-color: rgb(252, 228, 95); } }
-@keyframes redFluctuation { 50% { background-color: rgb(250, 43, 102); } 0%, 100% { background-color: rgb(252, 159, 29); } }
+/* Hook classes */
+.green-animation  { animation: greenFluctuation 3.6s ease-in-out infinite; }
+.yellow-animation { animation: yellowFluctuation 3.6s ease-in-out infinite; }
+.red-animation    { animation: redFluctuation 3.6s ease-in-out infinite; }
+
+/* Green: between clean + deep green (lighter) */
+@keyframes greenFluctuation {
+  /* was rgb(110,195,70) ↗ */
+  0%, 100% { background-color: rgb(140, 220, 110); } 
+  /* was rgb(0,200,40) ↗ */
+  50%      { background-color:  rgb(0, 220, 60); }
+}
+
+/* Yellow band: warm → brighter lemony yellow (lighter) */
+@keyframes yellowFluctuation {
+  /* was rgb(225,175,40) ↗ */
+  0%, 100% { background-color: rgb(245, 233, 70); }  
+  /* was rgb(255,150,40) ↗ */
+  50%      { background-color:  rgb(255, 203, 70); }
+}
+
+/* Red/Orange band: deep red ↔ hot orange (lighter) */
+@keyframes redFluctuation {
+  /* was rgb(235,90,0) ↗ */
+  0%, 100% { background-color: rgb(255, 120, 30); }    
+  /* was rgb(210,0,25) ↗ */
+  50%      { background-color:  rgb(230, 20, 45); }
+}
+
+/* Radial dot pulses (lightened cores/halos) */
+.green-dot-animation  { animation: greenDotPulse 3.2s ease-in-out infinite; }
+.yellow-dot-animation { animation: yellowDotPulse 3.2s ease-in-out infinite; }
+.red-dot-animation    { animation: redDotPulse 3.2s ease-in-out infinite; }
+
+@keyframes greenDotPulse {
+  /* core brighter, halo lighter & slightly more transparent */
+  0%, 100% { background: radial-gradient(circle, rgba(0,220,60,0.92) 22%, rgba(140,220,110,0.50) 78%); }
+  50%      { background: radial-gradient(circle, rgba(140,220,110,0.96) 22%, rgba(0,220,60,0.42) 78%); }
+}
+@keyframes yellowDotPulse {
+  0%, 100% { background: radial-gradient(circle, rgba(245,200,70,0.92) 22%, rgba(255,180,70,0.50) 78%); }
+  50%      { background: radial-gradient(circle, rgba(252,205,78,0.96) 22%, rgba(235,195,85,0.42) 78%); }
+}
+@keyframes redDotPulse {
+  0%, 100% { background: radial-gradient(circle, rgba(255,120,30,0.92) 22%, rgba(230,20,45,0.50) 78%); }
+  50%      { background: radial-gradient(circle, rgba(230,20,45,0.96) 22%, rgba(255,120,30,0.42) 78%); }
+}
+
+/* Accessibility: respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .green-animation,
+  .yellow-animation,
+  .red-animation,
+  .green-dot-animation,
+  .yellow-dot-animation,
+  .red-dot-animation {
+    animation: none !important;
+  }
+}
 
 .toggle-button:hover { background-color: #353B41; }
 .toggle-icon svg { transform: scale(1); }

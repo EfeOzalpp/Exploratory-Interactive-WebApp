@@ -1,29 +1,44 @@
-A web application that shows gamified results right after a user completes a climate change survey. 
-Gamification includes playfulness and specific feedback directly based on their answers, The user has the power to view other survey takers results in an interactive 3D environment. 
+from pathlib import Path
 
-Within this project: 
-### Bridging the Gap Between Three.js 3D Context and React DOM
+readme_text = """# 🌍 Climate Gamification — 3D Interactive Survey Experience
 
-When working with Three.js and React Three Fiber, the `Html` component provides a powerful way to anchor 2D elements (like tooltips, popups, or labels) to 3D objects in a scene. 
-However, this approach falls short in dynamic scenarios, such as:
+<p align="center">
+  <img src="./project_screenshots/canvas1.png" width="600" alt="Climate Gamification Screenshot">
+</p>
 
-- Zooming in and out of the 3D visualization.
-- Ensuring 2D elements maintain consistent alignment and scale relative to their 3D anchor points.
+**Climate Gamification** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
 
-This library introduces **dynamic offset values** to enhance the functionality of Drei’s `Html` hook, ensuring seamless integration between the **3D world** and the **React DOM**. 
-With this solution, 2D elements remain visually anchored to their 3D counterparts, regardless of zoom or perspective changes.
+After completing a short climate survey, users receive **personalized feedback** represented through animated, color-coded cards and can explore **other participants’ results** in a live, orbitable 3D world.
 
-Edge case fixes by using cursor detection near viewport edges and adding a css class to the parent divider of the component such as .is-top .is-bottom etc. To specifically target edge case styling for gamification popups.
-The dynamic offset value passed to CSS to be configured with different transform properties be it for Y or Z axis, dynamic offset simply works to anchor 2D to 3D without centering directly onto it. 
+---
 
-Draggable UI elements are toggleable, and the toggle button doesn't leave the viewport unlike the component it is toggling, and they are both attached to each other.
-Separating intent for dragging the button versus opening it so that button doesn't trigger component state changes while it's being dragged by the button.
+## 🎮 Features
 
-Rotation for Three.js canvas stops during dragging UI-elements to prevent motion sickness. 
-Pinch and push motions for tocuh-based devices to zoom-in and out, or rotate around the canvas. 
+- 🧩 **Gamified Feedback Cards**  
+  Personalized results based on each answer — with dynamic gradients, motion, and contextual tone.
 
-Rendering the "I AM DONE" button within Drei's Html context to layer its z-index (above or below other elements decision-making) above the dot visualization, versus keeping the gamification pop-up above itself.
-The logic for the narration was declared inside Survey.jsx component and I couldn't pass it to work within Drei's environment, even if I tried to use context providers by React. I knew I was getting highly experimental
-and into unknown territories when the error's I was receiving started to not make sense. The context for one technology doesn't work with context with the other technology. 
-I wrapped the survey.jsx rendered "I AM DONE" button within Drei's environment too just to have the same transform logic, and made it fully transparent to preserve it's hitbox and overlayed it with the "I AM DONE" button I rendered inside dotGraph.jsx 
-(so that it can be layered with other 3D elements properly). This allowed me to separate logic and hitbox while rendering the button visually in the other component. 
+- 🌐 **3D Visualization with Three.js & React Three Fiber**  
+  Explore other survey takers’ results floating in space — zoom, orbit, and interact with dynamic nodes.
+
+- 🖼️ **Custom 2D Canvas Engine**  
+  A lightweight, hand-built engine (not dependent on p5.js or PixiJS) for drawing animated environmental shapes like trees, houses, and clouds.
+
+- 🧭 **Responsive & Touch-Ready UI**  
+  Pinch-zoom, drag, rotate, and toggle elements fluidly — with accessibility and motion-sickness safeguards.
+
+- ⚙️ **Dynamic Offset Anchoring System**  
+  Keeps 2D DOM elements visually attached to their 3D anchors, even during zooming or camera movement.  
+  Handles viewport edge cases automatically using `.is-top`, `.is-bottom`, etc. classes.
+
+---
+
+## 🧠 Technical Highlights
+
+### 🎯 Bridging 3D Context with React DOM
+
+The app integrates **Three.js (via React Three Fiber)** and **React DOM** through a custom anchoring system.  
+Normally, `@react-three/drei`’s `Html` component struggles to keep labels aligned during camera motion.  
+This project introduces a **dynamic offset value system** to preserve spatial alignment and visual consistency.
+
+```js
+transform: translateX(var(--offset-px));

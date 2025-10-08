@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import '../../styles/gamification.css';
 
-// Same gradient sampling as the 3D graph (no skew)
-import { useGradientColor, BRAND_STOPS } from '../../utils/hooks.ts';
+import {
+  useGradientColor,
+  BRAND_STOPS,
+  DEFAULT_COLOR_OPTS, // same mapping as General
+} from '../../utils/hooks.ts';
 import { usePersonalizedPools } from '../../utils/useGamificationPools.ts';
 
 const FADE_MS = 200;
@@ -10,21 +13,49 @@ const PROX_THRESHOLD = 0.02;
 const CLOSE_GRACE_MS = 1000;
 const NEUTRAL = 'rgba(255,255,255,0.95)';
 
+function classifyBand({ below: b, equal: e, above: a }) {
+  const totalOthers = Math.max(0, b | 0) + Math.max(0, e | 0) + Math.max(0, a | 0);
+  const N = totalOthers + 1;
+  const rankFromLow = (b | 0) + 1;
+  const q = N > 0 ? rankFromLow / N : 0;
+
+  const isSolo = totalOthers === 0;
+  if (isSolo) return { band: 'solo', tie: 'none', N, b, e, a, q, rankFromLow };
+
+  const isTopBand = a === 0;
+  const isBottomBand = b === 0;
+
+  const EDGE_COUNT = Math.max(2, Math.ceil(0.25 * N));
+  const NEAR_Q = 0.30;
+
+  const nearBottom = !isBottomBand && (rankFromLow <= EDGE_COUNT || q <= NEAR_Q);
+  const nearTop    = !isTopBand    && ((N - rankFromLow + 1) <= EDGE_COUNT || q >= (1 - NEAR_Q));
+
+  let band = 'middle';
+  if (isTopBand) band = 'top';
+  else if (isBottomBand) band = 'bottom';
+  else if (nearTop) band = 'nearTop';
+  else if (nearBottom) band = 'nearBottom';
+
+  const canonicalTie =
+    e > 0 ? (isTopBand ? 'tiedTop' : isBottomBand ? 'tiedBottom' : 'tiedMiddle') : 'notTied';
+
+  return { band, tie: canonicalTie, N, b, e, a, q, rankFromLow };
+}
+
 export default function GamificationPersonalized({
   userData,
-  percentage,           // 0..100 for gauge
+  percentage,
   color,
   mode = 'relative',
   onOpenChange,
 
-  // tie-aware, shared source of truth
   belowCountStrict,
   equalCount,
   aboveCountStrict,
-  positionClass,         // 'solo' | 'top' | 'bottom' | 'middle' | 'middle-above' | 'middle-below'
-  tieContext,            // may be 'tiedTop' | 'tiedBottom' | 'tiedMiddle' | 'top'|'bottom'|'middle'|'none'
+  positionClass,
+  tieContext,
 
-  // kept but unused now (per request to remove group/section phrasing)
   selectedSectionId,
 }) {
   // Title removed — keep CMS contract stable but do not render it
@@ -41,7 +72,9 @@ export default function GamificationPersonalized({
   const lastPointerRef = useRef({ x: 0, y: 0, has: false });
 
   const safePct = Math.max(0, Math.min(100, Math.round(Number(percentage) || 0)));
-  const knobSample = useGradientColor(safePct, { stops: BRAND_STOPS });
+  const knobPct = Math.min(100, safePct + 5); // same visual bias as General
+
+  const knobSample = useGradientColor(knobPct, DEFAULT_COLOR_OPTS);
   const { pick } = usePersonalizedPools();
   const knobColor = mode === 'absolute' ? knobSample.css : NEUTRAL;
 
@@ -55,14 +88,12 @@ export default function GamificationPersonalized({
 
   useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
 
-  // external “open me” hook from the toggle
   useEffect(() => {
     const handler = () => setOpen(true);
     window.addEventListener('gp:open-personalized', handler);
     return () => window.removeEventListener('gp:open-personalized', handler);
   }, []);
 
-  // Proximity tracking so the toggle becomes discoverable
   useEffect(() => {
     const scheduleCheck = () => {
       if (rafRef.current) return;
@@ -110,7 +141,6 @@ export default function GamificationPersonalized({
     };
   }, []);
 
-  // open/close grace (keeps the panel from snapping away immediately)
   useEffect(() => {
     if (!open) {
       setClosingGrace(true);
@@ -161,103 +191,50 @@ export default function GamificationPersonalized({
   const panelId = `gp-panel-${userData?._id || 'me'}`;
   const wrapperVisible = open || closingGrace || nearButton;
 
-  // ---- Tie-aware bands (mirrors GamificationGeneral but with "you" voice) ----
+  // bands (rank + ties)
   const b = Math.max(0, (belowCountStrict ?? 0) | 0);
   const e = Math.max(0, (equalCount ?? 0) | 0);
   const a = Math.max(0, (aboveCountStrict ?? 0) | 0);
-  const totalOthers = b + e + a;
 
-  const N = totalOthers + 1;
-  const rankFromLow = b + 1;
-  const q = N > 0 ? rankFromLow / N : 0;
+  const bandInfo = classifyBand({ below: b, equal: e, above: a });
 
-  const SMALL   = N < 8;
-  const BOTTOM_Q = 0.15;
-  const TOP_Q    = 0.85;
-  const NEAR_M   = 0.05;
-
-  const isSolo       = totalOthers === 0 || positionClass === 'solo';
-  const isTopBand    = !isSolo && a === 0;
-  const isBottomBand = !isSolo && b === 0;
-
-  const isNearTop    = !isSolo && !isTopBand    && (SMALL ? a === 1 : q >= TOP_Q - NEAR_M);
-  const isNearBottom = !isSolo && !isBottomBand && (SMALL ? b === 1 : q <= BOTTOM_Q + NEAR_M);
-
-  const isMiddleBand = !isSolo && !isTopBand && !isBottomBand && !isNearTop && !isNearBottom;
-
-  const canonicalTie =
-    e > 0 ? (isTopBand ? 'tiedTop' : isBottomBand ? 'tiedBottom' : 'tiedMiddle') : 'notTied';
-
-  // --- Personalized relative line (second-person, explicit ties and “near”)
+  // --- Personalized relative line (second-person, explicit ties/near)
   let relativeLine = null;
   if (mode === 'relative') {
-    if (isSolo) {
+    const { band, tie, b: bb, e: ee, a: aa } = bandInfo;
+
+    if (band === 'solo') {
       relativeLine = <>You’re the first one here.</>;
-    } else if (isTopBand) {
-      if (canonicalTie === 'tiedTop') {
-        if (e === 1)       relativeLine = <>You’re sharing the very top with <Strong>one other person</Strong>.</>;
-        else if (e === 2)  relativeLine = <>You’re sharing the very top with <Strong>two others</Strong>.</>;
-        else               relativeLine = <>You’re sharing the very top with <Strong>{e}</Strong> others.</>;
+    } else if (band === 'top') {
+      relativeLine = tie === 'tiedTop'
+        ? <>You’re sharing the very top with <Strong>{ee}</Strong>.</>
+        : <>You’re on top, ahead of everyone else.</>;
+    } else if (band === 'nearTop') {
+      relativeLine = ee > 0
+        ? <>You’re close to the top, tied with <Strong>{ee}</Strong> and behind <Strong>{aa}</Strong>.</>
+        : <>You’re close to the top, behind <Strong>{aa}</Strong>.</>;
+    } else if (band === 'bottom') {
+      relativeLine = tie === 'tiedBottom'
+        ? <>You’re at the bottom, tied with <Strong>{ee}</Strong>.</>
+        : <>You’re at the bottom, everyone else is ahead.</>;
+    } else if (band === 'nearBottom') {
+      relativeLine = ee > 0
+        ? <>You’re near the bottom, tied with <Strong>{ee}</Strong> and ahead of <Strong>{bb}</Strong>.</>
+        : <>You’re near the bottom, ahead of <Strong>{bb}</Strong>.</>;
+    } else {
+      // middle
+      if (tie === 'tiedMiddle') {
+        relativeLine = <>You’re in the middle, tied with <Strong>{ee}</Strong>.</>;
+      } else if (aa < bb) {
+        relativeLine = <>You’re in the middle, behind <Strong>{aa}</Strong>.</>;
+      } else if (bb < aa) {
+        relativeLine = <>You’re in the middle, ahead of <Strong>{bb}</Strong>.</>;
       } else {
-        relativeLine = <>You’re on top, ahead of everyone else.</>;
-      }
-    } else if (isNearTop) {
-      if (e > 0) {
-        if (e === 1 && a === 1)
-          relativeLine = <>You’re close to the top, tied with <Strong>one person</Strong> and behind only <Strong>one</Strong>.</>;
-        else if (e === 1)
-          relativeLine = <>You’re close to the top, tied with <Strong>one</Strong> and behind <Strong>{a}</Strong> people.</>;
-        else if (a === 1)
-          relativeLine = <>You’re close to the top, tied with <Strong>{e}</Strong> and behind only <Strong>one</Strong>.</>;
-        else
-          relativeLine = <>You’re close to the top, tied with <Strong>{e}</Strong> and behind <Strong>{a}</Strong> people.</>;
-      } else {
-        relativeLine =
-          a === 1
-            ? <>You’re almost there, behind only <Strong>one person</Strong>.</>
-            : <>You’re close to the top, behind <Strong>{a}</Strong> people.</>;
-      }
-    } else if (isBottomBand) {
-      if (canonicalTie === 'tiedBottom') {
-        if (e === 1)       relativeLine = <>You’re at the bottom, tied with <Strong>one other person</Strong>.</>;
-        else if (e === 2)  relativeLine = <>You’re at the bottom, tied with <Strong>two others</Strong>.</>;
-        else               relativeLine = <>You’re at the bottom, tied with <Strong>{e}</Strong> others.</>;
-      } else {
-        relativeLine = <>You’re at the bottom, everyone else is ahead.</>;
-      }
-    } else if (isNearBottom) {
-      if (e > 0) {
-        if (e === 1 && b === 1)
-          relativeLine = <>You’re near the bottom, tied with <Strong>one</Strong> and ahead of only <Strong>one</Strong>.</>;
-        else if (e === 1)
-          relativeLine = <>You’re near the bottom, tied with <Strong>one</Strong> and ahead of <Strong>{b}</Strong>.</>;
-        else if (b === 1)
-          relativeLine = <>You’re near the bottom, tied with <Strong>{e}</Strong> and ahead of only <Strong>one</Strong>.</>;
-        else
-          relativeLine = <>You’re near the bottom, tied with <Strong>{e}</Strong> and ahead of <Strong>{b}</Strong>.</>;
-      } else {
-        relativeLine =
-          b === 1
-            ? <>You’re near the bottom, ahead of only <Strong>one</Strong>.</>
-            : <>You’re near the bottom, ahead of <Strong>{b}</Strong>.</>;
-      }
-    } else if (isMiddleBand) {
-      if (canonicalTie === 'tiedMiddle') {
-        relativeLine = <>You’re in the middle, tied with <Strong>{e}</Strong>.</>;
-      } else {
-        if (a < b) {
-          relativeLine = <>You’re in the middle, behind <Strong>{a}</Strong>.</>;
-        } else if (b < a) {
-          relativeLine = <>You’re in the middle, ahead of <Strong>{b}</Strong>.</>;
-        } else {
-          relativeLine = <>You’re in the middle, ahead of <Strong>{b}</Strong> and behind <Strong>{a}</Strong>.</>;
-        }
+        relativeLine = <>You’re in the middle, ahead of <Strong>{bb}</Strong> and behind <Strong>{aa}</Strong>.</>;
       }
     }
 
-    if (!relativeLine) {
-      relativeLine = <>You’re in the mix.</>;
-    }
+    if (!relativeLine) relativeLine = <>You’re in the mix.</>;
   }
 
   const line =
@@ -303,32 +280,29 @@ export default function GamificationPersonalized({
           style={{ pointerEvents: 'none', transition: `opacity ${FADE_MS}ms ease` }}
         >
           <div className="gamification-text">
-                        {mode === 'absolute' && secondaryText ? (
+            {mode === 'absolute' && secondaryText ? (
               <h4 className="gam-subline">{secondaryText}</h4>
             ) : null}
-          <h4 className="gam-title">
-            {mode === 'relative' ? (
-              'Within the Community'
-            ) : (
-              <>
-                Your score:{' '}
-                <strong
-                  style={{
-                    textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}`,
-                  }}
-                >
-                  {safePct}
-                </strong>
-                /100
-              </>
-            )}
-          </h4>
 
-          {mode === 'relative' && <p>{relativeLine}</p>}
+            <h4 className="gam-title">
+              {mode === 'relative' ? (
+                'The tea'
+              ) : (
+                <>
+                  Your score:{' '}
+                  <strong
+                    style={{
+                      textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}`,
+                    }}
+                  >
+                    {safePct}
+                  </strong>
+                  /100
+                </>
+              )}
+            </h4>
 
-            {/* Title removed by request */}
-            {/* <h1 className="personal-title">{selectedTitle}</h1> */}
-
+            {mode === 'relative' && <p>{line}</p>}
           </div>
 
           {mode === 'absolute' && (
@@ -337,7 +311,10 @@ export default function GamificationPersonalized({
                 <div className="percentage-knob">
                   <div
                     className="knob-arrow"
-                    style={{ bottom: `${safePct}%`, borderBottom: `18px solid ${knobColor}` }}
+                    style={{
+                      bottom: `${safePct}%`,
+                      borderBottom: `18px solid ${knobColor}`,
+                    }}
                   />
                 </div>
               </div>

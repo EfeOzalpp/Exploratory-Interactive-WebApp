@@ -41,15 +41,15 @@ export const BRAND_STOPS_ORIGINAL: Stop[] = [
 // VIVID brand gradient (narrow yellow, deeper endpoints)
 export const BRAND_STOPS_VIVID: Stop[] = [
   { stop: 0.00, color: { r: 210, g:  0,  b:  25 } },  // deeper, pure red
-  { stop: 0.20, color: { r: 255, g:  90, b:   0 } },  // hot orange
+  { stop: 0.20, color: { r: 235, g:  90, b:   0 } },  // hot orange
 
   // middle ridge — narrow but bright
-  { stop: 0.46, color: { r: 255, g: 210, b:  40 } },  // golden yellow
-  { stop: 0.52, color: { r: 255, g: 245, b: 120 } },  // sharp lemon peak
-  { stop: 0.58, color: { r: 150, g: 235, b: 120 } },  // bright yellow-green
+  { stop: 0.40, color: { r: 255, g: 150, b:  40 } },  // golden yellow
+  { stop: 0.60, color: { r: 225, g: 175, b:  40 } },
+  { stop: 0.7, color: { r: 180, g: 180, b: 120 } },  // bright yellow-green
 
-  { stop: 0.78, color: { r:   0, g: 175, b:  70 } },  // clean green
-  { stop: 1.00, color: { r:   0, g: 120, b:  40 } },  // deep forest green
+  { stop: 0.78, color: { r: 110, g: 195, b:  70 } },  // clean green
+  { stop: 1.00, color: { r: 0, g: 200, b:  40 } },  // deep forest green
 ];
 
 // COOL alt (less yellow overall)
@@ -64,6 +64,14 @@ export const BRAND_STOPS_COOL: Stop[] = [
 // Set the default palette used by helpers.
 // Swap this alias to BRAND_STOPS_ORIGINAL if you want the old look globally.
 export const BRAND_STOPS: Stop[] = BRAND_STOPS_VIVID;
+
+// Shared default gradient configuration for all components
+export const DEFAULT_COLOR_OPTS = {
+  stops: BRAND_STOPS,        // use whichever palette you prefer (VIVID / COOL / etc.)
+  skew: [0, 0.6, 0.85, 1],   // keeps midrange green from lagging
+  gamma: 1.2,               // slightly brightens midtones
+  contrast: -0.12,           // reduces harsh orange/yellow transitions
+} as const;
 
 // --------------- Sampling -----------------
 

@@ -31,7 +31,7 @@ const nonlinearLerp = (a, b, t) => {
 const EPS = 1e-6;
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
-  const { myEntryId, mySection, observerMode, mode, section, darkMode } = useGraph();
+  const { myEntryId, mySection, myRole, observerMode, mode, section, darkMode } = useGraph();
   const safeData = Array.isArray(data) ? data : [];
   const showCompleteUI = useObserverDelay(observerMode, 2000);
   const noData = safeData.length === 0;
@@ -55,14 +55,21 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   // - exactly the section the user submitted to
   // - or staff umbrella view ('all-staff')
   const shouldShowPersonalized = useMemo(() => {
-    if (!mySection) return false;
-    return (
-      section === mySection ||
-      section === 'all-staff' ||
-      section === 'all-massart' ||  
-      section === 'all'    
-    );
-  }, [section, mySection]);
+    if (!mySection) return false; // no submission yet => never show
+    // exact section you submitted to
+    if (section === mySection) return true;
+    // umbrellas (role-scoped)
+    if (section === 'all-staff')    return myRole === 'staff';
+    if (section === 'all-students') return myRole === 'student';
+    if (section === 'all-massart')  return myRole === 'student' || myRole === 'staff';
+    if (section === 'visitor')      return myRole === 'visitor';
+    // global “Everyone”: decide whether you want visitors included here.
+    // If you *don’t* want visitors to see their card in “Everyone”, gate it:
+    // return myRole !== 'visitor';
+    // If you *do* want it, allow all roles:
+    if (section === 'all')          return true;
+    return false;
+  }, [section, mySection, myRole]);
 
   // Only skew under 768px and when we're actually showing the personalized card here
   const wantsSkew =
