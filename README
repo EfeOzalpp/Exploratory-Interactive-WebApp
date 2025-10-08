@@ -6,14 +6,14 @@ readme_text = """# 🌍 Climate Gamification — 3D Interactive Survey Experienc
 
 **Climate Gamification** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
 
-After completing a short climate survey, users receive **personalized feedback** represented through animated, color-coded cards and can explore **other participants’ results** in a live, orbitable 3D world.
+After completing a short climate survey, users receive **personalized feedback** represented through anchored to the world, color-coded cards and can explore **other participants’ results** in a live, orbitable 3D world.
 
 ---
 
 ## 🎮 Features
 
 - 🧩 **Gamified Feedback Cards**  
-  Personalized results based on each answer — with dynamic gradients, motion, and contextual tone.
+  Personalized results based on each answer — with dynamic gradients, and contextual tone.
 
 - 🌐 **3D Visualization with Three.js & React Three Fiber**  
   Explore other survey takers’ results floating in space — zoom, orbit, and interact with dynamic nodes.
