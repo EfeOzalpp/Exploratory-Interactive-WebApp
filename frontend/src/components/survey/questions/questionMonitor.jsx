@@ -10,20 +10,22 @@ export default function QuestionMonitor({
   isDragging = false,
   isGhosting = false,
 }) {
-  // ---- Responsive Y offset (mobile needs more room for wrapped lines)
-  const [isMobile, setIsMobile] = useState(false);
+  // ---- Responsive Y offset (mobile/tablet/desktop)
+  const [viewport, setViewport] = useState('desktop');
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(max-width: 768px)');
-    const onChange = () => setIsMobile(mq.matches);
-    onChange(); // set initial
-    mq.addEventListener?.('change', onChange);
-    // Fallback for older Safari
-    if (!mq.addEventListener && mq.addListener) mq.addListener(onChange);
-    return () => {
-      mq.removeEventListener?.('change', onChange);
-      if (!mq.removeEventListener && mq.removeListener) mq.removeListener(onChange);
+
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      if (width <= 768) setViewport('mobile');
+      else if (width <= 1024) setViewport('tablet');
+      else setViewport('desktop');
     };
+
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
   const quantize = (x, step = 0.02) => {
@@ -58,10 +60,17 @@ export default function QuestionMonitor({
   const BASE_SCALE = 0.965;
   const GROW = 0.50;
 
-  // Tweak these if you need more/less movement
-  const Y_OFFSET_DESKTOP = 22; // current behavior
-  const Y_OFFSET_MOBILE  = 32; // more space for two-line answers
-  const Y_OFFSET = isMobile ? Y_OFFSET_MOBILE : Y_OFFSET_DESKTOP;
+  // Y-offsets tuned per viewport
+  const Y_OFFSET_DESKTOP = 22;
+  const Y_OFFSET_TABLET  = 36;
+  const Y_OFFSET_MOBILE  = 32;
+
+  const Y_OFFSET =
+    viewport === 'mobile'
+      ? Y_OFFSET_MOBILE
+      : viewport === 'tablet'
+      ? Y_OFFSET_TABLET
+      : Y_OFFSET_DESKTOP;
 
   const CURVE_EXP = 1.0;
 

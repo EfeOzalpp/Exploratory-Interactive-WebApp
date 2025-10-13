@@ -59,7 +59,7 @@
   .cp-thumb-hitbox { width: 160px; height: 160px; }
   .cp-thumb-hitbox.is-rect .cp-thumb {width: 25px; height: 25px;}
   .cp-thumb.is-rect { width: 9px; height: 22px; }
-  .qm-stage { height: 120px; width: 200vw; }
+  .qm-stage { height: 160px; width: 200vw; }
   .qm-answer-abs { max-width: min(640px, 92vw); }
   .cp-rail { height: 3px;}
   .cp-thumb {width: 24px; height: 24px;}
