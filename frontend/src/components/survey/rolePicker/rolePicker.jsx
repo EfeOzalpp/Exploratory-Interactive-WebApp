@@ -7,7 +7,7 @@ const OPTIONS = [
     group: "MassArt",
     options: [
       { val: "student", label: "Student" },
-      { val: "staff", label: "Faculty" },
+      { val: "staff", label: "Staff / Faculty" },
     ],
   },
 ];
@@ -67,9 +67,16 @@ export default function RolePicker({ value, onChange }) {
                 style={{ cursor: "pointer" }}
               >
                 <LottieOption selected={checked} />
-                <label className="radio-label">
+              <label className="radio-label" style={{ textAlign: "left" }}>
+                {opt.val === "staff" ? (
+                  <>
+                    <h4>Staff</h4>
+                    <h4>Faculty</h4>
+                  </>
+                ) : (
                   <h4>{opt.label}</h4>
-                </label>
+                )}
+              </label>
               </div>
             );
           })}

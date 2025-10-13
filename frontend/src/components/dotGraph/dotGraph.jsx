@@ -52,21 +52,13 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   );
 
   // ===== SCOPE GUARD (only show in allowed scopes) =====
-  // - exactly the section the user submitted to
-  // - or staff umbrella view ('all-staff')
   const shouldShowPersonalized = useMemo(() => {
     if (!mySection) return false; // no submission yet => never show
-    // exact section you submitted to
     if (section === mySection) return true;
-    // umbrellas (role-scoped)
     if (section === 'all-staff')    return myRole === 'staff';
     if (section === 'all-students') return myRole === 'student';
     if (section === 'all-massart')  return myRole === 'student' || myRole === 'staff';
     if (section === 'visitor')      return myRole === 'visitor';
-    // global “Everyone”: decide whether you want visitors included here.
-    // If you *don’t* want visitors to see their card in “Everyone”, gate it:
-    // return myRole !== 'visitor';
-    // If you *do* want it, allow all roles:
     if (section === 'all')          return true;
     return false;
   }, [section, mySection, myRole]);
@@ -114,7 +106,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   }, [safeData.length]);
 
   const colorForAverage = useMemo(
-  () => (avg) => boostColor(rgbString(sampleStops(avg))),
+    () => (avg) => boostColor(rgbString(sampleStops(avg))),
     []
   );
 
@@ -127,7 +119,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     centerBias: 0.35,
     colorForAverage,
     personalizedEntryId,
-    // only highlight the personalized point in this view if the scope allows it
     showPersonalized: showCompleteUI && hasPersonalizedInDataset && shouldShowPersonalized,
   });
 
@@ -144,8 +135,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     [safeData, personalizedEntryId]
   );
 
-  // ---- Fallbacks so personalized panel can still show in umbrella views
-  //      even if the user's entry isn't in the current dataset ----
+  // ---- Fallbacks for umbrella views
   const mySnapshot = useMemo(() => {
     if (myEntry || typeof window === 'undefined') return null;
     try {
@@ -179,7 +169,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const myDisplayValue = useMemo(() => {
     if (!(showCompleteUI && effectiveMyEntry)) return 0;
 
-    // Prefer dataset-based id when present; otherwise compute from saved avg against current dataset
     if (myEntry) {
       return mode === 'relative' ? getRelForId(myEntry._id) : getAbsForId(myEntry._id);
     }
@@ -230,17 +219,29 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     calcPercentForAvg: calcValueForAvg,
   });
 
-  // ----- global bottom→top chain (by average/relative value)
+  // ========= Shared key for buckets/rank-chain: rounded RAW % (avg*100) =========
+  const linkKeyOf = useCallback(
+    (d) => Math.round(avgWeightOf(d) * 100), // integer 0..100
+    []
+  );
+
+  // ----- global bottom→top chain, de-dup by linkKeyOf (one per rounded %)
   const rankChainIds = useMemo(() => {
     if (points.length < 2) return [];
-    const entries = safeData.map(d => ({ id: d._id, avg: avgWeightOf(d) }));
+    const entries = safeData.map(d => ({ id: d._id, avg: avgWeightOf(d), key: linkKeyOf(d) }));
     entries.sort((a, b) => a.avg - b.avg);
+
+    const seenKeys = new Set();
     const uniqueIds = [];
     for (let i = 0; i < entries.length; i++) {
-      if (i === 0 || Math.abs(entries[i].avg - entries[i - 1].avg) > EPS) uniqueIds.push(entries[i].id);
+      const k = entries[i].key;
+      if (!seenKeys.has(k)) {
+        uniqueIds.push(entries[i].id);
+        seenKeys.add(k);
+      }
     }
     return uniqueIds;
-  }, [points, safeData]);
+  }, [points, safeData, linkKeyOf]);
 
   const rankChainPoints = useMemo(
     () => rankChainIds.map(id => posById.get(id)).filter(Boolean),
@@ -249,22 +250,23 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
   const rankChainIdSet = useMemo(() => new Set(rankChainIds), [rankChainIds]);
 
-  // --- Tie buckets (ids grouped by approx equal avg); keep only groups with size > 1
-  const tieBuckets = useMemo(() => {
-    const b = new Map(); // key -> ids[]
-    if (!safeData.length) return b;
-    for (const d of safeData) {
-      const a = avgWeightOf(d);
-      const key = Math.round(a / EPS) * EPS;
-      let arr = b.get(key);
-      if (!arr) { arr = []; b.set(key, arr); }
-      arr.push(d._id);
-    }
-    for (const [k, arr] of b) if (arr.length <= 1) b.delete(k);
-    return b;
-  }, [safeData]);
+  // ============================ LINKING by ROUNDED RAW AVG ============================
 
-  // Selected tie group (by bucket key)
+  // Tie buckets keyed by the rounded raw %; keep only groups size > 1
+  const tieBuckets = useMemo(() => {
+    const m = new Map(); // key: integer 0..100 -> ids[]
+    if (!safeData.length) return m;
+    for (const d of safeData) {
+      const key = linkKeyOf(d);
+      const arr = m.get(key) || [];
+      arr.push(d._id);
+      m.set(key, arr);
+    }
+    for (const [k, arr] of m) if (!arr || arr.length <= 1) m.delete(k);
+    return m;
+  }, [safeData, linkKeyOf]);
+
+  // Selected tie group (by bucket key - integer 0..100)
   const [selectedTieKey, setSelectedTieKey] = useState(null);
 
   // Reset selection when mode changes
@@ -274,30 +276,37 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
   // Build line points for the selected tie group (sorted around centroid)
   const selectedTieLinePoints = useMemo(() => {
-    if (!selectedTieKey || !tieBuckets.has(selectedTieKey)) return [];
+    if (selectedTieKey == null || !tieBuckets.has(selectedTieKey)) return [];
     const ids = tieBuckets.get(selectedTieKey).filter(id => posById.has(id));
     if (ids.length < 2) return [];
     const pts = ids.map(id => posById.get(id));
     let cx = 0, cy = 0, cz = 0;
     for (const p of pts) { cx += p[0]; cy += p[1]; cz += p[2]; }
     cx /= pts.length; cy /= pts.length; cz /= pts.length;
-    const sorted = pts.slice().sort((a,b) => {
+    return pts.slice().sort((a,b) => {
       const aa = Math.atan2(a[2]-cz, a[0]-cx);
       const bb = Math.atan2(b[2]-cz, b[0]-cx);
       return aa - bb;
     });
-    return sorted;
   }, [selectedTieKey, tieBuckets, posById]);
 
-  // Helper: get tie key for a dot id (or null)
+  // Helper: get tie key for a dot id (or null) using rounded-raw bucket
   const getTieKeyForId = (id) => {
     const entry = safeData.find(d => d._id === id);
     if (!entry) return null;
-    const a = avgWeightOf(entry);
-    const key = Math.round(a / EPS) * EPS;
+    const key = linkKeyOf(entry);         // integer 0..100
     const arr = tieBuckets.get(key);
-    return arr && arr.length > 1 ? key : null;
+    return arr && arr.length > 1 ? key : null; // number|null
   };
+
+  // Relative-mode hovered equals list (only if actual tie > 1)
+  const hoveredRelIds = useMemo(() => {
+    if (mode !== 'relative' || !hoveredDot) return [];
+    const entry = safeData.find(d => d._id === hoveredDot.dotId);
+    if (!entry) return [];
+    const key = linkKeyOf(entry);
+    return tieBuckets.get(key) || [];
+  }, [mode, hoveredDot, safeData, tieBuckets, linkKeyOf]);
 
   // ABSOLUTE: hovered equals set (highlight hovered + all with same absolute score)
   const hoveredAbsEqualSet = useMemo(() => {
@@ -348,22 +357,16 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     const hsl = { h: 0, s: 0, l: 0 };
     c.getHSL(hsl);
 
-    // Target = same hue, max saturation, a touch darker
     const target = new THREE.Color().setHSL(hsl.h, 1, Math.max(0, hsl.l * 0.9));
-
-    // Amount depends on how desaturated the source is:
-    // - If it's already saturated, move a little
-    // - If it's pastel, move more
-    const t = 0.9 * (1 - hsl.s); // 0..0.35
-
-    c.lerp(target, t); // lerp in RGB space; avoids HSL s=1 clamp
+    const t = 0.9 * (1 - hsl.s);
+    c.lerp(target, t);
     return `#${c.getHexString()}`;
   };
 
   // -------- tie-aware stats (shared for both panels) --------
   const myStats = effectiveMyEntry && myEntry
     ? getTieStats({ data: safeData, targetId: myEntry._id })
-    : { below: 0, equal: 0, above: 0, totalOthers: 0 }; // if not in dataset, don’t invent counts
+    : { below: 0, equal: 0, above: 0, totalOthers: 0 };
   const myClass  = classifyPosition(myStats);
 
   const hoveredStats = useMemo(() => {
@@ -460,6 +463,10 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     );
   }
 
+  // When the tie link is "happening" (selected OR hovering over a real tie), hide rank-chain halos
+  const tieInteractionActive =
+    mode === 'relative' && (selectedTieKey != null || (hoveredRelIds.length > 1));
+
   return (
     <>
       {showCompleteUI && (
@@ -478,12 +485,21 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           const suppressHover = !!(myEntry && point._id === personalizedEntryId && showCompleteUI);
 
           const tieKey = getTieKeyForId(point._id);
-          const isInSelectedTie = mode === 'relative' && selectedTieKey && tieKey === selectedTieKey;
+          const isInSelectedTie = mode === 'relative' && selectedTieKey != null && tieKey === selectedTieKey;
 
-          const showRankChainHalos = mode === 'relative' && !selectedTieKey && rankChainIdSet.has(point._id);
-          const showAbsEqualHoverHalo = mode === 'absolute' && hoveredAbsEqualSet.has(point._id);
+          // Keep rank chain halos ON by default; turn OFF only during tie interactions
+          const showRankChainHalos =
+            mode === 'relative' && !tieInteractionActive && rankChainIdSet.has(point._id);
 
-          const showHalo = isInSelectedTie || showAbsEqualHoverHalo || showRankChainHalos;
+          const showAbsEqualHoverHalo =
+            mode === 'absolute' && hoveredAbsEqualSet.has(point._id);
+
+          const showRelEqualHoverHalo =
+            mode === 'relative' &&
+            hoveredRelIds.length > 1 &&
+            hoveredRelIds.includes(point._id);
+
+          const showHalo = isInSelectedTie || showRelEqualHoverHalo || showAbsEqualHoverHalo || showRankChainHalos;
 
           const visibleR = 1.4;
           const hitR = useDesktopLayout ? 2.2 : 4; // dot hitbox
@@ -500,7 +516,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   active
                 />
               )}
-            {/* Invisible hit area */}
+              {/* Invisible hit area */}
               <mesh
                 onPointerOver={(e) => { e.stopPropagation(); if (!suppressHover) onHoverStart(point, e); }}
                 onPointerOut={(e) =>  { e.stopPropagation(); if (!suppressHover) onHoverEnd(); }}
@@ -509,7 +525,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   if (!suppressHover) onHoverStart(point, e);
                   if (mode !== 'relative') return;
                   const key = getTieKeyForId(point._id);
-                  setSelectedTieKey(prev => (prev === key ? null : key || null));
+                  setSelectedTieKey(prev => (prev === key ? null : (key ?? null)));
                 }}
               >
                 <sphereGeometry args={[hitR, 24, 24]} />
@@ -519,7 +535,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               {/* Visible dot */}
               <mesh>
                 <sphereGeometry args={[visibleR, 48, 48]} />
-                <meshStandardMaterial     
+                <meshStandardMaterial
                   color={point.color}
                   roughness={0.34}
                   metalness={0.12}
@@ -531,7 +547,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           );
         })}
 
-        {mode === 'relative' && selectedTieKey && selectedTieLinePoints.length >= 2 && (
+        {mode === 'relative' && selectedTieKey != null && selectedTieLinePoints.length >= 2 && (
           <Line
             points={selectedTieLinePoints}
             color="#a3a3a3"
@@ -602,7 +618,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               : (absScoreById.get(hoveredDot.dotId) ?? 0);
           }
 
-          // compute stats for hovered
           const hoveredStats = hoveredEntry
             ? getTieStats({ data: safeData, targetId: hoveredEntry._id })
             : { below: 0, equal: 0, above: 0, totalOthers: 0 };

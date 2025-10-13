@@ -463,9 +463,10 @@ export default function QuestionFlowWeighted({
   const currentWeight = weights[q.id] ?? null;
   const currentMeta = vizMeta[q.id] ?? { t: undefined, index: null, committed: false, dragging: false };
 
+  // FIXED: provide else-branch for the tutorial ternary and parenthesize the non-tutorial ternary
   const primaryCtaLabel = tutorialMode
-    ? (tutorialStepIndex >= TUTORIAL_STEPS.length - 1 ? 'Begin' : 'Next')
-    : current < questions.length - 1 ? 'Next' : "I'm Ready";
+    ? (tutorialStepIndex >= TUTORIAL_STEPS.length - 1 ? 'Begin' : 'Next Tip')
+    : (current < questions.length - 1 ? 'Next Tip' : "I'm Ready");
 
   const { title, body, binder } = getStepContent(step?.id);
 
@@ -523,7 +524,7 @@ export default function QuestionFlowWeighted({
           <h4
             className="hb-skip"
             onClick={skipTutorial}
-            aria-label="Skip tutorial"
+            aria-label="Skip tips"
             style={{
               display: 'inline-block',
               opacity: 0.75,
@@ -534,7 +535,7 @@ export default function QuestionFlowWeighted({
             role="button"
             tabIndex={0}
           >
-            Skip
+            Skip tips
           </h4>
         </div>
       </HintBubble>

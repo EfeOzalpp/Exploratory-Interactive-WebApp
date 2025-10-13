@@ -286,10 +286,10 @@ export default function GamificationPersonalized({
 
             <h4 className="gam-title">
               {mode === 'relative' ? (
-                'The tea'
+                'Yours'
               ) : (
                 <>
-                  Your score:{' '}
+                  {' '}
                   <strong
                     style={{
                       textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}`,

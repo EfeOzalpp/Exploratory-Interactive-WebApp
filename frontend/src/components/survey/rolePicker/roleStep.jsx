@@ -4,7 +4,7 @@ import RolePicker from "./rolePicker";
 
 const DISPLAY = {
   student: "student",
-  staff: "faculty",
+  staff: "staff / faculty",
   visitor: "visitor",
 };
 
@@ -30,7 +30,9 @@ export default function RoleStep({ value, onChange, onNext, error }) {
 
       <button
         type="button"
-        className={`begin-button ${!isSelected ? "is-disabled" : ""}`}
+        className={`begin-button ${!isSelected ? "is-disabled" : ""} ${
+          value === "staff" ? "is-staff" : ""
+        }`}
         aria-disabled={!isSelected}
         onClick={onNext}
         style={{ marginTop: "1rem" }}

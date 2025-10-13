@@ -34,7 +34,7 @@ export default function useOrbit(params = {}) {
 
   const {
     startOnLoad    = idle.startOnLoad ?? true,
-    delayMs        = idle.delayMs ?? 3000,
+    delayMs        = idle.delayMs ?? 99000,
     speed          = idle.speed ?? 0.15,
     horizontalOnly = idle.horizontalOnly ?? true,
   } = idle;

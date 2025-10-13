@@ -44,10 +44,10 @@ export const WEIGHTED_QUESTIONS = [
     id: 'q5',
     prompt: 'How do you handle waste at home?',
     options: [
-      { key: 'A', label: 'Recycle sometimes', weight: 0.45 },
-      { key: 'B', label: 'Recycle most things', weight: 0.7 },
+      { key: 'A', label: 'Recycle occasionally when it’s convenient', weight: 0.45 },
+      { key: 'B', label: 'Separate most recyclables (paper, plastic, glass) regularly', weight: 0.7 },
       { key: 'C', label: 'Toss everything out together', weight: 0.00 },
-      { key: 'D', label: 'Compost and recycle as much as possible', weight: 1.00 },
+      { key: 'D', label: 'Sort thoroughly and compost organics whenever possible', weight: 1.00 },
     ],
   },
 ];

@@ -70,6 +70,7 @@ export default {
           { title: 'Health Office', value: 'health-office' },
           { title: 'Housing & Residence Life', value: 'housing-residence-life' },
           { title: 'Human Resources', value: 'human-resources' },
+          { title: 'Kennedy Cafeteria', value: 'kennedy-cafeteria' },
           { title: 'Institutional Advancement', value: 'institutional-advancement' },
           { title: 'Institutional Research & Strategic Effectiveness', value: 'institutional-research' },
           { title: 'International Education Center', value: 'international-education' },

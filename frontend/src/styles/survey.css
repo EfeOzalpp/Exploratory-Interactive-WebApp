@@ -94,6 +94,7 @@
   .begin-title2 { padding-bottom: 0.4em; }
   button.begin-button, button.begin-button2, button.begin-button3 { color: #fff; background-color: #292929; padding-top: 1.8em; padding-bottom: 1.8em; border-radius: 6px; cursor: pointer; border: none; z-index: 10; pointer-events: all; }
   button.begin-button, button.begin-button3 { width: 40%; }
+  .begin-button.is-staff {width: 50%  !important;}
   button.begin-button3 { width: 20% !important; margin-bottom: 13.95em !important; }
   button.begin-button2, .shuffle-button { width: 30%;}
   .shuffle-button { display: flex; align-content: center; flex-wrap: wrap; gap: 2px; justify-content: center; color: rgb(6, 21, 1); border: 1px solid rgb(138 138 138 / 78%); border-radius: 6px; background: #fff;}

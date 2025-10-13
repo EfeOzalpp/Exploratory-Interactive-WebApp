@@ -212,7 +212,7 @@ export default function GamificationGeneral({
       </>
     ) : (
       <>
-        Score{' '}
+        {' '}
         <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobSample.css}` }}>
           {Math.round(safePct)}
         </strong>
@@ -240,7 +240,7 @@ export default function GamificationGeneral({
                 className="gam-knob-arrow"
                 style={{
                   bottom: `${safePct}%`,
-                  borderBottom: `15px solid ${knobColor}`,
+                  borderBottom: `18px solid ${knobColor}`,
                 }}
               />
             </div>
