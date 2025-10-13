@@ -466,7 +466,7 @@ export default function QuestionFlowWeighted({
   // FIXED: provide else-branch for the tutorial ternary and parenthesize the non-tutorial ternary
   const primaryCtaLabel = tutorialMode
     ? (tutorialStepIndex >= TUTORIAL_STEPS.length - 1 ? 'Begin' : 'Next Tip')
-    : (current < questions.length - 1 ? 'Next Tip' : "I'm Ready");
+    : (current < questions.length - 1 ? 'Next' : "I'm Ready");
 
   const { title, body, binder } = getStepContent(step?.id);
 
