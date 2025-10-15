@@ -1,4 +1,4 @@
-# 🌍 Climate Gamification — 3D Interactive Survey Experience
+# 🌍 Participatory Climate App — 3D Interactive Survey Experience
 
 <div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 1rem;">
   <img src="./project_screenshots/canvas2.png" style="max-width: 45%; height: auto;" alt="Climate Gamification Screenshot">
@@ -6,7 +6,7 @@
 </div>
 
 
-**Climate Gamification** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
+**Participatory Climate App** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
 
 After completing a short climate survey, users receive **personalized feedback** represented through anchored to the world, color-coded cards and can explore **other participants’ results** in a live, orbitable 3D world.
 
