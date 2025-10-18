@@ -1,7 +1,7 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useDeferredValue, memo } from 'react';
 import { getAnswerOpacities, getScaleActivations } from '../../survey/answerBlend.ts';
 
-export default function QuestionMonitor({
+function QuestionMonitorInner({
   prompt,
   options,
   t,
@@ -10,21 +10,22 @@ export default function QuestionMonitor({
   isDragging = false,
   isGhosting = false,
 }) {
+  // Defer heavy monitor work relative to the scale knob
+  const tDeferred = useDeferredValue(t);
+
   // ---- Responsive Y offset (mobile/tablet/desktop)
   const [viewport, setViewport] = useState('desktop');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const checkViewport = () => {
       const width = window.innerWidth;
       if (width <= 768) setViewport('mobile');
       else if (width <= 1024) setViewport('tablet');
       else setViewport('desktop');
     };
-
     checkViewport();
-    window.addEventListener('resize', checkViewport);
+    window.addEventListener('resize', checkViewport, { passive: true });
     return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
@@ -38,9 +39,9 @@ export default function QuestionMonitor({
     return x;
   };
   const stableT = useMemo(() => {
-    const clamped = Math.max(0, Math.min(3, Number(t ?? 0)));
+    const clamped = Math.max(0, Math.min(3, Number(tDeferred ?? 0)));
     return nudgeIfCheckpoint(quantize(clamped, 0.02), 0.001);
-  }, [t]);
+  }, [tDeferred]);
 
   const snappedIndexFromStable = Number.isInteger(stableT) ? Math.round(stableT) : null;
 
@@ -63,7 +64,7 @@ export default function QuestionMonitor({
   // Y-offsets tuned per viewport
   const Y_OFFSET_DESKTOP = 22;
   const Y_OFFSET_TABLET  = 36;
-  const Y_OFFSET_MOBILE  = 32;
+  const Y_OFFSET_MOBILE  = 36;
 
   const Y_OFFSET =
     viewport === 'mobile'
@@ -139,3 +140,23 @@ export default function QuestionMonitor({
     </div>
   );
 }
+
+// Prevent rerenders unless t/options have materially changed
+const propsAreEqual = (prev, next) => {
+  if (prev.prompt !== next.prompt) return false;
+  if (prev.qIndex !== next.qIndex || prev.qTotal !== next.qTotal) return false;
+  if (prev.isDragging !== next.isDragging || prev.isGhosting !== next.isGhosting) return false;
+  if (prev.t === next.t) {
+    // options likely stable by reference; if not, shallow compare labels/weights
+    if (prev.options === next.options) return true;
+    if (prev.options.length !== next.options.length) return false;
+    for (let i = 0; i < prev.options.length; i++) {
+      const a = prev.options[i], b = next.options[i];
+      if (a.label !== b.label || a.weight !== b.weight) return false;
+    }
+    return true;
+  }
+  return false;
+};
+
+export default memo(QuestionMonitorInner, propsAreEqual);

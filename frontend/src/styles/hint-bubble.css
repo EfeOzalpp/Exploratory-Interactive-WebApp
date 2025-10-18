@@ -1,46 +1,280 @@
-.hint-bubble{position:absolute;top:0;left:50%;translate:-50% 0;padding:6px 10px;border-radius:8px;line-height:1.2;letter-spacing:.2px;white-space:nowrap;border:1px solid transparent;box-shadow:0 4px 16px rgba(0,0,0,.1);opacity:0;transition:opacity 140ms ease,transform 140ms ease;z-index:4;--offset-x:0px;--offset-y:6px;transform:translate(var(--offset-x),calc(-100% - var(--offset-y))) scale(.98);text-align:center;}
+/* ---------- Shared hint bubble (kept) ---------- */
+.hint-bubble{
+  position:absolute;top:0;left:50%;translate:-50% 0;
+  padding:6px 10px;border-radius:8px;line-height:1.2;letter-spacing:.2px;
+  white-space:nowrap;border:1px solid transparent;
+  box-shadow:0 4px 16px rgba(0,0,0,.1);
+  opacity:0;transition:opacity 140ms ease,transform 140ms ease;
+  z-index:4;--offset-x:0px;--offset-y:6px;
+  transform:translate(var(--offset-x),calc(-100% - var(--offset-y))) scale(.98);
+  text-align:center;
+}
 .hint-bubble.show{opacity:1;transform:translate(var(--offset-x),calc(-100% - var(--offset-y))) scale(1);}
 .hint-bubble.hide{opacity:0;transform:translate(var(--offset-x),calc(-100% - var(--offset-y))) scale(.98);}
 .hb-dark{background:rgba(18,18,18,.92);color:#f4f4f5;border-color:rgba(255,255,255,.12);}
 .hb-light{background:rgba(255,255,255,.92);color:#0f172a;border-color:rgba(15,23,42,.15);}
 .hb-title{font-weight:600;}
-.edge-mode-hint{padding:8px 10px;border-radius:8px;user-select:none;box-shadow:0 4px 16px rgba(0,0,0,.1);cursor:pointer;}
-.edge-mode-hint.is-dark{background:#1a1a1a;color:#f7f7f7;border:1px solid #535353;}
-.edge-mode-hint.is-light{background:#fff;color:#111;border:1px solid #e6e6e6;}
-.hint-continue{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;padding:8px 12px;border-radius:999px;background:var(--hb-cta-bg,#111);color:var(--hb-cta-fg,#fff);border:none;cursor:pointer;transition:opacity .12s ease;}
+.hint-continue{
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom:10px;padding:8px 12px;border-radius:999px;
+  background:var(--hb-cta-bg,#111);color:var(--hb-cta-fg,#fff);
+  border:none;cursor:pointer;transition:opacity .12s ease;
+}
 .pressable:active{opacity:.7;}
-.hint-skip{position:absolute;right:10px;bottom:10px;font-size:12px;background:transparent;border:none;color:var(--hb-skip-fg,#888);cursor:pointer;text-decoration:underline;}
+.hint-skip{
+  position:absolute;right:10px;bottom:10px;font-size:12px;
+  background:transparent;border:none;color:var(--hb-skip-fg,#888);
+  cursor:pointer;text-decoration:underline;
+}
 .hint-content{padding-bottom:44px;}
 .question-hint-bubble.hint-bubble.is-top.show{pointer-events:all;}
-.tip {white-space: normal;}
+.tip{white-space:normal;}
 
+/* ---------- RESTORED old tutorial helpers (you said some are still used) ---------- */
+.edge-mode-hint{
+  padding:8px 10px;border-radius:8px;user-select:none;
+  box-shadow:0 4px 16px rgba(0,0,0,.1);cursor:pointer;
+}
+.edge-mode-hint.is-dark{background:#1a1a1a;color:#f7f7f7;border:1px solid #535353;}
+.edge-mode-hint.is-light{background:#fff;color:#111;border:1px solid #e6e6e6;}
+/* keep the small h4 spacing tweaks you had */
+.edge-mode-hint h4{padding-bottom:4px;}
+/* legacy cue bubble anchor used by older tutorial copy placements */
+.cue-bubble{position:absolute;}
+
+/* ---------- NEW tutorial card/layout styles ---------- */
+.tutorial-card-wrap{position:relative; width: 100%; 
+display: flex;
+flex-wrap: wrap;
+justify-content: center;}
+.tutorial-tip{margin-top:6px; text-align: center;}
+
+.tutorial-inline-nav{
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;
+}
+.tutorial-dots{display:flex;gap:6px;}
+.tutorial-dots .dot{
+  width:6px;height:6px;border-radius:9999px;
+  background:currentColor;opacity:.4;
+}
+.tutorial-dots .dot.active{opacity:1;}
+
+/* (Optional) if you don’t already have .btn-ghost somewhere */
+.btn-ghost{
+  background:transparent;border:none;padding:6px 8px;
+  cursor:pointer;line-height:1;display:inline-flex;align-items:center;
+}
+.btn-ghost:disabled{opacity:.4;cursor:default;}
+
+/* ---------- Responsive tweaks (kept + restored cue positions) ---------- */
 @media (max-width:768px){
   .hint-bubble{padding:12px 14px;}
-  .edge-mode-hint h4{padding-bottom:4px;}
-  .cue-bubble{bottom:5.8em;}
-  .survey-section .hint-bubble {width: 70%;}
-  .survey-section .question-hint-bubble {border-radius: 12px; border: 2px solid; border-color:rgba(222, 222, 222, 0.15); background: linear-gradient(135deg, rgb(40, 40, 40), rgb(67, 67, 67)); color: rgb(247, 247, 247); padding: 1.6em 1.6em;}
-  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
-  .binder {padding-top: 0.8em;}
+  .edge-mode-hint h4{padding-bottom:4px;} /* keep */
+  .cue-bubble{bottom:5.8em;}              /* keep */
+  .survey-section .hint-bubble{width:70%;}
+  .survey-section .question-hint-bubble{
+    border-radius:12px;border:2px solid rgba(222,222,222,.15);
+    background:linear-gradient(135deg,rgb(40,40,40),rgb(67,67,67));
+    color:rgb(247,247,247);padding:1.6em 1.6em;
+  }
+  .hb-skip{padding-top:.2em;margin-bottom:-1em;}
+  .binder{padding-top:.8em;}
+
+  .hand-hint {transform: translate(-90%, 300%);}
+  .here-marker-wrap {transform: translate(-50%, 110%);}
 }
 
 @media (min-width:769px) and (max-width:1024px){
   .hint-bubble{padding:12px 18px;}
-  .edge-mode-hint h4{padding-bottom:4px;}
-  .cue-bubble{bottom:9.2em;}
-  .survey-section .hint-bubble {width: 60%;}
-  .survey-section .question-hint-bubble {border-radius: 12px; border: 2px solid; border-color:rgba(222, 222, 222, 0.15); background: linear-gradient(135deg, rgb(40, 40, 40), rgb(67, 67, 67)); color: rgb(247, 247, 247); padding: 1.6em 1.6em;}
-  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
-  .binder {padding-top: 0.8em;}
+  .edge-mode-hint h4{padding-bottom:4px;} /* keep */
+  .cue-bubble{bottom:9.2em;}              /* keep */
+  .survey-section .hint-bubble{width:60%;}
+  .survey-section .question-hint-bubble{
+    border-radius:12px;border:2px solid rgba(222,222,222,.15);
+    background:linear-gradient(135deg,rgb(40,40,40),rgb(67,67,67));
+    color:rgb(247,247,247);padding:1.6em 1.6em;
+  }
+  .hb-skip{padding-top:.2em;margin-bottom:-1em;}
+  .binder{padding-top:.8em;}
+
+  .hand-hint {transform: translate(-85%, 352%);}
+  .here-marker-wrap {transform: translate(-50%, 152%);}
 }
 
 @media (min-width:1025px){
   .hint-bubble{padding:8px 12px;}
-  .edge-mode-hint{padding:9px 12px; }
-  .cue-bubble{bottom:7.6em;}
-  .edge-mode-hint h4{padding-bottom:4px;padding-top:2px;}
-  .survey-section .hint-bubble {width: 60%;}
-  .survey-section .question-hint-bubble {border-radius: 12px; border: 2px solid; border-color:rgba(222, 222, 222, 0.15); background: linear-gradient(135deg, rgb(40, 40, 40), rgb(67, 67, 67)); color: rgb(247, 247, 247); padding: 1.6em 1.6em;}
-  .hb-skip {padding-top: 0.2em; margin-bottom: -1em;}
-  .binder {padding-top: 0.8em;}
+  .edge-mode-hint{padding:9px 12px;}     /* keep */
+  .cue-bubble{bottom:7.6em;}             /* keep */
+  .edge-mode-hint h4{padding-bottom:4px;padding-top:2px;} /* keep */
+  .survey-section .hint-bubble{width:60%;}
+  .survey-section .question-hint-bubble{
+    border-radius:12px;border:2px solid rgba(222,222,222,.15);
+    background:linear-gradient(135deg,rgb(40,40,40),rgb(67,67,67));
+    color:rgb(247,247,247);padding:1.6em 1.6em;
+  }
+  .hb-skip{padding-top:.2em;margin-bottom:-1em;}
+  .binder{padding-top:.8em;}
+  .tutorial-card {width: 480px;}
+  .hand-hint {transform: translate(-88%, 312%);}
+  .tutorial-header{margin-bottom:-16px;}
+  .here-marker-wrap {transform: translate(-50%, 112%);}
+}
+
+.tutorial-card {
+  position: relative;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
+   align-items: center;
+   height: fit-content;
+}
+
+/* Inline navigation stays inside tutorial-card */
+.tutorial-inline-nav {
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  width: 90%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 5;
+  pointer-events: none;
+  
+}
+
+/* Arrows */
+.nav-arrow {
+  width: 42px;
+  height: 42px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nav-arrow:hover {
+  transform: scale(1.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+.nav-arrow svg {
+  width: 20px;
+  height: 20px;
+  stroke: #111;
+}
+
+/* Remove the old .tutorial-inline-nav .dots rule entirely */
+/* Replace with dots that are part of the header instead */
+.tutorial-dots {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.tutorial-dots .dot {
+  all: unset;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  transition: background 0.25s ease;
+}
+
+.tutorial-dots .dot.active {
+  background: #111;
+}
+
+/* Invisible placeholders */
+.arrow-shell {
+  width: 42px;
+  height: 42px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hand-hint {
+  width: 60px;
+  height: 60px;
+  opacity: 0;
+  pointer-events: none;
+}
+.hand-hint.visible { opacity: 1; }
+
+.hand-hint.visible {
+  opacity: 1;
+}
+/* “Here!” marker used in Tutorial step 2 (blend) */
+
+:root {
+  --hm-hide-ms: 500ms; /* keep in sync with setTimeout in TSX */
+}
+
+.here-marker-wrap {
+  position: absolute;
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+  width: 64px;
+  border-radius: 12px;
+  padding: 12px 0px 12px 0px;
+  background-color: white;
+  transition: transform var(--hm-hide-ms) ease, opacity var(--hm-hide-ms) ease;
+  border: 1px solid rgb(219, 219, 219);
+}
+
+.here-marker-wrap.is-complete {
+  transform: translateX(-50%) translateY(-14px);
+  opacity: 0;
+}
+
+.here-label {
+  font-weight: 700;
+  margin-bottom: 2px;
+  font-size: 14px;
+  transition: transform .25s ease, opacity .25s ease;
+}
+
+.here-label.is-reached {
+  transform: translateY(2px) scale(0.98);
+  opacity: 0.35;
+}
+
+.here-arrow {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
+  animation: hm-bounce 1.1s ease-in-out infinite, hm-blink 2.0s ease-in-out infinite;
+}
+
+.here-arrow.is-dim {
+  opacity: .35;
+  animation: none;
+}
+
+/* gentle up/down float */
+@keyframes hm-bounce {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(6px); }
+  100% { transform: translateY(0); }
+}
+
+/* slow blink (disappear → reappear) */
+@keyframes hm-blink {
+  0%   { opacity: 1; }
+  45%  { opacity: 1; }
+  60%  { opacity: 0; }
+  75%  { opacity: 1; }
+  100% { opacity: 1; }
 }

@@ -1,3 +1,4 @@
+// src/components/survey/Survey.jsx
 import React, { useState, Suspense, useEffect, useMemo, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useGraph } from '../../context/graphContext.tsx';
@@ -15,6 +16,11 @@ const QuestionFlow = React.lazy(() =>
 );
 const DoneOverlayR3F = React.lazy(() =>
   import(/* webpackChunkName:"survey-3d-overlay" */ './buttonLoader/DoneOverlayR3F.jsx')
+);
+
+// NEW: decoupled tutorial carousel
+const TutorialCarousel = React.lazy(() =>
+  import(/* webpackChunkName:"survey-tutorial" */ './tutorial.tsx')
 );
 
 // defer both savers; pick at runtime
@@ -309,17 +315,21 @@ export default function Survey({
           />
         )}
 
-        {stage === 'questions' && (
+        {/* Minimal change: show tutorial carousel first; keep your existing QuestionFlow as-is */}
+        {stage === 'questions' && tutorialMode && (
+          <TutorialCarousel onFinish={() => setTutorialMode(false)} />
+        )}
+
+        {stage === 'questions' && !tutorialMode && (
           <QuestionFlow
             onAnswersUpdate={onAnswersUpdate}
             onSubmit={handleSubmitFromQuestions}
             submitting={submitting}
             error={error}
-            onLiveAverageChange={onLiveAverageChange} 
-            // tutorial wiring only
+            onLiveAverageChange={onLiveAverageChange}
+            // keep your existing props in place; they won't affect layout
             tutorialMode={tutorialMode}
             onEndTutorial={() => setTutorialMode(false)}
-            
           />
         )}
       </Suspense>

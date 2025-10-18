@@ -17,7 +17,8 @@
 .qm-stage { position: relative; height: 110px; margin: 2px 0 10px; width: 960px; }
 .qm-answer-abs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0.96); opacity: 0; transition: opacity 140ms ease, transform 200ms ease, filter 200ms ease, box-shadow 220ms ease; pointer-events: none; text-align: center; max-width: min(780px, 90vw); }
 .qm-answer-chip { display: inline-block; padding: 10px 14px; border-radius: 10px; color: #000; line-height: 1.25; }
-.qm-title { text-align: center; padding-bottom: 12px; }
+.qm-title { text-align: center; }
+.qm-header .qm-title {padding-bottom: 12px; }
 /* Promote & avoid heavy work every frame */
 .qm-answer-abs {
   transition: opacity 140ms ease, transform 200ms ease; /* keep light props */
@@ -67,12 +68,12 @@
 
 /* 768px and below (mobile) */
 @media (max-width: 768px) {
-  .cp-scale { width: 95%; padding-bottom: 3.2em; padding-left: 5%; box-sizing: border-box;}
+  .cp-scale { padding-bottom: 3.2em; box-sizing: border-box;}
   .cp-rail { height: 5px; }
   .cp-dot { width: 12px; height: 12px; border-width: 2px; }
   .cp-thumb-hitbox { width: 112px; height: 112px; }
   .cp-thumb.is-rect { width: 8px; height: 20px; }
-  .qm-stage { height: 124px; width: 92vw; margin-bottom: -1px;}
+  .qm-stage { height: 132px; width: 92vw; margin-bottom: -1px;}
   .qm-answer-chip { padding: 9px 12px; border-radius: 9px; width: 80%;}
   .qm-answer-abs { min-width: 80%; transform: translate(-50%, -50%) scale(0.95); }
   .cp-thumb {width: 32px; height: 32px;}

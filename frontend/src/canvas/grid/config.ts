@@ -73,7 +73,7 @@ export const GRID_MAP: Record<BreakBand, GridSpec> = {
   // Phones
   small:  {
     rows: 18,             
-    useTopRatio: 0.85,     
+    useTopRatio: 0.9,     
     cap: 28,
     cellPadding: 0,
     jitter: 6,
@@ -86,7 +86,7 @@ export const GRID_MAP: Record<BreakBand, GridSpec> = {
       { left: '0%', right: '4%' },   // r=5
       { left: '0%', right: '4%' },   // r=6
       { left: '0%', right: '4%' },   // r=7
-      { left: '0%', right: '4%' },   // r=8
+      { center: '100%' }, 
       { center: '100%' },  
       { center: '100%' },     // r=10: big center keep-out (question text)
       { center: '100%' },     // r=11: even bigger (slider zone)
