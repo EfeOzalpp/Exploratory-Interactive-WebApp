@@ -20,10 +20,45 @@ const DEMO_OPTIONS = [
 ];
 
 const STEPS: Step[] = [
-  { id: 'drag',    title: 'Drag the knob',   copy: 'Pick any point that feels right.' },
+  { id: 'drag',    title: 'Drag the knob',   copy: 'Anywhere on the line works.' },
   { id: 'blend',   title: 'Blend answers',   copy: 'Pause between two to blend them.' },
-  { id: 'shuffle', title: 'Shuffle it',      copy: 'Mix and match the answers with shuffle.' },
+  { id: 'shuffle', title: 'Shuffle answers', copy: 'Mix and match the answers with shuffle.' },
 ];
+
+/* ---------------------------------------------------
+   Shuffle helper (ensures a visible change at current t)
+   Mirrors behavior in QuestionFlowWeighted.shuffleForVisibleChange
+--------------------------------------------------- */
+function shuffleForVisibleChange(orderIn: number[], tNow: number, len: number) {
+  if (!Number.isFinite(tNow)) {
+    let out = orderIn;
+    // Fisher–Yates until order differs
+    do {
+      const a = orderIn.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      out = a;
+    } while (out.every((v, i) => v === orderIn[i]));
+    return out;
+  }
+
+  const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
+  const i = Math.floor(clamp(tNow, 0, len - 1));
+  const j = Math.min(i + 1, len - 1);
+
+  const snapped = Math.abs(tNow - Math.round(tNow)) < 1e-4;
+  const visiblePositions = snapped ? [i] : Array.from(new Set([i, j]));
+
+  const pos = visiblePositions[Math.floor(Math.random() * visiblePositions.length)];
+  let k = pos;
+  while (k === pos) k = Math.floor(Math.random() * len);
+
+  const out = orderIn.slice();
+  [out[pos], out[k]] = [out[k], out[pos]];
+  return out;
+}
 
 /* ---------------------------------------------------
    👋 HandHint
@@ -145,7 +180,7 @@ export default function Tutorial({ onFinish }: TutorialProps) {
     blendTimerRef.current = window.setTimeout(() => {
       setStepIndex((s) => Math.min(s + 1, STEPS.length - 1));
       blendTimerRef.current = null;
-    }, 4000);
+    }, 8000);
   };
   const cancelBlendTimer = () => {
     if (blendTimerRef.current != null) {
@@ -293,24 +328,22 @@ export default function Tutorial({ onFinish }: TutorialProps) {
   const currentStep = STEPS[stepIndex];
   const isLast = currentStep.id === 'shuffle';
 
-  // shuffle button (demo) — **does not** move the thumb
+  // 🔄 Updated shuffle: ensure a visible change at current t (weightless)
   const shuffleNow = () => {
-    setOrder((o) => {
-      const a = [...o];
-      const i = Math.floor(Math.random() * a.length);
-      const j = (i + 1) % a.length;
-      [a[i], a[j]] = [a[j], a[i]];
-      return a;
+    setOrder((prev) => {
+      const len = prev.length;
+      const tNow = ghostTRef.current; // the same t the tutorial displays
+      return shuffleForVisibleChange(prev, tNow, len);
     });
-    // Intentionally no animatePreviewTo() — thumb stays where it is.
+    // Intentionally do NOT animate the preview or move the thumb.
   };
 
   const displayOptions = order.map((i) => DEMO_OPTIONS[i]);
 
-  // user movement; update “reached marker” → trigger hide animation
+  // user movement; update marker logic
   const handleScaleChange = (_w: number | null, meta?: { t?: number; dragging?: boolean; committed?: boolean }) => {
     if (typeof meta?.t === 'number') {
-      // clamp
+      // clamp live t
       let clamped = Math.max(0, Math.min(3, meta.t));
 
       // 🔒 Snap-to-marker ONLY when nearby *and dragging* in step 2 (blend)
@@ -333,18 +366,6 @@ export default function Tutorial({ onFinish }: TutorialProps) {
 
       ghostTRef.current = clamped;
       setVizT(clamped);
-
-      // when the marker is first reached in step 2, start the 4s auto-advance
-      if (STEPS[stepIndex]?.id === 'blend' && showMarker && !reachedMarker) {
-        const hit = Math.abs(clamped - MARKER_T) <= MARKER_TOL;
-        if (hit) {
-          setReachedMarker(true);
-          setMarkerHiding(true);
-          window.setTimeout(() => setShowMarker(false), 500);
-          // schedule auto-advance after ~4s
-          scheduleAdvanceFromBlendReach();
-        }
-      }
     }
 
     // DO NOT trigger the hand animation during user drag — keep it paused in step 1
@@ -353,37 +374,45 @@ export default function Tutorial({ onFinish }: TutorialProps) {
       cancelPreview();
     }
 
+    // ✅ Only handle "marker reached" AFTER a release/commit in step 2
+    if (meta?.committed && STEPS[stepIndex]?.id === 'blend') {
+      const hit = Math.abs(ghostTRef.current - MARKER_T) <= MARKER_TOL;
+      if (hit && showMarker && !reachedMarker) {
+        setReachedMarker(true);
+        setMarkerHiding(true);
+        window.setTimeout(() => setShowMarker(false), 500);
+        scheduleAdvanceFromBlendReach(); // start the ~4s auto-advance
+      }
+    }
+
     // ✅ Only start the 2s timer after the user RELEASES a real drag in step 1
-    if (meta?.committed) {
-      // keep hand visible & paused in step 1; other steps are already hidden by orchestration
+    if (meta?.committed && STEPS[stepIndex]?.id === 'drag') {
       stopRAF();
       cancelPreview();
 
-      if (STEPS[stepIndex]?.id === 'drag') {
-        if (didDragThisStep) {
-          scheduleAdvanceFromDragRelease();
-        } else {
-          cancelAdvanceTimer();
-        }
-        setTAtDragStart(null);
-        setDidDragThisStep(false);
+      if (didDragThisStep) {
+        scheduleAdvanceFromDragRelease();
+      } else {
+        cancelAdvanceTimer();
       }
+      setTAtDragStart(null);
+      setDidDragThisStep(false);
     }
   };
 
   // dynamic copy in the tutorial-card (header)
-const cardCopy =
-  currentStep.id === 'blend'
-    ? (reachedMarker ? (
-        <>
-          This sits between both answers.
-          <br />
-          Leaning toward the empty room with music.
-        </>
-      ) : (
-        'Drag the dot to the marked spot.'
-      ))
-    : currentStep.copy;
+  const cardCopy =
+    currentStep.id === 'blend'
+      ? (reachedMarker ? (
+          <>
+            This sits between both answers.
+            <br />
+            Leaning toward the empty room with music.
+          </>
+        ) : (
+          'Drag the dot to the marked spot.'
+        ))
+      : currentStep.copy;
 
   const MARKER_TOP = 12;
 
@@ -486,7 +515,7 @@ const cardCopy =
           )}
 
           {stepIndex < STEPS.length - 1 ? (
-            <button type="button" className="begin-button2" onClick={goNext}>
+            <button type="button" className="begin-button2" onClick={() => setStepIndex((s) => Math.min(s + 1, STEPS.length - 1))}>
               <span>Next Tip</span>
             </button>
           ) : (

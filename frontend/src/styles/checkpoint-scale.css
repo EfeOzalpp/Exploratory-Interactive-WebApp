@@ -1,4 +1,4 @@
-.cp-scale { width: 100%; padding: 28px 0; user-select: none; padding-bottom: 64px; }
+.cp-scale { width: 100%; padding: 28px 0; user-select: none; margin-bottom: 8px; }
 .cp-rail { cursor: pointer; position: relative; background: black; border-radius: 3px; }
 .cp-dot { cursor: pointer; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; border-radius: 100%; border: 2px solid black; pointer-events: auto; transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
 .cp-dot.active { box-shadow: 0 0 0 2px #fff inset, 0 4px 14px rgba(0,0,0,0.14), 0 0 18px rgba(0,0,0,0.08); background: rgba(255,255,255,0.6); }
@@ -47,7 +47,7 @@
   .cp-dot { width: 12px; height: 12px; }
   .cp-thumb-hitbox { width: 160px; height: 160px; }
   .cp-thumb.is-rect { width: 10px; height: 24px; }
-  .qm-stage { height: 110px; width: 960px; }
+  .qm-stage { height: 90px; width: 960px; }
   .qm-answer-abs { max-width: min(780px, 90vw); width: 100%; }
   .cp-rail { height: 4px;}
   .cp-thumb {width: 32px; height: 32px;}
@@ -61,7 +61,7 @@
   .cp-thumb-hitbox.is-rect .cp-thumb {width: 25px; height: 25px;}
   .cp-thumb.is-rect { width: 9px; height: 22px; }
   .qm-stage { height: 160px; width: 200vw; }
-  .qm-answer-abs { max-width: min(640px, 92vw); }
+  .qm-answer-abs { max-width: min(720px, 92vw); }
   .cp-rail { height: 3px;}
   .cp-thumb {width: 24px; height: 24px;}
 }
@@ -75,7 +75,7 @@
   .cp-thumb.is-rect { width: 8px; height: 20px; }
   .qm-stage { height: 132px; width: 92vw; margin-bottom: -1px;}
   .qm-answer-chip { padding: 9px 12px; border-radius: 9px; width: 80%;}
-  .qm-answer-abs { min-width: 80%; transform: translate(-50%, -50%) scale(0.95); }
+  .qm-answer-abs { min-width: 100%; transform: translate(-50%, -50%) scale(0.95); }
   .cp-thumb {width: 32px; height: 32px;}
 }
 

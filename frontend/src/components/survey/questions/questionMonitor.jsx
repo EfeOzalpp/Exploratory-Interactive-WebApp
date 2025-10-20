@@ -10,7 +10,6 @@ function QuestionMonitorInner({
   isDragging = false,
   isGhosting = false,
 }) {
-  // Defer heavy monitor work relative to the scale knob
   const tDeferred = useDeferredValue(t);
 
   // ---- Responsive Y offset (mobile/tablet/desktop)
@@ -79,25 +78,36 @@ function QuestionMonitorInner({
     const v = 4 * x * (1 - x);
     return Math.max(0, v) ** CURVE_EXP;
   };
+
+  // Round scale to discrete steps to reduce glyph resampling artifacts
   const scaleFromActivation = (a) => {
     const raw = BASE_SCALE + GROW * a;
-    const step = 0.01;
-    return Math.round(raw / step) * step;
+    const stepped = [0.96, 0.98, 1, 1.02, 1.05, 1.1];
+    let sc = 1;
+    let minD = Infinity;
+    for (const s of stepped) {
+      const d = Math.abs(s - raw);
+      if (d < minD) { minD = d; sc = s; }
+    }
+    return sc;
   };
+
   const snapPx = (px) => {
     const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
     return Math.round(px * dpr) / dpr;
   };
-  const transformFor = (idx, activation) => {
+
+  // Translate text container only (keeps text crisp). Scale a visual wrapper inside.
+  const translateFor = (idx) => {
     let dy = 0;
     if (!Number.isInteger(stableT)) {
       if (idx === i && idx !== j) dy = +Y_OFFSET * tent(f);
       else if (idx === j && idx !== i) dy = -Y_OFFSET * tent(f);
     }
     const dySnapped = snapPx(dy);
-    const sc = scaleFromActivation(activation);
-    return `translate3d(-50%, calc(-50% + ${dySnapped}px), 0) scale(${sc})`;
+    return `translate(-50%, calc(-50% + ${dySnapped}px))`; // 2D translate (avoid 3D)
   };
+
   const zFor = (activation) => (activation >= 0.5 ? 2 : 1);
 
   return (
@@ -117,21 +127,29 @@ function QuestionMonitorInner({
             const opacity = opacities[k] ?? 0;
             const act     = scales[k] ?? 0;
             const snapped = snappedIndexFromStable === k;
+            const sc      = scaleFromActivation(act);
+
             return (
               <div
                 key={k}
                 className={`qm-answer-abs ${snapped ? 'is-selected' : ''}`}
                 style={{
                   opacity,
-                  transform: transformFor(k, act),
+                  transform: translateFor(k),
                   zIndex: zFor(act),
-                  willChange: 'transform, opacity',
-                  backfaceVisibility: 'hidden',
-                  WebkitFontSmoothing: 'antialiased',
-                  MozOsxFontSmoothing: 'grayscale',
                 }}
               >
-                <h3 className="qm-answer-chip">{o.label}</h3>
+                {/* Visual wrapper scales; text inside stays unscaled for crispness */}
+                <div
+                  className="qm-answer-visual"
+                  style={{
+                    transform: `scale(${sc})`,
+                    transformOrigin: '50% 50%',
+                    willChange: isDragging ? 'transform' : undefined,
+                  }}
+                >
+                  <h3 className="qm-answer-chip">{o.label}</h3>
+                </div>
               </div>
             );
           })}
@@ -147,7 +165,6 @@ const propsAreEqual = (prev, next) => {
   if (prev.qIndex !== next.qIndex || prev.qTotal !== next.qTotal) return false;
   if (prev.isDragging !== next.isDragging || prev.isGhosting !== next.isGhosting) return false;
   if (prev.t === next.t) {
-    // options likely stable by reference; if not, shallow compare labels/weights
     if (prev.options === next.options) return true;
     if (prev.options.length !== next.options.length) return false;
     for (let i = 0; i < prev.options.length; i++) {

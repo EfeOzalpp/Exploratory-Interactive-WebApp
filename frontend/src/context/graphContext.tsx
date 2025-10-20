@@ -89,7 +89,7 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
   const closeGraph = () => setVizVisible(false);
 
   const [mode, setMode] = useState<Mode>(() => {
-    if (typeof window === "undefined") return "relative";
+    if (typeof window === "undefined") return "absolute";
     const saved = sessionStorage.getItem("gp.mode") as Mode | null;
     return saved === "absolute" || saved === "relative" ? saved : "relative";
   });
