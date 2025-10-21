@@ -90,28 +90,6 @@ const SNOW = {
 
 /**
  * drawSnow
- * @param {p5} p
- * @param {number} _x (ignored; placement is tile-anchored)
- * @param {number} _y (ignored)
- * @param {number} _r (ignored)
- * @param {object} opts
- *  - cell:number
- *  - footprint:{ r0,c0,w,h }
- *  - timeMs?:number
- *  - liveAvg?:number (0..1)
- *  - gradientRGB?:{r,g,b}
- *  - alpha?:number
- *  - exposure?:number
- *  - contrast?:number
- *  - appearX?:number
- *  - appearY?:number
- *  - appearScaleX?:number
- *  - appearScaleY?:number
- *  - showGround?:boolean               (default: true)
- *  - hideGroundAboveRow?:number        (absolute row cutoff; hide if r0 <= cutoff)
- *  - hideGroundAboveFrac?:number       (0..1 of usedRows; hide if r0 <= usedRows*frac)
- *  - usedRows?:number                  (required if you use hideGroundAboveFrac)
- *  - cloudAlpha?:number
  */
 export function drawSnow(p, _x, _y, _r, opts = {}) {
   const cell = opts?.cell, f = opts?.footprint;
@@ -240,16 +218,25 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
   const spawnY0 = Math.min(syA, syB);
   const spawnY1 = Math.max(syA, syB);
 
-  const count     = Math.max(6, Math.floor(val(SNOW.count, u)));
-  const sizeMin   = val(SNOW.sizeMin, u);
-  const sizeMax   = Math.max(sizeMin, val(SNOW.sizeMax, u));
-  const lifeMin   = Math.max(0.1, val(SNOW.lifeMin, u));
-  const lifeMax   = Math.max(lifeMin, val(SNOW.lifeMax, u));
+  const baseCount = Math.max(6, Math.floor(val(SNOW.count, u)));
+
+  // === SPRITE-ONLY scaling (canvas path keeps 1.0) ===
+  const pxK       = Math.max(1, (opts.pixelScale ?? opts.coreScaleMult ?? 1));
+  const sizeK     = Math.pow(pxK, 1.75);  // near-linear, slightly damped
+  const speedK    = pxK * 1.35;                  // maintain coverage over taller rects
+  const gravityK  = pxK * 1.35;                  // keep fall-feel consistent
+  const lifeK     = Math.pow(pxK, 5);  // gentle life boost for lower settling
+  const countK    = Math.sqrt(pxK);       // density compensation on big textures
+
+  const sizeMin   = val(SNOW.sizeMin, u) * sizeK;
+  const sizeMax   = Math.max(sizeMin, val(SNOW.sizeMax, u) * sizeK);
+  const lifeMin   = Math.max(0.1, val(SNOW.lifeMin, u) * lifeK);
+  const lifeMax   = Math.max(lifeMin, val(SNOW.lifeMax, u) * lifeK);
   const alpha     = Math.max(0, Math.min(255, Math.round(val(SNOW.alpha, u))));
 
-  const speedMin  = val(SNOW.speedMin, u);
-  const speedMax  = Math.max(speedMin, val(SNOW.speedMax, u));
-  const gravity   = val(SNOW.gravity, u);
+  const speedMin  = val(SNOW.speedMin, u) * speedK;
+  const speedMax  = Math.max(speedMin, val(SNOW.speedMax, u) * speedK);
+  const gravity   = val(SNOW.gravity, u) * gravityK;
   const drag      = val(SNOW.drag, u);
   const jPos      = val(SNOW.jitterPos, u);
   const jAng      = val(SNOW.jitterAngle, u);
@@ -281,7 +268,7 @@ export function drawSnow(p, _x, _y, _r, opts = {}) {
     spawn: { x0: spawnX0, x1: spawnX1, y0: spawnY0, y1: spawnY1 },
     jitter: { pos: jPos, velAngle: jAng },
 
-    count,
+    count: Math.max(6, Math.floor(baseCount * countK)),
     size: { min: sizeMin, max: sizeMax },
     sizeHz: SNOW.sizeHz,
 

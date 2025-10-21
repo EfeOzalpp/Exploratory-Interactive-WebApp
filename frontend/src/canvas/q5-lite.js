@@ -337,7 +337,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
         const hideFrac =
           vw < 768  ? 0.32 :
           vw < 1024 ? 0.4 :
-                      0.30;
+                      0.2;
         drawSnow(p, it.x, it.y, rEff, {
           ...opts,
           footprint: it.footprint,
@@ -561,6 +561,17 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   REGISTRY.set(mount, { controls });
   onReady?.(controls);
   return controls;
+}
+
+// Build a p-like facade on an existing canvas (no animation / no DOM attach).
+export function makePFromCanvas(canvas, { dpr = 1 } = {}) {
+  const ctx = canvas.getContext('2d', { alpha: true });
+  const p = makeP(canvas, ctx);          // reuse the same facade your drawers expect
+  const cssW = canvas.style.width  ? parseFloat(canvas.style.width)  : canvas.width  / dpr;
+  const cssH = canvas.style.height ? parseFloat(canvas.style.height) : canvas.height / dpr;
+  p.pixelDensity(Math.max(1, dpr || 1));
+  p.resizeCanvas(cssW, cssH);
+  return p;
 }
 
 export default startQ5;

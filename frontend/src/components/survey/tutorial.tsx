@@ -20,7 +20,7 @@ const DEMO_OPTIONS = [
 ];
 
 const STEPS: Step[] = [
-  { id: 'drag',    title: 'Drag the knob',   copy: 'Anywhere on the line works.' },
+  { id: 'drag',    title: 'Welcome. Drag the knob?',   copy: 'Anywhere on the line works.' },
   { id: 'blend',   title: 'Blend answers',   copy: 'Pause between two to blend them.' },
   { id: 'shuffle', title: 'Shuffle answers', copy: 'Mix and match the answers with shuffle.' },
 ];
@@ -157,6 +157,9 @@ export default function Tutorial({ onFinish }: TutorialProps) {
   const [tAtDragStart, setTAtDragStart] = useState<number | null>(null);
   const [didDragThisStep, setDidDragThisStep] = useState(false);
 
+  // ✅ acknowledgment once a real drag is completed in step 1
+  const [dragAcknowledged, setDragAcknowledged] = useState(false);
+
   // ⏭ auto-advance timer (start only AFTER a real drag is released in step 1)
   const advanceTimerRef = useRef<number | null>(null);
   const scheduleAdvanceFromDragRelease = () => {
@@ -205,6 +208,7 @@ export default function Tutorial({ onFinish }: TutorialProps) {
     // reset click/drag tracking when step changes
     setTAtDragStart(null);
     setDidDragThisStep(false);
+    setDragAcknowledged(false); // reset acknowledgment when (re)entering steps
   }, [stepIndex]);
 
   // “Here!” marker (step 2 only)
@@ -391,6 +395,7 @@ export default function Tutorial({ onFinish }: TutorialProps) {
       cancelPreview();
 
       if (didDragThisStep) {
+        setDragAcknowledged(true);          // 🔔 show “great, that counts.”
         scheduleAdvanceFromDragRelease();
       } else {
         cancelAdvanceTimer();
@@ -412,7 +417,9 @@ export default function Tutorial({ onFinish }: TutorialProps) {
         ) : (
           'Drag the dot to the marked spot.'
         ))
-      : currentStep.copy;
+      : currentStep.id === 'drag'
+        ? (dragAcknowledged ? 'great, that counts.' : currentStep.copy)
+        : currentStep.copy;
 
   const MARKER_TOP = 12;
 

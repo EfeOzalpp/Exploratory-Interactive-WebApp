@@ -167,3 +167,27 @@ export function driveBrightness(base: RGB, t: number, l0: number, l1: number): R
   const lTarget = clamp01(l0 + (l1 - l0) * clamp01(t));
   return hslToRgb({ h, s, l: lTarget });
 }
+// Simple perceptual exposure / contrast adjustment
+export function applyExposureContrast(
+  base: RGB,
+  exposure: number = 1.0,
+  contrast: number = 1.0
+): RGB {
+  // normalize inputs
+  const e = Math.max(0.01, Math.min(5, exposure));
+  const c = Math.max(0.0, Math.min(3, contrast));
+
+  // apply exposure in linear space
+  const lin = {
+    r: srgbToLin(base.r),
+    g: srgbToLin(base.g),
+    b: srgbToLin(base.b),
+  };
+
+  let r = linToSrgb(Math.pow(lin.r * e, c));
+  let g = linToSrgb(Math.pow(lin.g * e, c));
+  let b = linToSrgb(Math.pow(lin.b * e, c));
+
+  return { r, g, b };
+}
+

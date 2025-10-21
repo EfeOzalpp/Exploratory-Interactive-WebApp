@@ -57,6 +57,9 @@ export type ParticleEmitterOpts = {
 
   // behavior
   respawn?: boolean;     // when dead or out of rect, respawn
+
+  /** Multiplier for line stroke thickness in texture pixels (sprite path can boost). */
+  thicknessScale?: number;
 };
 
 type Particle = {
@@ -420,7 +423,7 @@ export function stepAndDrawParticles(p: any, opts: ParticleEmitterOpts, dtSec: n
     alpha *= eL * eR * eT * eB;
     alpha = Math.max(0, Math.min(255, alpha));
 
-    if (mode === 'dot') {
+  if (mode === 'dot') {
       p.noStroke();
       p.fill(baseColor.r, baseColor.g, baseColor.b, alpha);
       p.circle(pr.x, pr.y, pr.size * 2);
@@ -432,9 +435,19 @@ export function stepAndDrawParticles(p: any, opts: ParticleEmitterOpts, dtSec: n
       const x2 = pr.x - ux * pr.len;
       const y2 = pr.y - uy * pr.len;
 
-      // thickness from size; clamp 1..3px for clean AA
+      // base thickness from size in lane (1..3px baseline)
       const norm = (pr.size - rMin) / Math.max(1e-6, rMax - rMin);
-      const thick = clamp01(norm) * 2 + 1;
+      const baseThick = (norm < 0 ? 0 : norm > 1 ? 1 : norm) * 2 + 1;
+
+      // DPR-aware amplification (no caller changes needed)
+      const dprGuess = (typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1);
+      // damp so it doesn't explode on very high DPR
+      const dprK = 1 + Math.max(0, Math.min(1.5, dprGuess - 1)) * 0.9;
+
+      // final thickness: caller knob wins; else DPR-based; else baseline
+      const thick = baseThick * (Number.isFinite(opts.thicknessScale as number)
+        ? (opts.thicknessScale as number)
+        : dprK);
 
       p.strokeWeight(thick);
       p.stroke(baseColor.r, baseColor.g, baseColor.b, alpha);

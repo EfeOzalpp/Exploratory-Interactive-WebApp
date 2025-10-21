@@ -8,6 +8,9 @@ const smoothstep = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+// perceptual shaping curve — keeps blends more visible
+const curve = (x: number, exp = 0.6) => Math.pow(x, exp);
+
 export function getAnswerOpacities(
   t: number | undefined,
   snappedIndex?: number | null
@@ -29,10 +32,14 @@ export function getAnswerOpacities(
   const left = i, right = i + 1;
 
   if (f <= PLATEAU_LOW - EPS) {
+    const t1 = smoothstep(0, PLATEAU_LOW, f);
+    const c = curve(t1, 0.6);
     op[left]  = 1;
-    op[right] = smoothstep(0, PLATEAU_LOW, f);
+    op[right] = c;
   } else if (f >= PLATEAU_HIGH + EPS) {
-    op[left]  = 1 - smoothstep(PLATEAU_HIGH, 1, f);
+    const t2 = smoothstep(PLATEAU_HIGH, 1, f);
+    const c = curve(t2, 0.6);
+    op[left]  = 1 - c;
     op[right] = 1;
   } else {
     op[left] = 1; op[right] = 1;
@@ -61,10 +68,14 @@ export function getScaleActivations(
   const left = i, right = i + 1;
 
   if (f <= PLATEAU_LOW - EPS) {
+    const t1 = smoothstep(0, PLATEAU_LOW, f);
+    const c = curve(t1, 0.6);
     act[left]  = 1;
-    act[right] = smoothstep(0, PLATEAU_LOW, f);
+    act[right] = c;
   } else if (f >= PLATEAU_HIGH + EPS) {
-    act[left]  = 1 - smoothstep(PLATEAU_HIGH, 1, f);
+    const t2 = smoothstep(PLATEAU_HIGH, 1, f);
+    const c = curve(t2, 0.6);
+    act[left]  = 1 - c;
     act[right] = 1;
   } else {
     act[left] = 1; act[right] = 1;

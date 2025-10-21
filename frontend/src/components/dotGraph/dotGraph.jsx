@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import CompleteButton from '../completeButton.jsx';
 import GamificationPersonalized from '../gamification/gamificationPersonalized';
 import GamificationGeneral from '../gamification/gamificationGeneral';
-import RingHalo, { RingHaloMini } from './ringHalo';
 
 import { useGraph } from '../../context/graphContext.tsx';
 import { useRealMobileViewport } from '../real-mobile.ts';
@@ -13,28 +12,65 @@ import { sampleStops, rgbString } from '../../utils/hooks.ts';
 import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
 import { useAbsoluteScore } from '../../utils/useAbsoluteScore.ts';
 
-// orchestrator + hooks
 import useOrbit from './hooks/useOrbit';
 import useDotPoints from './hooks/useDotPoints';
 import useHoverBubble from './hooks/useHoverBubble';
 import useObserverDelay from './hooks/useObserverDelay';
 
-// tie-aware ranking utilities (shared source of truth)
 import { getTieStats, classifyPosition } from '../gamification/rankLogic';
 
-// ---------- utils ----------
+// sprite factory (shape is chosen inside the factory from avg)
+import { SpriteShape } from './canvas/ShapeSpriteFactory.tsx';
+
+// hit-target needs same shape choice & footprint aspect as sprite
+import { shapeForAvg } from './canvas/shapeForAvg.ts';
+import { SHAPE_FOOTPRINT } from './canvas/shapeFootprints.ts';
+
+/* ---------- small utils ---------- */
 const nonlinearLerp = (a, b, t) => {
   const x = Math.max(0, Math.min(1, t));
   return a + (b - a) * (1 - Math.pow(1 - x, 5));
 };
 
-const EPS = 1e-6;
+// Perceptual "pop": move a bit toward fully saturated, slightly darker version
+const boostColor = (rgbHexOrCss) => {
+  const c = new THREE.Color(rgbHexOrCss);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  const target = new THREE.Color().setHSL(hsl.h, 1, Math.max(0, hsl.l * 0.9));
+  const t = 0.9 * (1 - hsl.s);
+  c.lerp(target, t);
+  return `#${c.getHexString()}`;
+};
+
+/**
+ * Per-shape overflow/bleed as FRACTIONS of the base tile.
+ * These are only used to size the invisible hit target so pointer events
+ * align with what’s visible when the texture is rendered with bleed.
+ *
+ * Example: trees can overflow ~28% above their tile top.
+ */
+const BLEED_FRAC = {
+  // top, right, bottom, left — fractions of one tile
+  trees: { top: 0.28, right: 0.00, bottom: 0.00, left: 0.00 },
+
+  // defaults (no overflow) — extend for other shapes if needed
+  clouds: { top: 0, right: 0, bottom: 0, left: 0 },
+  bus: { top: 0, right: 0, bottom: 0, left: 0 },
+  snow: { top: 0, right: 0, bottom: 0, left: 0 },
+  house:{ top: 0, right: 0, bottom: 0, left: 0 },
+  power:{ top: 0, right: 0, bottom: 0, left: 0 },
+  sun:  { top: 0, right: 0, bottom: 0, left: 0 },
+  villa:{ top: 0, right: 0, bottom: 0, left: 0 },
+  car:  { top: 0, right: 0, bottom: 0, left: 0 },
+  sea:  { top: 0, right: 0, bottom: 0, left: 0 },
+  carFactory: { top: 0, right: 0, bottom: 0, left: 0 },
+};
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
-  const { myEntryId, mySection, myRole, observerMode, mode, section, darkMode } = useGraph();
+  const { myEntryId, mySection, myRole, observerMode, mode, section } = useGraph();
   const safeData = Array.isArray(data) ? data : [];
   const showCompleteUI = useObserverDelay(observerMode, 2000);
-  const noData = safeData.length === 0;
 
   const personalizedEntryId =
     myEntryId || (typeof window !== 'undefined' ? sessionStorage.getItem('gp.myEntryId') : null);
@@ -124,7 +160,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
 
   // maps & helpers
   const posById = useMemo(() => new Map(points.map(p => [p._id, p.position])), [points]);
-  const colorById = useMemo(() => new Map(points.map(p => [p._id, p.color])), [points]);
 
   const myPoint = useMemo(
     () => points.find(p => p._id === personalizedEntryId),
@@ -184,7 +219,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     }
   }, [showCompleteUI, effectiveMyEntry, myEntry, mode, getRelForId, getAbsForId, getRelForValue, getAbsForValue]);
 
-  // Ensure the calculator we pass to the hover hook updates when mode changes
   const calcValueForAvg = useCallback(
     (averageWeight) => {
       try {
@@ -198,7 +232,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     [mode, getRelForValue, getAbsForValue]
   );
 
-  // Build absolute score map for equality checks in ABSOLUTE mode
   const absScoreById = useMemo(() => {
     const m = new Map();
     for (const d of safeData) m.set(d._id, getAbsForId(d._id));
@@ -251,8 +284,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const rankChainIdSet = useMemo(() => new Set(rankChainIds), [rankChainIds]);
 
   // ============================ LINKING by ROUNDED RAW AVG ============================
-
-  // Tie buckets keyed by the rounded raw %; keep only groups size > 1
   const tieBuckets = useMemo(() => {
     const m = new Map(); // key: integer 0..100 -> ids[]
     if (!safeData.length) return m;
@@ -266,15 +297,9 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     return m;
   }, [safeData, linkKeyOf]);
 
-  // Selected tie group (by bucket key - integer 0..100)
   const [selectedTieKey, setSelectedTieKey] = useState(null);
+  useEffect(() => { setSelectedTieKey(null); }, [mode]);
 
-  // Reset selection when mode changes
-  useEffect(() => {
-    setSelectedTieKey(null);
-  }, [mode]);
-
-  // Build line points for the selected tie group (sorted around centroid)
   const selectedTieLinePoints = useMemo(() => {
     if (selectedTieKey == null || !tieBuckets.has(selectedTieKey)) return [];
     const ids = tieBuckets.get(selectedTieKey).filter(id => posById.has(id));
@@ -290,16 +315,14 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     });
   }, [selectedTieKey, tieBuckets, posById]);
 
-  // Helper: get tie key for a dot id (or null) using rounded-raw bucket
   const getTieKeyForId = (id) => {
     const entry = safeData.find(d => d._id === id);
     if (!entry) return null;
-    const key = linkKeyOf(entry);         // integer 0..100
+    const key = linkKeyOf(entry);
     const arr = tieBuckets.get(key);
-    return arr && arr.length > 1 ? key : null; // number|null
+    return arr && arr.length > 1 ? key : null;
   };
 
-  // Relative-mode hovered equals list (only if actual tie > 1)
   const hoveredRelIds = useMemo(() => {
     if (mode !== 'relative' || !hoveredDot) return [];
     const entry = safeData.find(d => d._id === hoveredDot.dotId);
@@ -308,7 +331,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     return tieBuckets.get(key) || [];
   }, [mode, hoveredDot, safeData, tieBuckets, linkKeyOf]);
 
-  // ABSOLUTE: hovered equals set (highlight hovered + all with same absolute score)
   const hoveredAbsEqualSet = useMemo(() => {
     if (mode !== 'absolute' || !hoveredDot) return new Set();
     const score = absScoreById.get(hoveredDot.dotId);
@@ -317,7 +339,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     return new Set(ids);
   }, [mode, hoveredDot, absScoreById, safeData]);
 
-  // >>> MOBILE: dismiss general popup 2s after a touch rotation event
   const mobileRotDismissRef = useRef(null);
   useEffect(() => {
     const onRot = (e) => {
@@ -351,19 +372,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
         Math.max(0, Math.min(1, (radius - minRadius) / (maxRadius - minRadius)))
       );
 
-  // Perceptual "pop": move a bit toward fully saturated, slightly darker version
-  const boostColor = (rgbHexOrCss) => {
-    const c = new THREE.Color(rgbHexOrCss);
-    const hsl = { h: 0, s: 0, l: 0 };
-    c.getHSL(hsl);
-
-    const target = new THREE.Color().setHSL(hsl.h, 1, Math.max(0, hsl.l * 0.9));
-    const t = 0.9 * (1 - hsl.s);
-    c.lerp(target, t);
-    return `#${c.getHexString()}`;
-  };
-
-  // -------- tie-aware stats (shared for both panels) --------
   const myStats = effectiveMyEntry && myEntry
     ? getTieStats({ data: safeData, targetId: myEntry._id })
     : { below: 0, equal: 0, above: 0, totalOthers: 0 };
@@ -375,97 +383,30 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   }, [hoveredDot, safeData]);
   const hoveredClass = classifyPosition(hoveredStats);
 
-  // =========================
-  // OBSERVER SPOTLIGHT LOGIC
-  // =========================
-  const spotlightTimerRef = useRef(null);
-  const spotlightActiveRef = useRef(false);
+  // ------------------------- DYNAMIC SPRITE SCALE -------------------------
+  // When zoomed in (radius ~ minRadius) => bigger sprites
+  // When zoomed out (radius ~ maxRadius) => smaller sprites
+  const spriteScale = useMemo(() => {
+    const denom = Math.max(1e-6, (maxRadius - minRadius));
+    const t = Math.max(0, Math.min(1, (radius - minRadius) / denom)); // 0 = zoomed in, 1 = zoomed out
+    const SCALE_MIN = 7;  // smallest at far zoom
+    const SCALE_MAX = 12; // largest when close
+    return nonlinearLerp(SCALE_MAX, SCALE_MIN, t);
+  }, [radius, minRadius, maxRadius]);
 
-  useEffect(() => {
-    const cancel = () => {
-      if (!spotlightActiveRef.current) return;
-      spotlightActiveRef.current = false;
-      if (spotlightTimerRef.current) {
-        clearTimeout(spotlightTimerRef.current);
-        spotlightTimerRef.current = null;
-      }
-      onHoverEnd();
-      window.dispatchEvent(new CustomEvent('gp:hover-close'));
-    };
+  // helper to read bleed fractions for a shape
+  const bleedOf = (shapeKey) => BLEED_FRAC[shapeKey] || { top: 0, right: 0, bottom: 0, left: 0 };
 
-    const onAnyUserAction = () => cancel();
+  // ---------------------- DUPLICATE-RENDER GUARDS ------------------------
+  const shouldRenderPersonalUI =
+    showCompleteUI && shouldShowPersonalized && !!effectiveMyPoint && !!effectiveMyEntry;
 
-    window.addEventListener('pointerdown', onAnyUserAction, { passive: true });
-    window.addEventListener('wheel', onAnyUserAction, { passive: true });
-    window.addEventListener('keydown', onAnyUserAction);
-    window.addEventListener('touchstart', onAnyUserAction, { passive: true });
+  // Draw an extra personalized sprite ONLY when your entry is NOT already in points
+  const shouldRenderExtraPersonalSprite =
+    shouldRenderPersonalUI && !hasPersonalizedInDataset;
 
-    return () => {
-      window.removeEventListener('pointerdown', onAnyUserAction);
-      window.removeEventListener('wheel', onAnyUserAction);
-      window.removeEventListener('keydown', onAnyUserAction);
-      window.removeEventListener('touchstart', onAnyUserAction);
-    };
-  }, [onHoverEnd]);
-
-  const pickLeftCenterPoint = () => {
-    if (!points.length) return null;
-    const xs = points.map(p => p.position[0]).sort((a,b) => a - b);
-    const medianX = xs[Math.floor(xs.length / 2)];
-    const candidates = points.filter(p => p.position[0] <= medianX);
-    const pool = candidates.length ? candidates : points;
-    const scored = pool
-      .map(p => ({ p, s: Math.abs(p.position[1]) + 0.5 * Math.abs(p.position[2]) }))
-      .sort((a,b) => a.s - b.s);
-    return scored[0]?.p || null;
-  };
-
-  useEffect(() => {
-    const onSpotlightReq = (e) => {
-      if (!observerMode) return;
-
-      const { durationMs = 3000, fakeMouseXRatio = 0.25, fakeMouseYRatio = 0.5 } = e.detail || {};
-      const target = pickLeftCenterPoint();
-      if (!target) return;
-
-      setSelectedTieKey(null);
-      window.dispatchEvent(new CustomEvent('gp:hover-open'));
-
-      const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
-      const h = typeof window !== 'undefined' ? window.innerHeight : 768;
-      const fakeEvt = { clientX: w * fakeMouseXRatio, clientY: h * fakeMouseYRatio };
-
-      spotlightActiveRef.current = true;
-      onHoverStart(target, fakeEvt);
-
-      if (spotlightTimerRef.current) clearTimeout(spotlightTimerRef.current);
-      spotlightTimerRef.current = setTimeout(() => {
-        if (!spotlightActiveRef.current) return;
-        spotlightActiveRef.current = false;
-        onHoverEnd();
-        window.dispatchEvent(new CustomEvent('gp:hover-close'));
-        spotlightTimerRef.current = null;
-      }, durationMs);
-    };
-
-    window.addEventListener('gp:observer-spotlight-request', onSpotlightReq);
-    return () => window.removeEventListener('gp:observer-spotlight-request', onSpotlightReq);
-  }, [observerMode, onHoverStart, onHoverEnd, points]);
-
-  if (noData) {
-    return (
-      <Html center zIndexRange={[110, 130]} style={{ pointerEvents: 'none' }}>
-        <div className={`empty-card empty-card--canvas ${darkMode ? 'is-dark' : 'is-light'}`}>
-          <h3>No responses yet</h3>
-          <p>There’s nothing yet for {section}. 🪄✨ Come back later and this space will fill up.</p>
-        </div>
-      </Html>
-    );
-  }
-
-  // When the tie link is "happening" (selected OR hovering over a real tie), hide rank-chain halos
-  const tieInteractionActive =
-    mode === 'relative' && (selectedTieKey != null || (hoveredRelIds.length > 1));
+  // ====== SHUFFLE-BAG SEED (shared across all items for one-of-each per block) ======
+  const bagSeed = 'dotgraph-bag-v1';
 
   return (
     <>
@@ -481,73 +422,78 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       )}
 
       <group ref={groupRef}>
-        {points.map((point) => {
+        {points.map((point, i) => {
           const suppressHover = !!(myEntry && point._id === personalizedEntryId && showCompleteUI);
 
           const tieKey = getTieKeyForId(point._id);
-          const isInSelectedTie = mode === 'relative' && selectedTieKey != null && tieKey === selectedTieKey;
+          const isInSelectedTie = selectedTieKey != null && tieKey === selectedTieKey;
 
-          // Keep rank chain halos ON by default; turn OFF only during tie interactions
-          const showRankChainHalos =
-            mode === 'relative' && !tieInteractionActive && rankChainIdSet.has(point._id);
-
-          const showAbsEqualHoverHalo =
-            mode === 'absolute' && hoveredAbsEqualSet.has(point._id);
-
-          const showRelEqualHoverHalo =
+          const showAbsEqualHoverHover = mode === 'absolute' && hoveredAbsEqualSet.has(point._id);
+          const showRelEqualHoverHover =
             mode === 'relative' &&
             hoveredRelIds.length > 1 &&
             hoveredRelIds.includes(point._id);
 
-          const showHalo = isInSelectedTie || showRelEqualHoverHalo || showAbsEqualHoverHalo || showRankChainHalos;
+          const _unused = isInSelectedTie || showRelEqualHoverHover || showAbsEqualHoverHover || rankChainIdSet.has(point._id);
+          void _unused;
 
-          const visibleR = 1.4;
-          const hitR = useDesktopLayout ? 2.2 : 4; // dot hitbox
+          const avg = Number.isFinite(point.averageWeight) ? point.averageWeight : 0.5;
+
+          // Use the SAME chooser as the sprite, including orderIndex=i
+          const chosenShape = shapeForAvg(avg, bagSeed, i);
+          const fp = SHAPE_FOOTPRINT[chosenShape] ?? { w: 1, h: 1 };
+          const aspect = fp.w / Math.max(0.0001, fp.h);
+
+          const b = bleedOf(chosenShape);
+          const sCompX = 1 / (1 + (b.left || 0) + (b.right || 0));
+          const sCompY = 1 / (1 + (b.top || 0) + (b.bottom || 0));
+
+          const sx = spriteScale * aspect * sCompX;
+          const sy = spriteScale * sCompY;
 
           return (
             <group
               key={point._id ?? `${point.position[0]}-${point.position[1]}-${point.position[2]}` }
               position={point.position}
             >
-              {showHalo && (
-                <RingHaloMini
-                  color={colorById.get(point._id) || '#fff'}
-                  baseRadius={1.4}
-                  active
-                />
-              )}
-              {/* Invisible hit area */}
-              <mesh
+              {/* Invisible hit area aligned to sprite aspect, including bleed comp */}
+              <sprite
                 onPointerOver={(e) => { e.stopPropagation(); if (!suppressHover) onHoverStart(point, e); }}
                 onPointerOut={(e) =>  { e.stopPropagation(); if (!suppressHover) onHoverEnd(); }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!suppressHover) onHoverStart(point, e);
-                  if (mode !== 'relative') return;
+                  // allow selecting tie in BOTH modes (relative & absolute)
                   const key = getTieKeyForId(point._id);
                   setSelectedTieKey(prev => (prev === key ? null : (key ?? null)));
                 }}
+                scale={[sx, sy, 1]}
               >
-                <sphereGeometry args={[hitR, 24, 24]} />
-                <meshBasicMaterial transparent opacity={0} depthWrite={false} depthTest={false} />
-              </mesh>
+                <spriteMaterial transparent opacity={0} depthWrite={false} depthTest={false} />
+              </sprite>
 
-              {/* Visible dot */}
-              <mesh>
-                <sphereGeometry args={[visibleR, 48, 48]} />
-                <meshStandardMaterial
-                  color={point.color}
-                  roughness={0.34}
-                  metalness={0.12}
-                  emissive={point.color}
-                  emissiveIntensity={0.08}
-                  envMapIntensity={0.35}/>
-              </mesh>
+              {/* Visible SHAPE (sprite) */}
+              <SpriteShape
+                avg={avg}
+                position={[0, 0, 0]}
+                scale={spriteScale}
+                tileSize={512}
+                alpha={215}
+                blend={0.6}
+                cacheTag={point._id}
+                seed={bagSeed}
+                orderIndex={i}
+                animateParticles={true}    // ← enable
+                freezeParticles={true}
+                particleSimulateMs={Math.ceil(3 * 2.4 * 1000)}
+                particleStepMs={33}
+              />
             </group>
           );
         })}
 
-        {mode === 'relative' && selectedTieKey != null && selectedTieLinePoints.length >= 2 && (
+        {/* Show the connecting line in BOTH modes when a tie group is selected */}
+        {selectedTieKey != null && selectedTieLinePoints.length >= 2 && (
           <Line
             points={selectedTieLinePoints}
             color="#a3a3a3"
@@ -559,16 +505,27 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
           />
         )}
 
-        {/* Personalized highlight — unchanged content, only shown if scope allows it */}
-        {showCompleteUI && shouldShowPersonalized && effectiveMyPoint && effectiveMyEntry && (
+        {/* Personalized (no halo) */}
+        {shouldRenderPersonalUI && (
           <>
-            <group position={effectiveMyPoint.position}>
-              <RingHalo color={effectiveMyPoint.color} baseRadius={1.4} active bloomLayer={1} />
-              <mesh>
-                <sphereGeometry args={[1.4, 48, 48]} />
-                <meshStandardMaterial color={effectiveMyPoint.color} />
-              </mesh>
-            </group>
+            {shouldRenderExtraPersonalSprite && (
+              <group position={effectiveMyPoint.position}>
+                <SpriteShape
+                  avg={Number.isFinite(effectiveMyEntry?.avgWeight) ? Number(effectiveMyEntry.avgWeight) : 0.5}
+                  position={[0,0,0]}
+                  scale={spriteScale}
+                  tileSize={512}
+                  alpha={215}
+                  blend={0.6}
+                  cacheTag={effectiveMyEntry?._id}
+                  seed={bagSeed}
+                  orderIndex={0}
+                  freezeParticles={true}
+                  particleSimulateMs={Math.ceil(3 * 2.4 * 1000)}
+                  particleStepMs={33}
+                />
+              </group>
+            )}
 
             <Html
               position={effectiveMyPoint.position}
@@ -618,10 +575,10 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
               : (absScoreById.get(hoveredDot.dotId) ?? 0);
           }
 
-          const hoveredStats = hoveredEntry
+          const hoveredStats2 = hoveredEntry
             ? getTieStats({ data: safeData, targetId: hoveredEntry._id })
             : { below: 0, equal: 0, above: 0, totalOthers: 0 };
-          const hoveredClass = classifyPosition(hoveredStats);
+          const hoveredClass2 = classifyPosition(hoveredStats2);
 
           return (
             <Html
@@ -637,11 +594,11 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   percentage={displayPct}
                   color={hoveredData.color}
                   mode={mode}
-                  belowCountStrict={hoveredStats.below}
-                  equalCount={hoveredStats.equal}
-                  aboveCountStrict={hoveredStats.above}
-                  positionClass={hoveredClass.position}
-                  tieContext={hoveredClass.tieContext}
+                  belowCountStrict={hoveredStats2.below}
+                  equalCount={hoveredStats2.equal}
+                  aboveCountStrict={hoveredStats2.above}
+                  positionClass={hoveredClass2.position}
+                  tieContext={hoveredClass2.tieContext}
                 />
               </div>
             </Html>

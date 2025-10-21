@@ -16,11 +16,11 @@ const getPositionByViewport = (customX = null, customY = null) => {
 
   let bar1Position = { x: 0, y: 0 };
   if (w < 768) {
-    bar1Position = { x: w * 0.16, y: h * 0.17 };
+    bar1Position = { x: w * 0.06, y: h * 0.26 };
   } else if (w >= 768 && w <= 1024) {
     bar1Position = { x: w * 0.05, y: h * 0.17 };
   } else {
-    bar1Position = { x: w * 0.16, y: h * 0.12 };
+    bar1Position = { x: w * 0.06, y: h * 0.1 };
   }
 
   return {

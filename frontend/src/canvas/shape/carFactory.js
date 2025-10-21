@@ -177,6 +177,9 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
   const cell = opts?.cell, f = opts?.footprint;
   if (!cell || !f) return;
 
+  // Sprite mode: auto when fitToFootprint (texture path) or explicit override.
+  const isSprite = !!opts.fitToFootprint || !!opts.spriteMode;
+
   const u   = clamp01(opts?.liveAvg ?? 0.5);
   const a   = Number.isFinite(opts.alpha) ? opts.alpha : 235;
   const ex  = Number.isFinite(opts.exposure) ? opts.exposure : 1;
@@ -318,6 +321,9 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
   p.scale(env.scaleX, env.scaleY);
   p.translate(-anchorX, -anchorY);
 
+  // In sprite mode force-clip so smoke stays in-tile
+  if (isSprite) { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, W, H); ctx.clip(); }
+
   // 0) grass (villa-style tint)
   p.noStroke();
   p.fill(grass.r, grass.g, grass.b, alpha);
@@ -325,26 +331,67 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
 
   // 1) SMOKE first (so chimney renders on top of it)
   {
-    const colW = Math.max(6, Math.round(cell * CF.smoke.colWk));
-    const colH = Math.max(24, Math.round(cell * 2 * CF.smoke.colHk));
-    const smokeX = (topLeftX + topRightX) / 2 - colW / 2;
-    // moved up a bit (higher spawn)
-    const smokeY = chimneyTopY - Math.round(cell * 1.45);
+    // base col dims
+    let colW = Math.max(6, Math.round(cell * CF.smoke.colWk));
+    let colH = Math.max(24, Math.round(cell * 2 * CF.smoke.colHk));
 
-    const count    = Math.max(4, Math.floor(val(CF.smoke.count, u)));
-    const sizeMin  = val(CF.smoke.sizeMin, u);
-    const sizeMax  = Math.max(sizeMin, val(CF.smoke.sizeMax, u));
-    const lifeMin  = Math.max(0.05, val(CF.smoke.lifeMin, u));
-    const lifeMax  = Math.max(lifeMin, val(CF.smoke.lifeMax, u));
-    const sAlpha   = Math.max(90, Math.min(255, Math.round(val(CF.smoke.alpha, u))));
-    const speedMin = val(CF.smoke.speedMin, u);
-    const speedMax = Math.max(speedMin, val(CF.smoke.speedMax, u));
-    const gravity  = val(CF.smoke.gravity, u);
-    const drag     = val(CF.smoke.drag, u);
-    const jPos     = val(CF.smoke.jitterPos, u);
-    const jAng     = val(CF.smoke.jitterAngle, u);
-    const spread   = val(CF.smoke.spreadAngle, u);
-    const blendK   = val(CF.smoke.blendK, u);
+    // Sprite path: thicker/taller column so smoke reads after downsampling
+    if (isSprite) {
+      colW = Math.round(colW * 1.35);
+      colH = Math.round(colH * 1.25);
+    }
+
+    const smokeX = (topLeftX + topRightX) / 2 - colW / 2;
+    // spawn a bit above the mouth so top edge-fade doesn’t kill it
+    const smokeY = chimneyTopY - Math.round(cell * (isSprite ? 1.75 : 1.45));
+
+    // base knobs
+    let count    = Math.max(4, Math.floor(val(CF.smoke.count, u)));
+    let sizeMin  = val(CF.smoke.sizeMin, u);
+    let sizeMax  = Math.max(sizeMin, val(CF.smoke.sizeMax, u));
+    let lifeMin  = Math.max(0.05, val(CF.smoke.lifeMin, u));
+    let lifeMax  = Math.max(lifeMin, val(CF.smoke.lifeMax, u));
+    let sAlpha   = Math.max(90, Math.min(255, Math.round(val(CF.smoke.alpha, u))));
+    let speedMin = val(CF.smoke.speedMin, u);
+    let speedMax = Math.max(speedMin, val(CF.smoke.speedMax, u));
+    let gravity  = val(CF.smoke.gravity, u);
+    let drag     = val(CF.smoke.drag, u);
+    let jPos     = val(CF.smoke.jitterPos, u);
+    let jAng     = val(CF.smoke.jitterAngle, u);
+    let spread   = val(CF.smoke.spreadAngle, u);
+    const blendK = val(CF.smoke.blendK, u);
+
+    // Sprite path boosts (bigger/faster/longer-lived so it rises visibly)
+    if (isSprite) {
+      const sizeBoost = 1.35;          // <- make puffs larger
+      const speedBoost = 1.15;         // <- rise a bit quicker
+      const lifeBoost = 1.25;          // <- live longer so they travel
+      sizeMin *= sizeBoost;
+      sizeMax *= sizeBoost;
+      speedMin *= speedBoost;
+      speedMax *= speedBoost;
+      lifeMin *= lifeBoost;
+      lifeMax *= lifeBoost;
+      gravity *= 1.10;                 // slightly more negative (stronger rise)
+      jPos *= 0.85;                    // a little less spawn jitter looks cleaner at small tex
+      sAlpha = Math.min(255, Math.round(sAlpha * 1.05));
+    }
+
+    // Optional external tweaks
+    if (opts.smokeOverrides) {
+      const o = opts.smokeOverrides;
+      if (o.count != null) count = o.count;
+      if (o.sizeMin != null) sizeMin = o.sizeMin;
+      if (o.sizeMax != null) sizeMax = Math.max(sizeMin, o.sizeMax);
+      if (o.lifeMin != null) lifeMin = o.lifeMin;
+      if (o.lifeMax != null) lifeMax = Math.max(lifeMin, o.lifeMax);
+      if (o.speedMin != null) speedMin = o.speedMin;
+      if (o.speedMax != null) speedMax = Math.max(speedMin, o.speedMax);
+      if (o.gravity != null) gravity = o.gravity;
+      if (o.drag != null) drag = o.drag;
+      if (o.spreadAngle != null) spread = o.spreadAngle;
+      if (o.alpha != null) sAlpha = o.alpha;
+    }
 
     const baseSmoke = opts.gradientRGB
       ? blendRGB(CF.smoke.base, opts.gradientRGB, blendK)
@@ -355,9 +402,13 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
       ex, ct
     );
 
-    const dt = Math.max(0.001, (p.deltaTime || 16) / 1000);
+    const dt =
+      (typeof opts.deltaSec === 'number' && opts.deltaSec > 0)
+        ? opts.deltaSec
+        : (p.deltaTime ? Math.max(1/120, p.deltaTime / 1000) : 1/60);
+
     stepAndDrawPuffs(p, {
-      key: `factory-smoke:${f.r0}:${f.c0}:${f.w}x${f.h}`,
+      key: `factory-smoke:${f.r0}:${f.c0}:${f.w}x${f.h}${isSprite ? ':spr' : ''}`,
       rect: { x: smokeX, y: smokeY, w: colW, h: colH },
       dir: 'up',
       spreadAngle: spread,
@@ -377,12 +428,16 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
       lifetime: { min: lifeMin, max: lifeMax },
       fadeInFrac: CF.smoke.fadeInFrac,
       fadeOutFrac: CF.smoke.fadeOutFrac,
-      edgeFadePx: { ...CF.smoke.edgeFadePx, top: 0 },
+      // In sprite mode kill the top fade so spawn is fully visible
+      edgeFadePx: isSprite ? { left: 4, right: 4, top: 0, bottom: 10 } : { ...CF.smoke.edgeFadePx, top: 0 },
 
       color: { r: smoked.r, g: smoked.g, b: smoked.b, a: sAlpha },
       respawn: true,
     }, dt);
   }
+
+  // After smoke, release sprite clip for the rest if we had enabled it
+  if (isSprite) { ctx.restore(); ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, W, H); ctx.clip(); }
 
   // 2) CHIMNEY (single shape, no seam) + CAP
   {
@@ -537,14 +592,14 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
 
     // 7) FRAME RING WITH HOLE (even-odd)
     {
-      const ctx = p.drawingContext;
-      ctx.save();
-      ctx.beginPath();
-      roundedRectPath(ctx, frameX, frameY, frameW, frameH, CF.frameRadiusPx);
-      roundedRectPath(ctx, winX,   winY,   winW,   winH,   CF.windowRadiusPx);
-      ctx.fillStyle = rgba(frameRGB, alpha);
-      ctx.fill('evenodd');
-      ctx.restore();
+      const ctx2 = p.drawingContext;
+      ctx2.save();
+      ctx2.beginPath();
+      roundedRectPath(ctx2, frameX, frameY, frameW, frameH, CF.frameRadiusPx);
+      roundedRectPath(ctx2, winX,   winY,   winW,   winH,   CF.windowRadiusPx);
+      ctx2.fillStyle = rgba(frameRGB, alpha);
+      ctx2.fill('evenodd');
+      ctx2.restore();
     }
 
     // 8) GLASS pane — smaller stroke, even less opaque
@@ -625,6 +680,9 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
       p.pop();
     }
   }
+
+  // release the sprite clip if still active
+  if (isSprite) { ctx.restore(); }
 
   p.pop();
 }

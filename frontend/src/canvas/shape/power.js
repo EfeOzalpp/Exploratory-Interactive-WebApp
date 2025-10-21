@@ -1,4 +1,3 @@
-// src/canvas/shape/power.js
 import { applyShapeMods } from './utils/shapeMods.ts';
 import { clamp01, val } from './utils/useLerp.ts';
 import { blendRGB } from './utils/colorBlend.ts';
@@ -134,7 +133,7 @@ const FACTORY_SMOKE = {
 
 /* Probability */
 function windProbability(u) {
-  const p0 = 0.15;
+  const p0 = 0.0;
   if (u <= 0.4) {
     const t = u / 0.3;
     return p0 + (0.5 - p0) * t;
@@ -143,25 +142,25 @@ function windProbability(u) {
     return 0.5 + 0.5 * t;
   }
 }
-function instanceRand01(f) {
-  const seed = hash32(`power-kind|${f?.r0}|${f?.c0}|${f?.w}x${f?.h}`);
+
+/* ====== NEW: seed helpers not tied to footprint/bleed ====== */
+function randFromKey(key) {
+  const seed = hash32(String(key));
   return rand01(seed);
 }
-
-// Decide layout + roof height, deterministically per tile
-function factoryLayout(f) {
-  const seed = hash32(`factory-layout|${f?.r0}|${f?.c0}|${f?.w}x${f?.h}`);
-  const rA = rand01(seed ^ 0x9e3779b9); // side
-  const rB = rand01(seed ^ 0x85ebca6b); // roof height
+function instanceRand01FromKey(key) {
+  return randFromKey(`power-kind|${key}`);
+}
+function factoryLayoutFromKey(key) {
+  const seed = hash32(`factory-layout|${String(key)}`);
+  const rA = rand01(seed ^ 0x9e3779b9);
+  const rB = rand01(seed ^ 0x85ebca6b);
   const chimneyOnLeft = rA < 0.5;
-  // roofRise as a fraction of tile height (gentle variety)
-  const roofRiseK = 0.08 + 0.08 * rB; // 0.08..0.16 of pxH
+  const roofRiseK = 0.08 + 0.08 * rB;
   return { chimneyOnLeft, roofRiseK };
 }
-
-/* Body color variants (darker industrial tints, deterministic per tile) */
-function pickBodyTintVariant(f, gradientRGB, ex, ct) {
-  const seed = hash32(`power-body|${f?.r0}|${f?.c0}|${f?.w}x${f?.h}`);
+function pickBodyTintVariantFromKey(key, gradientRGB, ex, ct) {
+  const seed = hash32(`power-body|${String(key)}`);
   const r = rand01(seed);
   const variants = [
     mulRgb(POWER_BASE_PALETTE.mast, 0.78),
@@ -173,6 +172,7 @@ function pickBodyTintVariant(f, gradientRGB, ex, ct) {
   if (gradientRGB) tint = blendRGB(tint, gradientRGB, 0.06);
   return applyExposureContrast(tint, ex, ct);
 }
+/* ========================================================== */
 
 /* Draw */
 export function drawPower(p, cx, cy, r, opts = {}) {
@@ -197,8 +197,11 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     pxY = (cy ?? 0) - pxH / 2;
   }
 
-  // Decide: turbine vs factory
-  const rInst = f ? instanceRand01(f) : Math.random();
+  // 🔑 stable seed independent of bleed/footprint padding
+  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `${pxX}|${pxY}|${pxW}x${pxH}`;
+
+  // Decide: turbine vs factory (stable regardless of bleed)
+  const rInst = instanceRand01FromKey(`kind|${seedKey}`);
   const asTurbine = rInst < windProbability(u);
 
   // Appear envelope
@@ -241,13 +244,13 @@ export function drawPower(p, cx, cy, r, opts = {}) {
 
   /* === FACTORY MODE === */
   if (!asTurbine) {
-    // orientation (mirror per tile) + mild roof height variation
-    const orientSeed = hash32(`factory-orient|${f?.r0}|${f?.c0}|${f?.w}x${f?.h}`);
-    const isLeftChimney = (orientSeed & 1) === 0;
-    const roofVar = 0.9 + 0.25 * rand01(orientSeed ^ 0xBEEF);
+    // orientation (mirror per tile) + mild roof height variation — all from seedKey
+    const orientKey = `orient|${seedKey}`;
+    const { chimneyOnLeft: isLeftChimney } = factoryLayoutFromKey(orientKey);
+    const roofVar = 0.9 + 0.25 * randFromKey(`${orientKey}|roofVar`);
 
     // 1) body + roof triangle (same tint)
-    const bodyTint = pickBodyTintVariant(f, opts.gradientRGB, ex, ct);
+    const bodyTint = pickBodyTintVariantFromKey(`body|${seedKey}`, opts.gradientRGB, ex, ct);
     const bodyMarginX = Math.round(pxW * 0.14);
     const bodyW = Math.max(12, pxW - bodyMarginX * 2);
     const bodyH = Math.max(Math.round(pxH * 0.16), Math.round(cell * 0.9));
@@ -303,7 +306,7 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     const dt = Math.max(0.001, (p.deltaTime || 16) / 1000);
 
     stepAndDrawPuffs(p, {
-      key: `factory-smoke:${f?.r0}:${f?.c0}:${f?.w}x${f?.h}`,
+      key: `factory-smoke:${seedKey}`,
       rect: { x: emitX, y: emitY, w: emitW, h: emitH },
       dir: FACTORY_SMOKE.dir,
       spreadAngle: val(FACTORY_SMOKE.spreadAngle, u),
@@ -359,8 +362,7 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     return;
   }
 
-
-  /* === TURBINE MODE (unchanged) === */
+  /* === TURBINE MODE === */
 
   const insetX   = Math.round(pxW * val(POWER.mast.insetX, u));
   const baseW    = Math.max(6, Math.round(pxW * val(POWER.mast.widthK, u)));
@@ -454,7 +456,7 @@ export function drawPower(p, cx, cy, r, opts = {}) {
   const tipR   = Math.round(bladeW * POWER.rotor.bladeTipRound);
 
   const tSec  = (typeof opts.timeMs === 'number' ? opts.timeMs : p.millis()) / 1000;
-  const seed  = hash32(`power|${f?.r0}|${f?.c0}|${f?.w}x${f?.h}`) >>> 0;
+  const seed  = hash32(`power|${seedKey}`) >>> 0;
   const phase = rand01(seed) * POWER.rotor.spinJitter;
   const speed = (typeof opts.rotorSpeed === 'number') ? opts.rotorSpeed : val(POWER.rotor.spinSpeed, u);
 
@@ -523,3 +525,5 @@ export function drawPower(p, cx, cy, r, opts = {}) {
 
   p.pop(); // appear transform
 }
+
+export default drawPower;

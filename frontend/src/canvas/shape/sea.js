@@ -67,25 +67,19 @@ export const SEA_TUNING = {
   // SEA_TUNING.bowl 
   bowl: {
     enable: true,
-
-    // proportions (desktop defaults)
-    thicknessK:      0.2,   // thickness = cell * thicknessK
-    baseFrac:        0.18,   // base height = H0 * baseFrac
-    postTopFrac:     0.24,   // posts start at topY + H0 * postTopFrac
-    colWidthK:       1.00,   // post width = thickness * colWidthK
-    cornerK:         0.10,   // base corner radius = cell * cornerK
-
-    // mobile overrides (applied when cell <= cellMax)
+    thicknessK: 0.2,
+    baseFrac:   0.18,
+    postTopFrac:0.24,
+    colWidthK:  1.00,
+    cornerK:    0.10,
     mobile: {
-      cellMax:       28,
-      thicknessK:    0.1,
-      baseFrac:      0.12,   // shorter base → taller posts
-      postTopFrac:   0.08,   // start posts closer to top → taller posts
-      colWidthK:     0.85,
-      cornerK:       0.12,
+      cellMax:    28,
+      thicknessK: 0.1,
+      baseFrac:   0.12,
+      postTopFrac:0.08,
+      colWidthK:  0.85,
+      cornerK:    0.12,
     },
-
-    // color (unchanged)
     color: GRASS_BASE,
     grassBlend: { colorBlend: [0.25, 0.50], satRange: [0.00, 0.35], brightRange: [0.35, 0.90] },
     alphaMul: 1.0,
@@ -94,7 +88,6 @@ export const SEA_TUNING = {
   waterBottomRadiusPx: 10,
 
   // Horizon cap rectangle (drawn without tile clip)
-  // NOTE: no wiggle/scale oscillation; scale follows clamped liveAvg
   capRect: {
     enable: true,
     widthTiles: 0.90,
@@ -105,11 +98,8 @@ export const SEA_TUNING = {
       top:    { r: 245, g: 248, b: 252, a: 255 },
       bottom: { r: 210, g: 230, b: 252, a: 255 },
     },
-    // size = lerp(min,max, uClamped); no oscillation
     scaleMap: { uMin: 0.2, uMax: 0.85, xMin: 0.4, xMax: 1, yMin: 0.3, yMax: 1.22 },
-    // optional fixed alpha override for the rect; otherwise uses global aFactor
     alphaMul: 1.0,
-    // keep mild saturation shimmer only (looks nice without “size wobble”)
     satOsc: { amp: 0.08, speed: 0.16, phase: 0 },
   },
 
@@ -149,16 +139,16 @@ export const SEA_TUNING = {
     spreadAngle: 0.45,
 
     // spawn-window fractions (narrow start inside each corridor)
-    leftSpawnFracX:  [0.70, 0.96],  // moved in from 0.80..1.00 so edge-fade won’t nuke it
+    leftSpawnFracX:  [0.70, 0.96],
     rightSpawnFracX: [0.00, 0.20],
 
     // LIVE gate
     liveGate: { min: 0.25, max: 0, soft: 0.12 },
 
     // Left-side anti-cutoff helpers
-    leftEdgeFadeLeftPx: 2,           // smaller left fade so it doesn’t vanish on spawn
-    leftLifetimeSec: [1.2, 2.0],     // give left a bit more life
-    leftExtraRoomPx: 24,             // wider left corridor
+    leftEdgeFadeLeftPx: 2,
+    leftLifetimeSec: [1.2, 2.0],
+    leftExtraRoomPx: 24,
 
     // Mobile tuning (auto if cell is small)
     mobile: { cellMax: 28, leftNudgePx: 8, rightNudgePx: -4 },
@@ -204,6 +194,11 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
   const f = opts?.footprint;
   if (!cell || !f) return;
 
+  // Detect “sprite mode”
+  // - auto when CanvasAnimatedTexture / Frozen path sets fitToFootprint: true
+  // - or explicitly via opts.spriteMode
+  const isSprite = !!opts.fitToFootprint || !!opts.spriteMode;
+
   // merge tunables
   const OT = opts.tuning || {};
   const T = { ...SEA_TUNING, ...OT };
@@ -236,8 +231,10 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
   const alphaMulGlobal = clamp01(T.opacity.mul ?? 1);
 
   // forced span logic
+  // In sprite mode we never fake-span; keep it local to the tile
   const forceX = Math.max(1, (T.span.forceTilesX | 0));
-  const canFakeSpan = !!opts.allowForcedSpan && forceX > 1 && f.w < forceX;
+  const canFakeSpanCanvas = !!opts.allowForcedSpan && forceX > 1 && f.w < forceX;
+  const canFakeSpan = isSprite ? false : canFakeSpanCanvas;
   const spanTilesX = canFakeSpan ? forceX : f.w;
   const leaderOnly = canFakeSpan ? !!T.span.leaderOnly : false;
   const isLeader =
@@ -312,7 +309,8 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
   p.scale(env.scaleX, env.scaleY);
   p.translate(-cx, -bottomY);
 
-  const wantClip = !T.overflow.allow;
+  // In sprite mode we force clip so nothing spills outside the texture
+  const wantClip = isSprite ? true : !T.overflow.allow;
   if (wantClip) { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip(); }
 
   // 1) WATER body (Y-scaled)
@@ -371,7 +369,7 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
         : (p.deltaTime ? Math.max(1/120, p.deltaTime / 1000) : 1/60);
 
     stepAndDrawPuffs(p, {
-      key: opts.foamKey ?? `seafoam:${f.r0}:${f.c0}:${spanTilesX}x${f.h}`,
+      key: (opts.foamKey ?? `seafoam:${f.r0}:${f.c0}:${spanTilesX}x${f.h}`) + (isSprite ? ':spr' : ''),
       rect,
       dir: T.foam.motion.dir,
       spreadAngle: T.foam.motion.spreadAngle,
@@ -407,7 +405,6 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
     const radius = Math.min(T.capRect?.cornerPx ?? 6, rectH / 2);
     const followOffset = T.capRect?.followOffsetPx ?? 0;
 
-    // map u to fixed scale (no oscillation)
     const sm = T.capRect?.scaleMap ?? { uMin: 0.25, uMax: 0.85, xMin: 0.92, xMax: 1.08, yMin: 0.98, yMax: 1.22 };
     const uClamped = Math.max(0, Math.min(1, (u - sm.uMin) / Math.max(1e-6, (sm.uMax - sm.uMin))));
     const sx = mix(sm.xMin, sm.xMax, uClamped);
@@ -415,17 +412,14 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
 
     const ctx2 = ctx;
     ctx2.save();
-    ctx2.translate(cx, surfaceY + followOffset); // follow surface
-    ctx2.scale(sx, sy);                          // fixed-by-u scale
-    // no rotation/translate oscillations
+    ctx2.translate(cx, surfaceY + followOffset);
+    ctx2.scale(sx, sy);
 
     const left = -rectW / 2;
     const top  = -rectH;
 
-    // alpha for the rectangle
     const rectAlpha = aFactor * (T.capRect?.alphaMul ?? 1);
 
-    // Subtle saturation shimmer only
     const baseTop = T.capRect?.color?.top    ?? { r: 245, g: 248, b: 252, a: 255 };
     const baseBot = T.capRect?.color?.bottom ?? { r: 210, g: 230, b: 252, a: 255 };
     const satOsc = T.capRect?.satOsc ?? {};
@@ -448,9 +442,9 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
 
   // ---- SPILL (particle-2) — gated by liveAvg; spills outside tile ----
   if (T.spill?.enable) {
-    if (wantClip) ctx.restore(); // allow overflow
+    // For sprites, we *don’t* want overflow: keep as-is; for canvas allow overflow.
+    if (!isSprite && wantClip) ctx.restore();
 
-    // Gate factor based on liveAvg
     const gGate = T.spill.liveGate || {};
     const spillK = liveWindowK(u, gGate.min ?? 0.35, gGate.max ?? 0.80, gGate.soft ?? 0.12);
 
@@ -460,25 +454,22 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
           ? opts.deltaSec
           : (p.deltaTime ? Math.max(1/120, p.deltaTime / 1000) : 1/60);
 
-      const spill = Math.max(0, T.spill.spillPx ?? 40);
+      // sprite-mode adjustments: keep inside tile + remove global shift/nudges
+      const spillRaw = Math.max(0, T.spill.spillPx ?? 40);
+      const spill = isSprite ? Math.min(spillRaw, Math.round(cell * 0.10)) : spillRaw;
 
-      // auto "mobile" detection via small tile size
       const isMobile = cell <= (T.spill.mobile?.cellMax ?? 28);
 
-      // global right shift (in px) for the whole spill block
-      const globalShiftX = (T.spill.offsetTilesX ?? 0) * cell;
+      const globalShiftX = isSprite ? 0 : ((T.spill.offsetTilesX ?? 0) * cell);
 
-      // gradient range for particles (in current group space)
       const waterTopY    = bottomY + Ttop0 * waterScaleY;
       const waterBottomY = bottomY + (Ttop0 + H0) * waterScaleY;
       const bottomBound  = y0 + h;
 
-      // tall corridor band begins near surface and runs to bottom
       const surfaceY = waterTopY;
       const bandTopY = surfaceY - cell * 0.10;
       const bandH    = Math.max(1, bottomBound - bandTopY + cell * 0.25);
 
-      // small spawn windows at the top fraction of each corridor
       const spawnHeightPx = Math.max(8, cell * 0.35);
       const spawnFracY = Math.min(1, spawnHeightPx / Math.max(1, bandH));
 
@@ -488,12 +479,18 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
       const leftSpawnFrac  = { x0: leftSpawnFracX[0],  x1: leftSpawnFracX[1],  y0: 0.00, y1: spawnFracY };
       const rightSpawnFrac = { x0: rightSpawnFracX[0], x1: rightSpawnFracX[1], y0: 0.00, y1: spawnFracY };
 
-      // corridor widths kept slim; positions include global + per-side nudges (+mobile tweak)
       const colWBase = Math.max(8, cell * 0.35);
 
-      // base positions
-      const leftBaseX  = x0 - spill + globalShiftX + (T.spill.leftNudgePx  ?? 0) + (isMobile ? (T.spill.mobile?.leftNudgePx  ?? 0) : 0);
-      const rightBaseX = x0 + w - colWBase + globalShiftX + (T.spill.rightNudgePx ?? 0) + (isMobile ? (T.spill.mobile?.rightNudgePx ?? 0) : 0);
+      // Base X for each corridor. In sprite mode:
+      //  - drop global shift and per-side nudges to keep symmetry/centering
+      //  - clamp right corridor so it doesn’t extend beyond the tile
+      const leftNudge  = isSprite ? 0 : ((T.spill.leftNudgePx  ?? 0) + (isMobile ? (T.spill.mobile?.leftNudgePx  ?? 0) : 0));
+      const rightNudge = isSprite ? 0 : ((T.spill.rightNudgePx ?? 0) + (isMobile ? (T.spill.mobile?.rightNudgePx ?? 0) : 0));
+
+      const leftBaseX  = x0 - spill + globalShiftX + leftNudge;
+      const rightBaseX = isSprite
+        ? (x0 + w - colWBase) // clamp to tile
+        : (x0 + w - colWBase + globalShiftX + rightNudge);
 
       const leftCorridor = {
         x: leftBaseX,
@@ -502,24 +499,24 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
         h: bandH
       };
       const rightCorridor = {
-        x: rightBaseX,
+        x: Math.min(rightBaseX, x0 + w - colWBase), // ensure inside tile for sprites
         y: bandTopY,
-        w: colWBase + spill,
+        w: colWBase + (isSprite ? Math.min(spill, Math.round(cell * 0.10)) : spill),
         h: bandH
       };
 
-      // sizes + counts/alpha gated by spillK
       const rMin  = Array.isArray(T.spill.sizePx) ? T.spill.sizePx[0] : (T.spill.sizePx ?? 1.2);
       const rMax  = Array.isArray(T.spill.sizePx) ? T.spill.sizePx[1] : rMin;
       const baseCount = T.spill.count ?? 28;
       const gatedCount = Math.max(0, Math.floor(baseCount * spillK));
       const alphaMul = spillK;
 
-      // lifetimes
       const lifeMin = (T.spill.lifetimeSec?.[0] ?? 0.9);
       const lifeMax = (T.spill.lifetimeSec?.[1] ?? 1.6);
       const leftLifeMin = (T.spill.leftLifetimeSec?.[0] ?? lifeMin);
       const leftLifeMax = (T.spill.leftLifetimeSec?.[1] ?? lifeMax);
+
+      const keySuffix = isSprite ? ':spr' : '';
 
       const runSide = (side) => {
         const isLeft   = side === 'L';
@@ -533,7 +530,7 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
         if (gatedCount < 1) return;
 
         stepAndDrawPuffs(p, {
-          key: `spill:${f.r0}:${f.c0}:${spanTilesX}x${f.h}:${side}`,
+          key: `spill:${f.r0}:${f.c0}:${spanTilesX}x${f.h}:${side}${keySuffix}`,
           rect: rectSim,
           dir,
           spreadAngle: T.spill.spreadAngle ?? 0.45,
@@ -543,7 +540,7 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
           spawn: spawnFr,
 
           speed:  { min: spRange[0], max: spRange[1] },
-          accel:  { x: accelX, y: 0 },  // widens as they fall
+          accel:  { x: accelX, y: 0 },
           gravity: T.spill.gravity ?? 360,
           jitter: { pos: 2, velAngle: 0.25 },
           drag:   T.spill.drag ?? 6,
@@ -562,7 +559,6 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
             ? { left: (T.spill.leftEdgeFadeLeftPx ?? 2), right: 8, top: 8, bottom: 8 }
             : (T.spill.edgeFadePx ?? { left: 8, right: 8, top: 8, bottom: 8 }),
 
-          // color that MATCHES the sea gradient at the particle's Y (and gates alpha)
           color: (pr) => {
             if (pr.y > bottomBound) return { r: 0, g: 0, b: 0, a: 0 };
             const c = seaRGBAtY(pr.y, waterTopY, waterBottomY, topRGB, bottomRGB);
@@ -577,74 +573,69 @@ export function drawSea(p, _x, _y, _r, opts = {}) {
       runSide('R');
     }
 
-    // re-clip after spill
-    if (wantClip) { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip(); }
+    // re-clip after spill for canvas path
+    if (!isSprite && wantClip) { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip(); }
   }
 
-// 2) BOWL composite (proportional; mobile-safe)
-if (T.bowl?.enable) {
-  const isMobile = cell <= (T.bowl.mobile?.cellMax ?? 28);
+  // 2) BOWL composite (proportional; mobile-safe)
+  if (T.bowl?.enable) {
+    const isMobile = cell <= (T.bowl.mobile?.cellMax ?? 28);
 
-  // pick proportional knobs
-  const kThickness = isMobile ? (T.bowl.mobile?.thicknessK  ?? T.bowl.thicknessK)  : (T.bowl.thicknessK  ?? 0.06);
-  const fBase      = isMobile ? (T.bowl.mobile?.baseFrac    ?? T.bowl.baseFrac)    : (T.bowl.baseFrac    ?? 0.18);
-  const fPostTop   = isMobile ? (T.bowl.mobile?.postTopFrac ?? T.bowl.postTopFrac) : (T.bowl.postTopFrac ?? 0.12);
-  const kColWidth  = isMobile ? (T.bowl.mobile?.colWidthK   ?? T.bowl.colWidthK)   : (T.bowl.colWidthK   ?? 1.00);
-  const kCorner    = isMobile ? (T.bowl.mobile?.cornerK     ?? T.bowl.cornerK)     : (T.bowl.cornerK     ?? 0.10);
+    const kThickness = isMobile ? (T.bowl.mobile?.thicknessK  ?? T.bowl.thicknessK)  : (T.bowl.thicknessK  ?? 0.06);
+    const fBase      = isMobile ? (T.bowl.mobile?.baseFrac    ?? T.bowl.baseFrac)    : (T.bowl.baseFrac    ?? 0.18);
+    const fPostTop   = isMobile ? (T.bowl.mobile?.postTopFrac ?? T.bowl.postTopFrac) : (T.bowl.postTopFrac ?? 0.12);
+    const kColWidth  = isMobile ? (T.bowl.mobile?.colWidthK   ?? T.bowl.colWidthK)   : (T.bowl.colWidthK   ?? 1.00);
+    const kCorner    = isMobile ? (T.bowl.mobile?.cornerK     ?? T.bowl.cornerK)     : (T.bowl.cornerK     ?? 0.10);
 
-  // geometry (all proportional)
-  const tEff   = Math.max(1, Math.round(cell * kThickness));              // thickness
-  const baseH  = Math.max(tEff, Math.round(H0 * fBase));                  // base height
-  const baseY  = (bottomY + Ttop0) + H0 - baseH;                          // base top
-  const baseX  = cx + L0;
-  const baseW  = W0;
+    const tEff   = Math.max(1, Math.round(cell * kThickness));
+    const baseH  = Math.max(tEff, Math.round(H0 * fBase));
+    const baseY  = (bottomY + Ttop0) + H0 - baseH;
+    const baseX  = cx + L0;
+    const baseW  = W0;
 
-  const postsTopY   = (bottomY + Ttop0) + Math.round(H0 * fPostTop);      // posts start
-  const colW        = Math.max(1, Math.round(tEff * kColWidth));          // posts width
-  const postR       = Math.max(0, T.bowl.pieceRadiusPx | 0);              // keep radius px (small)
-  const baseOverlap = Math.max(0, T.bowl.baseOverlapPx ?? 2);
-  const postBottomY = baseY + baseOverlap;
-  const postDrawH   = Math.max(1, postBottomY - postsTopY - Math.max(0, T.bowl.postBottomLiftPx ?? Math.ceil(postR)));
+    const postsTopY   = (bottomY + Ttop0) + Math.round(H0 * fPostTop);
+    const colW        = Math.max(1, Math.round(tEff * kColWidth));
+    const postR       = Math.max(0, T.bowl.pieceRadiusPx | 0);
+    const baseOverlap = Math.max(0, T.bowl.baseOverlapPx ?? 2);
+    const postBottomY = baseY + baseOverlap;
+    const postDrawH   = Math.max(1, postBottomY - postsTopY - Math.max(0, T.bowl.postBottomLiftPx ?? Math.ceil(postR)));
 
-  const leftX  = cx + L0;
-  const rightX = cx + L0 + W0 - colW;
+    const leftX  = cx + L0;
+    const rightX = cx + L0 + W0 - colW;
 
-  // color
-  const gb = T.bowl.grassBlend || {};
-  const blendK = clamp01(val(gb.colorBlend ?? [0.25, 0.50], u));
-  const [satLo, satHi] = gb.satRange ?? [0.00, 0.35];
-  const [briLo, briHi] = gb.brightRange ?? [0.35, 0.90];
+    const gb = T.bowl.grassBlend || {};
+    const blendK = clamp01(val(gb.colorBlend ?? [0.25, 0.50], u));
+    const [satLo, satHi] = gb.satRange ?? [0.00, 0.35];
+    const [briLo, briHi] = gb.brightRange ?? [0.35, 0.90];
 
-  let bowlRGB = T.bowl.color || GRASS_BASE;
-  if (opts.gradientRGB) bowlRGB = blendRGB(bowlRGB, opts.gradientRGB, blendK);
-  bowlRGB = clampSaturation(bowlRGB, satLo, satHi, 1);
-  bowlRGB = clampBrightness(bowlRGB, briLo, briHi, 1);
+    let bowlRGB = T.bowl.color || GRASS_BASE;
+    if (opts.gradientRGB) bowlRGB = blendRGB(bowlRGB, opts.gradientRGB, blendK);
+    bowlRGB = clampSaturation(bowlRGB, satLo, satHi, 1);
+    bowlRGB = clampBrightness(bowlRGB, briLo, briHi, 1);
 
-  const aBowl = Math.round(255 * clamp01(T.bowl.alphaMul ?? 1) * aFactor);
-  ctx.fillStyle = `rgba(${bowlRGB.r},${bowlRGB.g},${bowlRGB.b},${aBowl/255})`;
+    const aBowl = Math.round(255 * clamp01(T.bowl.alphaMul ?? 1) * aFactor);
+    ctx.fillStyle = `rgba(${bowlRGB.r},${bowlRGB.g},${bowlRGB.b},${aBowl/255})`;
 
-  // Base with rounded bottom corners (corner radius ∝ cell)
-  const rCorner = Math.round(cell * kCorner);
-  {
-    const r = Math.min(rCorner, baseH / 2, baseW / 2);
+    const rCorner = Math.round(cell * kCorner);
+    {
+      const r = Math.min(rCorner, baseH / 2, baseW / 2);
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.lineTo(baseX + baseW, baseY);
+      ctx.lineTo(baseX + baseW, baseY + baseH - r);
+      ctx.quadraticCurveTo(baseX + baseW, baseY + baseH, baseX + baseW - r, baseY + baseH);
+      ctx.lineTo(baseX + r, baseY + baseH);
+      ctx.quadraticCurveTo(baseX, baseY + baseH, baseX, baseY + baseH - r);
+      ctx.lineTo(baseX, baseY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     ctx.beginPath();
-    ctx.moveTo(baseX, baseY);
-    ctx.lineTo(baseX + baseW, baseY);
-    ctx.lineTo(baseX + baseW, baseY + baseH - r);
-    ctx.quadraticCurveTo(baseX + baseW, baseY + baseH, baseX + baseW - r, baseY + baseH);
-    ctx.lineTo(baseX + r, baseY + baseH);
-    ctx.quadraticCurveTo(baseX, baseY + baseH, baseX, baseY + baseH - r);
-    ctx.lineTo(baseX, baseY);
-    ctx.closePath();
+    roundedRect(ctx, leftX,  postsTopY, colW, postDrawH, postR);
+    roundedRect(ctx, rightX, postsTopY, colW, postDrawH, postR);
     ctx.fill();
   }
-
-  // Posts
-  ctx.beginPath();
-  roundedRect(ctx, leftX,  postsTopY, colW, postDrawH, postR);
-  roundedRect(ctx, rightX, postsTopY, colW, postDrawH, postR);
-  ctx.fill();
-}
 
   // top border (optional)
   if (T.topBorder.enable && (T.topBorder.topLinePx > 0)) {
