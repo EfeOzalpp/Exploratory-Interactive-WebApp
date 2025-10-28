@@ -76,23 +76,32 @@ function applyExposureContrast(rgb, exposure = 1, contrast = 1) {
   return { r: Math.round(adj(rgb.r)), g: Math.round(adj(rgb.g)), b: Math.round(adj(rgb.b)) };
 }
 
+/* ───────────────── Deterministic RNG from seedKey + tag */
+function rFromKey(seedKey, tag) {
+  return rand01(hash32(`${tag}|${String(seedKey)}`));
+}
+
 /* ───────────────── Public “asset” API (roadless) */
 export const CAR_VARIANTS = { suv: 'suv', sedan: 'sedan', jeep: 'jeep' };
 
 export function drawCarAsset(p, cx, wheelY, r, opts = {}) {
-  const ex   = typeof opts?.exposure === 'number' ? opts.exposure : 1;
-  const ct   = typeof opts?.contrast === 'number' ? opts.contrast : 1;
+  const ex    = typeof opts?.exposure === 'number' ? opts.exposure : 1;
+  const ct    = typeof opts?.contrast === 'number' ? opts.contrast : 1;
   const alpha = Number.isFinite(opts?.alpha) ? opts.alpha : 235;
   const u     = clamp01(opts?.liveAvg ?? 0.5);
 
-  // deterministic seed (colors/variant)
-  const seed = hash32(`car-asset|${opts?.seedKey ?? ''}|${Math.round(cx)}|${Math.round(wheelY)}|${Math.round(r)}`);
-  const r1   = rand01(seed);
-  const rVar = rand01(seed ^ 0x5eed);
-  const rSide = rand01(seed ^ 0x1ced);
+  // --- seedKey: prefer sprite-provided; else fallback to a stable local key
+  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `car-asset|${Math.round(cx)}|${Math.round(wheelY)}|${Math.round(r)}`;
+
+  // deterministic “randoms” derived from seedKey (stable per cached sprite variant)
+  const rBodyPick = rFromKey(seedKey, 'bodyTint');
+  const rVariant  = rFromKey(seedKey, 'variant');
+  const rSide     = rFromKey(seedKey, 'sideBias');
+  const rGrassA   = rFromKey(seedKey, 'grassA');
+  const rGrassB   = rFromKey(seedKey, 'grassB');
 
   // colors
-  let bodyTint = pick(CAR_BASE_PALETTE.body, r1);
+  let bodyTint = pick(CAR_BASE_PALETTE.body, rBodyPick);
   if (opts?.gradientRGB) bodyTint = blendRGB(bodyTint, opts.gradientRGB, val(CAR.body.colorBlend, u));
   bodyTint = applyExposureContrast(bodyTint, ex, ct);
   const windowTint = applyExposureContrast(CAR_BASE_PALETTE.window, ex, ct);
@@ -138,8 +147,10 @@ export function drawCarAsset(p, cx, wheelY, r, opts = {}) {
   });
   const bodyYOffset = mBody.y;
 
-  // pick variant
-  const variant = opts?.variant ?? (rVar < 0.40 ? 'suv' : rVar < 0.80 ? 'sedan' : 'jeep');
+  // pick variant deterministically (or honor explicit opts.variant)
+  const variant =
+    opts?.variant ??
+    (rVariant < 0.40 ? 'suv' : (rVariant < 0.80 ? 'sedan' : 'jeep'));
 
   // draw body by variant (all referenced to wheelY + bodyYOffset)
   if (variant === 'suv') {
@@ -189,7 +200,7 @@ export function drawCarAsset(p, cx, wheelY, r, opts = {}) {
     const insetTop = Math.max(2, r * 0.20);
     const insetBot = Math.max(3, r * 0.28);
 
-    const midW  = cabinTopW + (cabinBottomW - cabinTopW) * 0.45;
+    const midW   = cabinTopW + (cabinBottomW - cabinTopW) * 0.45;
     const innerW = Math.max(8, midW - insetX * 2);
     const innerH = Math.max(6, (cabinBaseY - cabinTopY) - insetTop - insetBot);
     const innerX = cx - innerW / 2;
@@ -215,8 +226,8 @@ export function drawCarAsset(p, cx, wheelY, r, opts = {}) {
     fillRgb(p, bodyTint, alpha);
     p.rect(cx - chassisW / 2, chassisCy - chassisH / 2, chassisW, chassisH, r * 0.18);
 
-    const cabinW    = w * 0.64;
-    const cabinH    = Math.max(10, r * 1.15);
+    const cabinW      = w * 0.64;
+    const cabinH      = Math.max(10, r * 1.15);
     const chassisTopY = chassisCy - chassisH / 2;
     const cabinBaseY  = chassisTopY;
     const cabinTopY   = cabinBaseY - cabinH;
@@ -257,16 +268,12 @@ export function beginFitScale(p, { cx, anchorY, scale }) {
 }
 export function endFitScale(p) { p.pop(); }
 
-/* ───────────────── Tile-aware wrapper (now fits the asset to tile width) */
+/* ───────────────── Tile-aware wrapper (fits the asset to tile width) */
 export function drawCar(p, cx, cy, r, opts = {}) {
   const ex = typeof opts?.exposure === 'number' ? opts.exposure : 1;
   const ct = typeof opts?.contrast === 'number' ? opts.contrast : 1;
   const alpha = Number.isFinite(opts.alpha) ? opts.alpha : 235;
   const u = clamp01(opts?.liveAvg ?? 0.5);
-
-  const seed = hash32(`car|${Math.round(cx)}|${Math.round(cy)}|${Math.round(r)}`);
-  const r1 = rand01(seed);
-  const r2 = rand01(seed ^ 0xabc123);
 
   // Resolve tile rect
   const cell = opts?.cell;
@@ -278,7 +285,13 @@ export function drawCar(p, cx, cy, r, opts = {}) {
     tileW = r * 3.0; tileH = r * 3.0; tileX = cx - tileW / 2; tileY = cy - tileH / 2;
   }
 
-  // ground layers
+  // sprite-aware seedKey: prefer external (from sprite factory), else local tile-based
+  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `car|${Math.round(tileX)}|${Math.round(tileY)}|${Math.round(tileW)}x${Math.round(tileH)}`;
+
+  // ground layers (deterministic two-tone grass for variety)
+  const rGrass1 = rFromKey(seedKey, 'ground:grass1');
+  const rGrass2 = rFromKey(seedKey, 'ground:grass2');
+
   const grassH = tileH * 0.5;
   const grassY = tileY + tileH - grassH;
   const aspH   = grassH * 0.38;
@@ -301,8 +314,8 @@ export function drawCar(p, cx, cy, r, opts = {}) {
   p.translate(-cx, -baseY);
 
   // grass
-  const g1 = pick(CAR_BASE_PALETTE.grass, r1);
-  const g2 = pick(CAR_BASE_PALETTE.grass, r2);
+  const g1 = pick(CAR_BASE_PALETTE.grass, rGrass1);
+  const g2 = pick(CAR_BASE_PALETTE.grass, rGrass2);
   let grassTint = blendRGB(g1, g2, 0.4 + 0.3 * u);
   if (opts.gradientRGB) grassTint = blendRGB(grassTint, opts.gradientRGB, val(CAR.grass.colorBlend, u));
   grassTint = applyExposureContrast(grassTint, ex, ct);
@@ -320,7 +333,7 @@ export function drawCar(p, cx, cy, r, opts = {}) {
   // compute wheel baseline from road
   const wheelY = aspY + aspH * 0.62;
 
-  // ── NEW: fit the car asset to the tile width so proportions stay consistent
+  // fit the car asset to the tile width so proportions stay consistent
   const designW = r * 3.2;                             // intrinsic car width at radius r
   const sidePad = Math.max(2, tileW * 0.06);           // small visual gutter
   const s = fitScaleToRectWidth(designW, tileW, sidePad, { allowUpscale: !!opts.allowUpscale });
@@ -332,7 +345,8 @@ export function drawCar(p, cx, cy, r, opts = {}) {
     contrast: ct,
     gradientRGB: opts.gradientRGB,
     liveAvg: u,
-    seedKey: `${Math.round(cx)}:${Math.round(cy)}:${Math.round(r)}`,
+    // pass through seedKey so color/variant match the sprite variant cache key
+    seedKey,
     useAppear: false,
   });
   endFitScale(p);
@@ -349,15 +363,17 @@ export function drawCarStandalone(p, cx, baselineY, r, opts = {}) {
   const sidePad = Math.max(2, r * 0.08);
 
   const rect = opts.fitRect; // {x,y,w,h}
+  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `car-standalone|${Math.round(cx)}|${Math.round(baselineY)}|${Math.round(r)}`;
+
   if (rect) {
     const s = fitScaleToRectWidth(designW, rect.w, sidePad, { allowUpscale: !!opts.allowUpscale });
     const anchorX = cx;
     const anchorY = baselineY;
     beginFitScale(p, { cx: anchorX, anchorY, scale: s });
-    drawCarAsset(p, cx, baselineY, r, { ...opts, alpha, useAppear: false });
+    drawCarAsset(p, cx, baselineY, r, { ...opts, alpha, useAppear: false, seedKey });
     endFitScale(p);
   } else {
-    drawCarAsset(p, cx, baselineY, r, { ...opts, alpha, useAppear: true });
+    drawCarAsset(p, cx, baselineY, r, { ...opts, alpha, useAppear: true, seedKey });
   }
 }
 
@@ -377,7 +393,9 @@ export function drawCarInRect(p, x, y, w, h, opts = {}) {
   const designW = r * 3.2;
   const s = fitScaleToRectWidth(designW, w, sidePad, { allowUpscale: !!opts.allowUpscale });
 
+  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `car-rect|${Math.round(x)}|${Math.round(y)}|${Math.round(w)}x${Math.round(h)}`;
+
   beginFitScale(p, { cx, anchorY: baselineY, scale: s });
-  drawCarAsset(p, cx, baselineY, r, { ...opts, useAppear: false });
+  drawCarAsset(p, cx, baselineY, r, { ...opts, useAppear: false, seedKey });
   endFitScale(p);
 }

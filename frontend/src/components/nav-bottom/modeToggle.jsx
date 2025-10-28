@@ -42,22 +42,27 @@ export default function ModeToggle() {
   const flipModeAndMaybeSpotlight = (nextMode) => {
     setMode(nextMode);
 
-    // Only nudge the personalized panel open when NOT observing and we have a personal entry.
-    if (canPersonalize) {
-      window.dispatchEvent(new CustomEvent('gp:open-personalized'));
+    if (!observerMode) {
+      // keep opening the personalized panel as before
+      if (canPersonalize) {
+        window.dispatchEvent(new CustomEvent('gp:open-personalized'));
+      }
+      return;
     }
 
-    // NEW: In observer mode, request a short-lived spotlight on a left/center dot
-    if (observerMode) {
-      window.dispatchEvent(new CustomEvent('gp:observer-spotlight-request', {
-        detail: {
-          durationMs: 3000,         // keep GamificationGeneral open for up to 3s
-          // approximate screen coords to compute viewportClass for the bubble
-          fakeMouseXRatio: 0.25,    // 25% from left
-          fakeMouseYRatio: 0.5      // centered vertically
-        }
-      }));
-    }
+    // OBSERVER: Defer spotlight dispatch until DotGraph has re-rendered & Html mounted
+    // Double rAF pushes us past layout/paint of the new mode so points exist.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('gp:observer-spotlight-request', {
+          detail: {
+            durationMs: 3000,      // keep GamificationGeneral open ~3s
+            fakeMouseXRatio: 0.25, // 25% from left to bias left/center
+            fakeMouseYRatio: 0.5   // vertically centered
+          }
+        }));
+      });
+    });
   };
 
   const onToggle = () => flipModeAndMaybeSpotlight(isAbsolute ? "relative" : "absolute");

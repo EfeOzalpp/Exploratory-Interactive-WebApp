@@ -2,6 +2,7 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
+
 import CompleteButton from '../completeButton.jsx';
 import GamificationPersonalized from '../gamification/gamificationPersonalized';
 import GamificationGeneral from '../gamification/gamificationGeneral';
@@ -20,11 +21,14 @@ import useObserverDelay from './hooks/useObserverDelay';
 import { getTieStats, classifyPosition } from '../gamification/rankLogic';
 
 // sprite factory (shape is chosen inside the factory from avg)
-import { SpriteShape } from './canvas/ShapeSpriteFactory.tsx';
+import { SpriteShape, prewarmSpriteTextures } from './canvas/ShapeSpriteFactory.tsx';
 
 // hit-target needs same shape choice & footprint aspect as sprite
 import { shapeForAvg } from './canvas/shapeForAvg.ts';
 import { SHAPE_FOOTPRINT } from './canvas/shapeFootprints.ts';
+
+// queue progress hook (ties into textureQueue)
+import useTextureQueueProgress from './canvas/textureQueueProgress.ts';
 
 /* ---------- small utils ---------- */
 const nonlinearLerp = (a, b, t) => {
@@ -47,14 +51,10 @@ const boostColor = (rgbHexOrCss) => {
  * Per-shape overflow/bleed as FRACTIONS of the base tile.
  * These are only used to size the invisible hit target so pointer events
  * align with what’s visible when the texture is rendered with bleed.
- *
- * Example: trees can overflow ~28% above their tile top.
  */
 const BLEED_FRAC = {
-  // top, right, bottom, left — fractions of one tile
   trees: { top: 0.28, right: 0.00, bottom: 0.00, left: 0.00 },
 
-  // defaults (no overflow) — extend for other shapes if needed
   clouds: { top: 0, right: 0, bottom: 0, left: 0 },
   bus: { top: 0, right: 0, bottom: 0, left: 0 },
   snow: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -158,6 +158,18 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     showPersonalized: showCompleteUI && hasPersonalizedInDataset && shouldShowPersonalized,
   });
 
+  /* ---------- PREWARM textures once based on rendered order ---------- */
+  useEffect(() => {
+    if (!points || !points.length) return;
+    const items = points.map((p, i) => ({
+      avg: Number.isFinite(p.averageWeight) ? p.averageWeight : 0.5,
+      orderIndex: i,
+      seed: 'dotgraph-bag-v1',
+      cacheTag: p._id,
+    }));
+    prewarmSpriteTextures(items, { tileSize: 128, alpha: 215, blend: 0.6 });
+  }, [points]);
+
   // maps & helpers
   const posById = useMemo(() => new Map(points.map(p => [p._id, p.position])), [points]);
 
@@ -251,6 +263,93 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     isTouchRotatingRef,
     calcPercentForAvg: calcValueForAvg,
   });
+
+  /* ================= HARDENING: spotlight lifecycle guards ================= */
+  const spotlightTimerRef = useRef(null);
+  const spotlightActiveRef = useRef(false);
+
+  // Keep latest handlers & points in refs so a single event listener stays valid
+  const onHoverStartRef = useRef(onHoverStart);
+  const onHoverEndRef = useRef(onHoverEnd);
+  const pointsRef = useRef(points);
+  useEffect(() => { onHoverStartRef.current = onHoverStart; }, [onHoverStart]);
+  useEffect(() => { onHoverEndRef.current = onHoverEnd; }, [onHoverEnd]);
+  useEffect(() => { pointsRef.current = points; }, [points]);
+
+  // clear hover/tie when mode or section changes, unless spotlight is active
+  useEffect(() => {
+    if (spotlightActiveRef.current) return;
+    onHoverEnd();
+    setSelectedTieKey(null);
+  }, [mode, section]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // clear hover/tie when dataset size changes, unless spotlight is active
+  useEffect(() => {
+    if (spotlightActiveRef.current) return;
+    onHoverEnd();
+    setSelectedTieKey(null);
+  }, [safeData.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ===== Observer spotlight (programmatic, short-lived general tooltip) =====
+     Mount ONCE; use refs above to always call latest handlers/points. */
+  useEffect(() => {
+    const onSpotlight = (evt) => {
+      const { detail } = evt || {};
+      const durationMs = Math.max(500, Number(detail?.durationMs) || 3000);
+      const xRatio = Math.max(0, Math.min(1, Number(detail?.fakeMouseXRatio) || 0.5));
+      const yRatio = Math.max(0, Math.min(1, Number(detail?.fakeMouseYRatio) || 0.5));
+
+      const pts = pointsRef.current || [];
+      if (!pts.length) return;
+
+      // Pick a central point (closest to origin)
+      let best = null;
+      let bestD = Infinity;
+      for (const p of pts) {
+        const pos = p?.position || [0, 0, 0];
+        if (!Array.isArray(pos) || pos.length < 3) continue;
+        const [x, y, z] = pos;
+        const d = x*x + y*y + z*z;
+        if (d < bestD) { bestD = d; best = p; }
+      }
+      if (!best) return;
+
+      // cancel existing timer
+      if (spotlightTimerRef.current) {
+        clearTimeout(spotlightTimerRef.current);
+        spotlightTimerRef.current = null;
+      }
+
+      // lock out auto-cleans
+      spotlightActiveRef.current = true;
+
+      // synthesize light pointer coords for viewport placement
+      const synthEvt = {
+        stopPropagation: () => {},
+        preventDefault: () => {},
+        clientX: (typeof window !== 'undefined' ? window.innerWidth  : 1000) * xRatio,
+        clientY: (typeof window !== 'undefined' ? window.innerHeight :  800) * yRatio,
+      };
+
+      try { onHoverStartRef.current?.(best, synthEvt); } catch {}
+
+      spotlightTimerRef.current = setTimeout(() => {
+        try { onHoverEndRef.current?.(); } catch {}
+        spotlightActiveRef.current = false;
+        spotlightTimerRef.current = null;
+      }, durationMs);
+    };
+
+    window.addEventListener('gp:observer-spotlight-request', onSpotlight);
+    return () => {
+      window.removeEventListener('gp:observer-spotlight-request', onSpotlight);
+      if (spotlightTimerRef.current) {
+        clearTimeout(spotlightTimerRef.current);
+        spotlightTimerRef.current = null;
+      }
+      spotlightActiveRef.current = false;
+    };
+  }, []); // mount-once
 
   // ========= Shared key for buckets/rank-chain: rounded RAW % (avg*100) =========
   const linkKeyOf = useCallback(
@@ -384,8 +483,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const hoveredClass = classifyPosition(hoveredStats);
 
   // ------------------------- DYNAMIC SPRITE SCALE -------------------------
-  // When zoomed in (radius ~ minRadius) => bigger sprites
-  // When zoomed out (radius ~ maxRadius) => smaller sprites
   const spriteScale = useMemo(() => {
     const denom = Math.max(1e-6, (maxRadius - minRadius));
     const t = Math.max(0, Math.min(1, (radius - minRadius) / denom)); // 0 = zoomed in, 1 = zoomed out
@@ -405,8 +502,24 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   const shouldRenderExtraPersonalSprite =
     shouldRenderPersonalUI && !hasPersonalizedInDataset;
 
-  // ====== SHUFFLE-BAG SEED (shared across all items for one-of-each per block) ======
+  // ====== SHUFFLE-BAG SEED ======
   const bagSeed = 'dotgraph-bag-v1';
+
+  // queue progress → small top-center indicator
+  const { isBusy, pending } = useTextureQueueProgress();
+
+  // Open the personalized panel exactly when the UI is ready (one-shot)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const wantOpen = sessionStorage.getItem('gp.openPersonalOnNext') === '1';
+    if (!wantOpen) return;
+    if (!shouldRenderPersonalUI) return; // wait until personalized UI can render
+    try {
+      window.dispatchEvent(new CustomEvent('gp:open-personalized'));
+    } finally {
+      sessionStorage.removeItem('gp.openPersonalOnNext');
+    }
+  }, [shouldRenderPersonalUI]);
 
   return (
     <>
@@ -417,6 +530,19 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
             style={{ display:'flex', justifyContent:'flex-start', alignItems:'center', height:'100vh', pointerEvents:'none' }}
           >
             <CompleteButton />
+          </div>
+        </Html>
+      )}
+
+      {/* tiny loading indicator (reuses your animated dots class) */}
+      {isBusy && (
+        <Html center zIndexRange={[200, 250]} style={{ pointerEvents: 'none' }}>
+          <div
+            style={loaderCardStyle}
+            className="loading-dots"
+          >
+            <span role="img" aria-label="city">🌆</span>&nbsp; Community is loading…
+            {Number.isFinite(pending) ? ` (${pending})` : ''}
           </div>
         </Html>
       )}
@@ -477,13 +603,13 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                 avg={avg}
                 position={[0, 0, 0]}
                 scale={spriteScale}
-                tileSize={512}
+                tileSize={128}
+                minTileSize={128}   // lock LOD — no swaps on zoom
                 alpha={215}
                 blend={0.6}
                 cacheTag={point._id}
                 seed={bagSeed}
                 orderIndex={i}
-                animateParticles={true}    // ← enable
                 freezeParticles={true}
                 particleSimulateMs={Math.ceil(3 * 2.4 * 1000)}
                 particleStepMs={33}
@@ -514,7 +640,8 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   avg={Number.isFinite(effectiveMyEntry?.avgWeight) ? Number(effectiveMyEntry.avgWeight) : 0.5}
                   position={[0,0,0]}
                   scale={spriteScale}
-                  tileSize={512}
+                  tileSize={128}
+                  minTileSize={128}   // lock LOD here too
                   alpha={215}
                   blend={0.6}
                   cacheTag={effectiveMyEntry?._id}
@@ -607,6 +734,17 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       </group>
     </>
   );
+};
+
+const loaderCardStyle = {
+  pointerEvents: 'none',
+  backdropFilter: 'blur(6px)',
+  WebkitBackdropFilter: 'blur(6px)',
+  color: 'gray',
+  borderRadius: 6,
+  padding: '24px 16px',
+  letterSpacing: 0.2,
+  whiteSpace: 'nowrap',
 };
 
 export default DotGraph;

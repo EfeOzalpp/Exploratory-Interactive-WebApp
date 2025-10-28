@@ -321,8 +321,9 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
   p.scale(env.scaleX, env.scaleY);
   p.translate(-anchorX, -anchorY);
 
-  // In sprite mode force-clip so smoke stays in-tile
-  if (isSprite) { ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, W, H); ctx.clip(); }
+  // NOTE: DO NOT clip to (x0,y0,W,H) here — it cuts off smoke in the bleed.
+  // If you *really* want a clip, prefer the full canvas bounds (when available):
+  // if (isSprite && p.width && p.height) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, p.width, p.height); ctx.clip(); }
 
   // 0) grass (villa-style tint)
   p.noStroke();
@@ -343,7 +344,7 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
 
     const smokeX = (topLeftX + topRightX) / 2 - colW / 2;
     // spawn a bit above the mouth so top edge-fade doesn’t kill it
-    const smokeY = chimneyTopY - Math.round(cell * (isSprite ? 1.75 : 1.45));
+    const smokeY = chimneyTopY - Math.round(cell * (isSprite ? 1.35 : 1.45));
 
     // base knobs
     let count    = Math.max(4, Math.floor(val(CF.smoke.count, u)));
@@ -363,17 +364,17 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
 
     // Sprite path boosts (bigger/faster/longer-lived so it rises visibly)
     if (isSprite) {
-      const sizeBoost = 1.35;          // <- make puffs larger
-      const speedBoost = 1.15;         // <- rise a bit quicker
-      const lifeBoost = 1.25;          // <- live longer so they travel
+      const sizeBoost = 1.35;
+      const speedBoost = 1.15;
+      const lifeBoost = 1.25;
       sizeMin *= sizeBoost;
       sizeMax *= sizeBoost;
       speedMin *= speedBoost;
       speedMax *= speedBoost;
       lifeMin *= lifeBoost;
       lifeMax *= lifeBoost;
-      gravity *= 1.10;                 // slightly more negative (stronger rise)
-      jPos *= 0.85;                    // a little less spawn jitter looks cleaner at small tex
+      gravity *= 1.10;
+      jPos *= 0.85;
       sAlpha = Math.min(255, Math.round(sAlpha * 1.05));
     }
 
@@ -436,8 +437,7 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
     }, dt);
   }
 
-  // After smoke, release sprite clip for the rest if we had enabled it
-  if (isSprite) { ctx.restore(); ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, W, H); ctx.clip(); }
+  // (Previously we re-clipped here and later restored; those are gone.)
 
   // 2) CHIMNEY (single shape, no seam) + CAP
   {
@@ -649,23 +649,20 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
 
       p.push();
       p.noStroke();
-      p.rectMode(p.CORNER); // we'll still draw from (-pW/2, -pH), bottom-center at (0,0)
+      p.rectMode(p.CORNER);
 
       for (let i = 0; i < count; i++) {
         const px = startX + i * (pW + gap) + pW / 2; // bottom-center X
         const py = yOnRoof;                           // roof contact Y
 
         p.push();
-        // Origin at bottom-center ON the roof so scale is anchored to the roof line
         p.translate(px, py);
-        p.scale(sPanels, sPanels); // <-- scale from contact (bottom-center)
+        p.scale(sPanels, sPanels);
         p.rotate(tilt);
 
-        // Panel body: top-left at (-pW/2, -pH) so bottom center is (0,0)
         p.fill(panelTint0.r, panelTint0.g, panelTint0.b, alpha);
         p.rect(-pW / 2, -pH, pW, pH, corner);
 
-        // highlight stripe (panel local space)
         const hi = {
           r: Math.min(255, panelTint0.r + 22),
           g: Math.min(255, panelTint0.g + 22),
@@ -681,8 +678,8 @@ export function drawCarFactory(p, _x, _y, _r, opts = {}) {
     }
   }
 
-  // release the sprite clip if still active
-  if (isSprite) { ctx.restore(); }
+  // If you added a canvas-wide clip above, remember to ctx.restore() here.
+  // (We didn’t enable one by default.)
 
   p.pop();
 }

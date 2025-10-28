@@ -18,12 +18,13 @@ const computeAvg = (w: Weights) => {
 };
 
 /**
- * Saves a V3 response with numeric q1..q5 (0..1, rounded to 3 decimals)
+ * Saves a V3/V4 response with numeric q1..q5 (0..1, rounded to 3 decimals)
  * and avgWeight (0..1, rounded to 3 decimals).
  *
- * NEW: also stash a lightweight client snapshot in sessionStorage (gp.myDoc),
- * so we can continue showing personalized UI even when the current section’s
- * dataset doesn’t include the user’s entry.
+ * NEW:
+ * - stash a lightweight client snapshot in sessionStorage (gp.myDoc),
+ * - set a one-time flag gp.justSubmitted for better initial section selection,
+ * - dispatch 'gp:identity-updated' so GraphProvider can sync without remount.
  */
 export async function saveUserResponse(section: string, weights: Weights) {
   // clamp + round each weight
@@ -53,6 +54,9 @@ export async function saveUserResponse(section: string, weights: Weights) {
     // Persist identifiers
     sessionStorage.setItem('gp.myEntryId', created._id);
     sessionStorage.setItem('gp.mySection', section);
+    // One-time redirect/initialization marker for first open after submit
+    sessionStorage.setItem('gp.justSubmitted', '1');
+
     // Persist a minimal snapshot for local rehydrate (no schema change needed)
     try {
       const snapshot = {
@@ -63,6 +67,15 @@ export async function saveUserResponse(section: string, weights: Weights) {
         submittedAt: created.submittedAt,
       };
       sessionStorage.setItem('gp.myDoc', JSON.stringify(snapshot));
+    } catch {}
+
+    // Notify the app so context can sync immediately (no remount required)
+    try {
+      window.dispatchEvent(
+        new CustomEvent('gp:identity-updated', {
+          detail: { entryId: created._id, section }
+        })
+      );
     } catch {}
   }
 

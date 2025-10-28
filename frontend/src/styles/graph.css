@@ -23,10 +23,12 @@
 
 /* Red/Orange band: deep red ↔ hot orange (lighter) */
 @keyframes redFluctuation {
-  /* was rgb(235,90,0) ↗ */
-  0%, 100% { background-color: rgb(255, 120, 30); }    
-  /* was rgb(210,0,25) ↗ */
-  50%      { background-color:  rgb(230, 20, 45); }
+  0%, 100% { background-color: rgb(211, 95, 93); } /* softer red base */
+  50%      { background-color: rgb(240, 108, 13); }  /* gentle orange mid */
+}
+
+.bar-icon:nth-child(3) {
+  filter: saturate(1);
 }
 
 /* Radial dot pulses (lightened cores/halos) */

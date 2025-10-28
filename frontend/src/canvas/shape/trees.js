@@ -1,9 +1,8 @@
 // src/canvas/shape/trees.js
 import { clamp01, val } from './utils/useLerp.ts';
 import { blendRGB } from './utils/colorBlend.ts';
-import { clampBrightness, clampSaturation } from '../color/colorUtils.ts';
+import { clampBrightness, clampSaturation, oscillateSaturation } from '../color/colorUtils.ts';
 import { applyShapeMods } from './utils/shapeMods.ts';
-import { oscillateSaturation } from '../color/colorUtils.ts';
 
 /* ───────────────────────────────────────────────────────────
    Exposure/contrast helper
@@ -67,8 +66,7 @@ const TREES = {
     sidePadK: 0.08,
     maxOverflowTopK: 0.28,
     countRange: [2, 3],
-    // tighter spacing (<1) = more inter-tree overlap
-    overlapK: 0.78,
+    overlapK: 0.78, // tighter spacing (<1) = more inter-tree overlap
   },
 
   poplar: {
@@ -139,6 +137,13 @@ function rand01(seed) {
   return (((t ^ (t >>> 14)) >>> 0) / 4294967296);
 }
 
+/* ── Sprite-friendly deterministic RNG helpers (tagged substreams) ── */
+function rFromKey(key, tag) { return rand01(hash32(`${String(key)}|${tag}`)); }
+function pickFromKey(arr, key, tag) {
+  const r = rFromKey(key, tag);
+  return arr[Math.floor(r * arr.length) % arr.length];
+}
+
 /* foliage tint: base → mix with grass → optional gradient → clamp → E/C */
 function foliageTint(grassTint, u, gradientRGB, ex, ct, rSeed) {
   const base = pick(TREES_BASE_PALETTE.foliage, rSeed);
@@ -150,7 +155,7 @@ function foliageTint(grassTint, u, gradientRGB, ex, ct, rSeed) {
 }
 
 /* ───────────────────────────────────────────────────────────
-   drawTrees (1×1 tile)
+   drawTrees (1×1 tile) — with sprite-variant randomization
    ─────────────────────────────────────────────────────────── */
 export function drawTrees(p, cx, cy, r, opts = {}) {
   const cell = opts?.cell;
@@ -161,6 +166,12 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
   const ct = Number.isFinite(opts.contrast) ? opts.contrast : 1;
   const u  = clamp01(opts?.liveAvg ?? 0.5);
   const alpha = Number.isFinite(opts.alpha) ? opts.alpha : 235;
+
+  // Sprite hint (doesn’t change behavior; we key variety off seedKey)
+  const isSprite = !!opts.fitToFootprint || !!opts.spriteMode;
+
+  // Deterministic, variant-aware seedKey (used by sprites). Fallback keeps old behavior.
+  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `trees|${f.r0}|${f.c0}|${f.w}x${f.h}`;
 
   // Tile rect
   const x0 = f.c0 * cell;
@@ -184,7 +195,7 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
   // gentle cluster scale clamp (uniform, anchored bottom-center)
   const clampK0 = TREES.clusterScaleClamp[0];
   const clampK1 = TREES.clusterScaleClamp[1];
-  const clampRand = 0.96 + (hash32(`trees-clamp|${f.r0}|${f.c0}`) % 7) * 0.005; // 0.96..0.995
+  const clampRand = 0.96 + (rFromKey(seedKey, 'clusterClamp') * 0.035); // ~0.96..0.995
   const sClamp = Math.max(clampK0, Math.min(clampK1, clampRand * (0.96 + u * 0.08)));
 
   const clampTf = applyShapeMods({
@@ -193,12 +204,9 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
   });
 
   /* ─── Ground: grass + asphalt (UNTRANSFORMED so it never shrinks) ─── */
-  const seed = hash32(`trees|${f.r0}|${f.c0}|${f.w}x${f.h}`);
-  const r1 = rand01(seed ^ 0x9e3779b9);
-  const r2 = rand01(seed ^ 0x85ebca6b);
-
-  let g1 = pick(TREES_BASE_PALETTE.grass, r1);
-  let g2 = pick(TREES_BASE_PALETTE.grass, r2);
+  // Pick grass tones via seedKey (sprite-variant friendly). Fallback mixing kept.
+  let g1 = pickFromKey(TREES_BASE_PALETTE.grass, seedKey, 'grass1');
+  let g2 = pickFromKey(TREES_BASE_PALETTE.grass, seedKey, 'grass2');
   let grassTint = blendRGB(g1, g2, 0.4 + 0.3 * u);
   if (opts.gradientRGB) grassTint = blendRGB(grassTint, opts.gradientRGB, val(TREES.grass.colorBlend, u));
   grassTint = clampSaturation(grassTint, TREES.grass.satRange[0], TREES.grass.satRange[1], 1);
@@ -239,13 +247,15 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
   p.translate(-anchorX, -anchorY);
 
   /* ─── Tree cluster ─── */
-  const count = Math.round(TREES.layout.countRange[0] +
-    (TREES.layout.countRange[1] - TREES.layout.countRange[0]) * rand01(seed ^ 0x1a2b3c4d));
+  const countR = rFromKey(seedKey, 'count');
+  const minC = TREES.layout.countRange[0];
+  const maxC = TREES.layout.countRange[1];
+  const count = Math.round(minC + (maxC - minC) * countR);
 
   const sidePad = w * TREES.layout.sidePadK;
   const usableW = Math.max(8, w - sidePad * 2);
   // reduce step to push trees closer together (inter-tree overlap)
-  const step = (usableW / count) * (TREES.layout.overlapK ?? 1);
+  const step = (usableW / Math.max(1, count)) * (TREES.layout.overlapK ?? 1) * (count === 3 ? 1.25 : 1);
 
   const trunkTint = applyExposureContrast(TREES_BASE_PALETTE.trunk, ex, ct);
 
@@ -253,32 +263,33 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
   const timeSec = (typeof opts.timeMs === 'number' ? opts.timeMs : p.millis?.()) / 1000;
 
   for (let i = 0; i < count; i++) {
-    const sLocal = seed ^ (i * 0x9e3779b9);
-    const rx = rand01(sLocal ^ 0x111);
-    const typePick = rand01(sLocal ^ 0x222);
-    const posJitter = (rand01(sLocal ^ 0x333) - 0.5) * step * 0.22;
+    // sub-key per tree; stable within the sprite key
+    const k = `${seedKey}|tree:${i}`;
+    const rx = rFromKey(k, 'rx');
+    const typePick = rFromKey(k, 'type');
+    const posJitter = (rFromKey(k, 'jitter') - 0.5) * step * 0.22;
 
     const baseX = x0 + sidePad + step * (i + 0.5) + posJitter;
     const baseY = groundY;
 
-    const windSpeed = TREES.wind.speedHz[0] + (TREES.wind.speedHz[1] - TREES.wind.speedHz[0]) * rand01(sLocal ^ 0x444);
+    const windSpeed = val(TREES.wind.speedHz, rFromKey(k, 'windSpd'));
     const rotAmp    = val(TREES.wind.rotAmp, u);
     const shearAmp  = val(TREES.wind.xShearAmp, u);
-    const phase     = rand01(sLocal ^ 0x555) * TREES.wind.phaseSpread;
+    const phase     = rFromKey(k, 'windPhase') * TREES.wind.phaseSpread;
 
-    // base foliage tint
+    // base foliage tint (sprite-friendly pick)
     let leavesTint = foliageTint(grassTint, u, opts.gradientRGB, ex, ct, rx);
 
     // saturation oscillation on leaves (gentle “breathing”)
     const satAmp   = val(TREES.foliage.satOscAmp,   u); // 0.08..0.16 across u
     const satSpeed = val(TREES.foliage.satOscSpeed, u); // 0.18..0.35 Hz
-    const satPhase = rand01(sLocal ^ 0xabc) * Math.PI * 2;
+    const satPhase = rFromKey(k, 'satPhase') * Math.PI * 2;
     leavesTint = oscillateSaturation(leavesTint, timeSec, { amp: satAmp, speed: satSpeed, phase: satPhase });
 
     // allow tasteful top overhang
     const maxOverflow = h * TREES.layout.maxOverflowTopK;
-    const heightBoost = - (rand01(sLocal ^ 0x666) * maxOverflow);
-    const scaleBias   = 0.95 + rand01(sLocal ^ 0x777) * 0.25;
+    const heightBoost = - (rFromKey(k, 'heightOver') * maxOverflow);
+    const scaleBias   = 0.95 + rFromKey(k, 'scaleBias') * 0.25;
 
     if (typePick < 0.5) {
       /* POPLAR */
@@ -321,7 +332,7 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
         (w * 0.5) * (TREES.conifer.overlapWidthBoost ?? 1);
 
       const levelH = (TREES.conifer.levelHk[0] +
-        (TREES.conifer.levelHk[1] - TREES.conifer.levelHk[0]) * rand01(sLocal ^ 0x888)) * cell * 1.0 * scaleBias;
+        (TREES.conifer.levelHk[1] - TREES.conifer.levelHk[0]) * rFromKey(k, 'levelH')) * cell * 1.0 * scaleBias;
 
       const mRoot = applyShapeMods({
         p, x: baseX, y: baseY + heightBoost, r: levelH * levels, opts,
@@ -350,7 +361,7 @@ export function drawTrees(p, cx, cy, r, opts = {}) {
       const intraK = TREES.conifer.intraOverlapK ?? 0.35; // overlap within a tier
 
       // Choose 2 or 3 triangles for THIS TREE
-      const nT = (rand01(sLocal ^ 0x9999) < 0.5) ? 2 : 3;
+      const nT = (rFromKey(k, 'triCount') < 0.5) ? 2 : 3;
       const hFracs = (nT === 2 ? (TREES.conifer.triHeightFracs2 || [1.00, 0.62])
                                : (TREES.conifer.triHeightFracs3 || [1.00, 0.62, 0.42]));
       const wFracs = (nT === 2 ? (TREES.conifer.triWidthFracs2  || [1.00, 0.72])

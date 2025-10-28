@@ -1,3 +1,4 @@
+// src/canvas/shape/power.js
 import { applyShapeMods } from './utils/shapeMods.ts';
 import { clamp01, val } from './utils/useLerp.ts';
 import { blendRGB } from './utils/colorBlend.ts';
@@ -104,8 +105,8 @@ function rand01(seed) {
 
 /* Factory smoke config (purple-tinted, house-like params) */
 const FACTORY_SMOKE = {
-  spawnX: [0, 0.80],
-  spawnY: [0.30, 0.30],
+  spawnX: [0.00, 0.80],
+  spawnY: [0.10, 0.25], // lowered so frame 1 shows upward motion
   count:  [48, 16],
   sizeMin:[3, 0],
   sizeMax:[6, 1],
@@ -129,6 +130,8 @@ const FACTORY_SMOKE = {
   satOscAmp: [0.2, 0.4],
   satOscSpeed: [0.12, 0.20],
   brightnessRange: [2, 0.5],
+  colWk: 0.20,
+  colHk: 2.60,
 };
 
 /* Probability */
@@ -172,7 +175,6 @@ function pickBodyTintVariantFromKey(key, gradientRGB, ex, ct) {
   if (gradientRGB) tint = blendRGB(tint, gradientRGB, 0.06);
   return applyExposureContrast(tint, ex, ct);
 }
-/* ========================================================== */
 
 /* Draw */
 export function drawPower(p, cx, cy, r, opts = {}) {
@@ -182,6 +184,9 @@ export function drawPower(p, cx, cy, r, opts = {}) {
   const ex   = typeof opts?.exposure === 'number' ? opts.exposure : 1;
   const ct   = typeof opts?.contrast === 'number' ? opts.contrast : 1;
   const baseAlpha = Number.isFinite(opts.alpha) ? opts.alpha : 235;
+
+  // Sprite export mode: infer from fitToFootprint or explicit override
+  const isSprite = !!opts.fitToFootprint || !!opts.spriteMode;
 
   // Resolve pixel rect
   let pxX, pxY, pxW, pxH;
@@ -226,6 +231,12 @@ export function drawPower(p, cx, cy, r, opts = {}) {
   p.scale(m.scaleX, m.scaleY);
   p.translate(-anchorX, -anchorY);
 
+  // --- IMPORTANT ---
+  // Do NOT clip to the footprint rectangle here; it will cut blades/smoke in the bleed.
+  // If you really want a clip in sprite mode, prefer clipping to the full canvas:
+  // const ctx = p.drawingContext;
+  // if (isSprite && p.width && p.height) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, p.width, p.height); ctx.clip(); }
+
   /* Grass platform */
   const platFrac = val(POWER.platform.hFrac, u);
   const platH = Math.max(4, Math.round((cell || Math.max(6, pxH / 3)) * platFrac));
@@ -244,12 +255,10 @@ export function drawPower(p, cx, cy, r, opts = {}) {
 
   /* === FACTORY MODE === */
   if (!asTurbine) {
-    // orientation (mirror per tile) + mild roof height variation — all from seedKey
     const orientKey = `orient|${seedKey}`;
     const { chimneyOnLeft: isLeftChimney } = factoryLayoutFromKey(orientKey);
     const roofVar = 0.9 + 0.25 * randFromKey(`${orientKey}|roofVar`);
 
-    // 1) body + roof triangle (same tint)
     const bodyTint = pickBodyTintVariantFromKey(`body|${seedKey}`, opts.gradientRGB, ex, ct);
     const bodyMarginX = Math.round(pxW * 0.14);
     const bodyW = Math.max(12, pxW - bodyMarginX * 2);
@@ -261,7 +270,6 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     fillRgb(p, bodyTint, 255);
     p.rect(bodyX, bodyTop, bodyW, bodyH);
 
-    // single-slope roof
     const roofRise = Math.round(Math.min(pxH * 0.10, cell * roofVar));
     const xL = bodyX, xR = bodyX + bodyW, yTop = bodyTop + 1;
     const highX = isLeftChimney ? xL : xR;
@@ -270,14 +278,12 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     fillRgb(p, bodyTint, 255);
     p.triangle(lowX, yTop, highX, yTop, highX, yTop - roofRise);
 
-    // roof line accent
     p.strokeWeight(1);
     strokeRgb(p, POWER_BASE_PALETTE.mastCore, 255);
     p.noFill();
     p.line(lowX, yTop, highX, yTop - roofRise);
     p.noStroke();
 
-    // 2) door (centered)
     const doorW = bodyW * 0.18;
     const doorH = bodyH * 0.32;
     const doorX = bodyX + bodyW / 2 - doorW / 2;
@@ -286,12 +292,15 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     fillRgb(p, doorTint, 255);
     p.rect(doorX, doorY, doorW, doorH, 1, 1, 0, 0);
 
-    // 3) particles
-    const tSec = (typeof opts.timeMs === 'number' ? opts.timeMs : p.millis()) / 1000;
-    const emitW = Math.max(10, Math.round(bodyW * 0.20));
-    const emitH = Math.max(48, Math.round(cell * 2.2));
-    const emitX = (isLeftChimney ? xL : xR) - (isLeftChimney ? -Math.round(emitW / 2) : Math.round(emitW / 2));
-    const emitY = (yTop - roofRise) - Math.round(cell * 1.0);
+    const tSec = (typeof opts.timeMs === 'number' ? opts.timeMs : (p.millis?.() || 0)) / 1000;
+
+    let emitW = Math.max(10, Math.round(bodyW * (FACTORY_SMOKE.colWk || 0.20)));
+    let emitH = Math.max(48, Math.round((cell || 24) * (FACTORY_SMOKE.colHk || 2.60)));
+    if (isSprite) { emitW = Math.round(emitW * 1.35); emitH = Math.round(emitH * 1.25); }
+
+    const peakY  = yTop - roofRise;
+    const emitX  = (isLeftChimney ? xL : xR) - (isLeftChimney ? -Math.round(emitW / 2) : Math.round(emitW / 2));
+    const emitY  = peakY - Math.round((cell || 12) * (isSprite ? 1.05 : 1.00));
 
     const blendK = val(FACTORY_SMOKE.blendK, u);
     const satAmp = val(FACTORY_SMOKE.satOscAmp, u);
@@ -299,45 +308,85 @@ export function drawPower(p, cx, cy, r, opts = {}) {
 
     let baseSmoke = FACTORY_SMOKE.base;
     if (opts.gradientRGB) baseSmoke = blendRGB(baseSmoke, opts.gradientRGB, blendK);
+
     let smoked = oscillateSaturation(baseSmoke, tSec, { amp: satAmp, speed: satSpd, phase: 0 });
     smoked = clampBrightness(smoked, FACTORY_SMOKE.brightnessRange[0], FACTORY_SMOKE.brightnessRange[1]);
     smoked = applyExposureContrast(smoked, ex, ct);
-    const smokeColor = { r: smoked.r, g: smoked.g, b: smoked.b, a: Math.max(0, Math.min(255, Math.round(val(FACTORY_SMOKE.alpha, u)))) };
-    const dt = Math.max(0.001, (p.deltaTime || 16) / 1000);
+
+    const dt = (typeof opts.deltaSec === 'number' && opts.deltaSec > 0)
+      ? opts.deltaSec
+      : Math.max(1/120, (p.deltaTime ? p.deltaTime / 1000 : 1/60));
+
+    let count    = Math.max(4, Math.floor(val(FACTORY_SMOKE.count, u)));
+    let sizeMin  = val(FACTORY_SMOKE.sizeMin, u);
+    let sizeMax  = Math.max(sizeMin, val(FACTORY_SMOKE.sizeMax, u));
+    let lifeMin  = Math.max(0.05, val(FACTORY_SMOKE.lifeMin, u));
+    let lifeMax  = Math.max(lifeMin, val(FACTORY_SMOKE.lifeMax, u));
+    let sAlpha   = Math.max(60, Math.min(255, Math.round(val(FACTORY_SMOKE.alpha, u))));
+    let speedMin = val(FACTORY_SMOKE.speedMin, u);
+    let speedMax = Math.max(speedMin, val(FACTORY_SMOKE.speedMax, u));
+    let gravity  = val(FACTORY_SMOKE.gravity, u);
+    let drag     = val(FACTORY_SMOKE.drag, u);
+    let jPos     = val(FACTORY_SMOKE.jitterPos, u);
+    let jAng     = val(FACTORY_SMOKE.jitterAngle, u);
+    let spread   = val(FACTORY_SMOKE.spreadAngle, u);
+
+    if (isSprite) {
+      const sizeBoost = 1.25, speedBoost = 1.10, lifeBoost = 1.20;
+      sizeMin *= sizeBoost; sizeMax *= sizeBoost;
+      speedMin *= speedBoost; speedMax *= speedBoost;
+      lifeMin *= lifeBoost;  lifeMax  *= lifeBoost;
+      gravity *= 1.08;
+      jPos *= 0.85;
+      sAlpha = Math.min(255, Math.round(sAlpha * 1.05));
+    }
+
+    if (opts.smokeOverrides) {
+      const o = opts.smokeOverrides;
+      if (o.count != null) count = o.count;
+      if (o.sizeMin != null) sizeMin = o.sizeMin;
+      if (o.sizeMax != null) sizeMax = Math.max(sizeMin, o.sizeMax);
+      if (o.lifeMin != null) lifeMin = o.lifeMin;
+      if (o.lifeMax != null) lifeMax = Math.max(lifeMin, o.lifeMax);
+      if (o.speedMin != null) speedMin = o.speedMin;
+      if (o.speedMax != null) speedMax = Math.max(speedMin, o.speedMax);
+      if (o.gravity != null) gravity = o.gravity;
+      if (o.drag != null) drag = o.drag;
+      if (o.spreadAngle != null) spread = o.spreadAngle;
+      if (o.alpha != null) sAlpha = o.alpha;
+    }
+
+    const spawn = {
+      x0: FACTORY_SMOKE.spawnX[0],
+      x1: FACTORY_SMOKE.spawnX[1],
+      y0: FACTORY_SMOKE.spawnY[0],
+      y1: FACTORY_SMOKE.spawnY[1],
+    };
 
     stepAndDrawPuffs(p, {
-      key: `factory-smoke:${seedKey}`,
+      key: `factory-smoke:${seedKey}${isSprite ? ':spr' : ''}`,
       rect: { x: emitX, y: emitY, w: emitW, h: emitH },
       dir: FACTORY_SMOKE.dir,
-      spreadAngle: val(FACTORY_SMOKE.spreadAngle, u),
-      speed: { min: val(FACTORY_SMOKE.speedMin, u), max: val(FACTORY_SMOKE.speedMax, u) },
-      gravity: val(FACTORY_SMOKE.gravity, u),
-      drag: val(FACTORY_SMOKE.drag, u),
+      spreadAngle: spread,
+      speed: { min: speedMin, max: speedMax },
+      gravity,
+      drag,
       accel: { x: 0, y: 0 },
-      spawn: {
-        x0: Math.min(val(FACTORY_SMOKE.spawnX, 0), val(FACTORY_SMOKE.spawnX, u)),
-        x1: Math.max(val(FACTORY_SMOKE.spawnX, u), 1 - (1 - val(FACTORY_SMOKE.spawnX, u))),
-        y0: Math.min(val(FACTORY_SMOKE.spawnY, 0), val(FACTORY_SMOKE.spawnY, u)),
-        y1: Math.max(val(FACTORY_SMOKE.spawnY, u), 1 - (1 - val(FACTORY_SMOKE.spawnY, u))),
-      },
-      jitter: { pos: val(FACTORY_SMOKE.jitterPos, u), velAngle: val(FACTORY_SMOKE.jitterAngle, u) },
-      count: Math.max(4, Math.floor(val(FACTORY_SMOKE.count, u))),
-      size: { min: val(FACTORY_SMOKE.sizeMin, u), max: Math.max(val(FACTORY_SMOKE.sizeMin, u), val(FACTORY_SMOKE.sizeMax, u)) },
+      spawn,
+      jitter: { pos: jPos, velAngle: jAng },
+      count,
+      size: { min: sizeMin, max: sizeMax },
       sizeHz: FACTORY_SMOKE.sizeHz,
-      lifetime: {
-        min: Math.max(0.05, val(FACTORY_SMOKE.lifeMin, u)),
-        max: Math.max(val(FACTORY_SMOKE.lifeMin, u), val(FACTORY_SMOKE.lifeMax, u))
-      },
+      lifetime: { min: lifeMin, max: lifeMax },
       fadeInFrac: FACTORY_SMOKE.fadeInFrac,
       fadeOutFrac: FACTORY_SMOKE.fadeOutFrac,
-      edgeFadePx: FACTORY_SMOKE.edgeFadePx,
-      color: smokeColor,
+      edgeFadePx: isSprite ? { left: 3, right: 3, top: 0, bottom: 8 } : FACTORY_SMOKE.edgeFadePx,
+      color: { r: smoked.r, g: smoked.g, b: smoked.b, a: sAlpha },
       respawn: true,
     }, dt);
 
-    // 4) chimney
+    // chimney
     const chimW  = Math.max(12, Math.round(pxW * 0.26));
-    const peakY  = yTop - roofRise;
     const chimTopTarget = Math.max(pxY + 6, peakY - Math.round(pxH * 0.05));
     const chimH  = Math.max(10, platY - chimTopTarget);
     const chimX  = isLeftChimney ? (xL) : (xR - chimW);
@@ -357,6 +406,9 @@ export function drawPower(p, cx, cy, r, opts = {}) {
     const capX1 = chimX + chimW + capOver / 2;
     p.line(capX0, chimY - 2, capX1, chimY - 2);
     p.noStroke();
+
+    // If you enabled canvas-wide clipping above, restore here:
+    // if (isSprite && p.width && p.height) { ctx.restore(); }
 
     p.pop();
     return;
@@ -455,7 +507,7 @@ export function drawPower(p, cx, cy, r, opts = {}) {
   const bladeW = Math.max(2, Math.round((cell || pxW) * val(POWER.rotor.bladeWk, u)));
   const tipR   = Math.round(bladeW * POWER.rotor.bladeTipRound);
 
-  const tSec  = (typeof opts.timeMs === 'number' ? opts.timeMs : p.millis()) / 1000;
+  const tSec  = (typeof opts.timeMs === 'number' ? opts.timeMs : (p.millis?.() || 0)) / 1000;
   const seed  = hash32(`power|${seedKey}`) >>> 0;
   const phase = rand01(seed) * POWER.rotor.spinJitter;
   const speed = (typeof opts.rotorSpeed === 'number') ? opts.rotorSpeed : val(POWER.rotor.spinSpeed, u);
@@ -522,6 +574,9 @@ export function drawPower(p, cx, cy, r, opts = {}) {
   p.noStroke();
   fillRgb(p, hubTint, alpha);
   p.circle(hubCx, hubCy, hubR * 2);
+
+  // If you enabled canvas-wide clipping above, restore here:
+  // if (isSprite && p.width && p.height) { ctx.restore(); }
 
   p.pop(); // appear transform
 }

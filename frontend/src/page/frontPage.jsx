@@ -82,12 +82,10 @@ const FrontPageInner = () => {
     const preventZoom = (event) => {
       const target = event.target;
       const isInsideGraph = target.closest('.graph-container, .dot-graph-container');
-      // NEW: treat the canvas overlay as “not special” (i.e., allow gestures)
       const isCanvasOverlay = target.closest('#canvas-root');
 
       // Only block if NOT inside graph AND NOT over the canvas overlay
       if (!isInsideGraph && !isCanvasOverlay) {
-        // Block ctrl+wheel zoom or multi-touch pinch zoom
         const multiTouch = Array.isArray(event.touches) ? event.touches.length > 1 : false;
         if (event.ctrlKey || multiTouch) {
           event.preventDefault();
@@ -95,7 +93,6 @@ const FrontPageInner = () => {
       }
     };
 
-    // Use passive:false only where we might call preventDefault
     document.addEventListener('wheel', preventZoom, { passive: false });
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
@@ -133,14 +130,17 @@ const FrontPageInner = () => {
       <DeferredGamificationPreloader />
       <Navigation />
 
-      <Suspense fallback={null}>
-        <CanvasEntry
-          answers={answers}
-          liveAvg={liveAvg}     // visuals (per-shape lerps, color, etc.)
-          allocAvg={allocAvg}   // allocation (placement) – updates on commit only
-          visible={!readyForViz && !animationVisible}
-        />
-      </Suspense>
+      {/* 🔻 IMPORTANT: actually UNMOUNT the Q5 canvas when viz is ready or animation overlay is on */}
+      {(!readyForViz && !animationVisible) && (
+        <Suspense fallback={null}>
+          <CanvasEntry
+            answers={answers}
+            liveAvg={liveAvg}     // visuals (per-shape lerps, color, etc.)
+            allocAvg={allocAvg}   // allocation (placement) – updates on commit only
+            visible={true}        // we mount it only when we want it visible
+          />
+        </Suspense>
+      )}
 
       {/* Heavy viz mounts only when fully allowed */}
       {readyForViz && (
@@ -156,11 +156,11 @@ const FrontPageInner = () => {
           setSurveyWrapperClass={setSurveyWrapperClass}
           onAnswersUpdate={setAnswers}
           onLiveAverageChange={(avg, meta) => {
-           // always update visuals
-           if (typeof avg === 'number') setLiveAvg(avg);
-           // only re-allocate when the gesture commits
-           if (meta?.committed && typeof avg === 'number') setAllocAvg(avg);
-         }}
+            // always update visuals
+            if (typeof avg === 'number') setLiveAvg(avg);
+            // only re-allocate when the gesture commits
+            if (meta?.committed && typeof avg === 'number') setAllocAvg(avg);
+          }}
         />
       </div>
 

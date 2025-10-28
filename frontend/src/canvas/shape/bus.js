@@ -1,4 +1,3 @@
-// src/canvas/shape/bus.js
 import { applyShapeMods } from './utils/shapeMods.ts';
 import { blendRGB } from './utils/colorBlend.ts';
 import { clampBrightness } from '../color/colorUtils.ts';
@@ -50,6 +49,9 @@ function rand01(seed) {
   t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
   return (((t ^ (t >>> 14)) >>> 0) / 4294967296);
 }
+function seeded01(key, salt = '') {
+  return rand01(hash32(`${key}|${salt}`));
+}
 function applyExposureContrast(rgb, exposure = 1, contrast = 1) {
   const e = Math.max(0.1, Math.min(3, exposure));
   const k = Math.max(0.5, Math.min(2, contrast));
@@ -63,9 +65,7 @@ function applyExposureContrast(rgb, exposure = 1, contrast = 1) {
 
 /**
  * Draws a bus that scales like car.js on small/mobile tiles.
- * - Ground (grass/asphalt) is unscaled.
- * - The bus "asset" is fit to the tile width with a side gutter using fitScaleToRectWidth().
- * - Appear transform is bottom-center of the tile (matches other shapes).
+ * Variety is driven by opts.seedKey (or tile footprint) so caching won't collapse colors.
  */
 export function drawBus(p, cx, cy, r, opts = {}) {
   const ex = typeof opts?.exposure === 'number' ? opts.exposure : 1;
@@ -73,14 +73,11 @@ export function drawBus(p, cx, cy, r, opts = {}) {
   const alpha = Number.isFinite(opts.alpha) ? opts.alpha : 235; // used for ground/wheels
   const u = clamp01(opts?.liveAvg ?? 0.5);
 
-  const seed = hash32(`bus|${Math.round(cx)}|${Math.round(cy)}|${Math.round(r)}`);
-  const r1 = rand01(seed);
-  const r2 = rand01(seed ^ 0xabc123);
-
-  // ---- Tile rect (2×1). Use the TILE CENTER for layout/anchoring.
+  // ---- Tile rect
   const cell = opts?.cell;
   const f    = opts?.footprint;
   let tileX, tileY, tileW, tileH, tileCx;
+
   if (cell && f) {
     tileX = f.c0 * cell; tileY = f.r0 * cell; tileW = f.w * cell; tileH = f.h * cell;
     tileCx = tileX + tileW / 2;
@@ -88,6 +85,14 @@ export function drawBus(p, cx, cy, r, opts = {}) {
     tileW = r * 6.4; tileH = r * 3.0; tileX = cx - tileW / 2; tileY = cy - tileH / 2;
     tileCx = cx;
   }
+
+  // ---- Stable per-instance seed (independent of offscreen center/radius)
+  const seedKey =
+    (opts.seedKey ?? opts.seed)
+    ?? (cell && f ? `bus|${f.r0}:${f.c0}|${f.w}x${f.h}` : `bus|${Math.round(cx)}|${Math.round(cy)}|${Math.round(r)}`);
+
+  const r1 = seeded01(seedKey, 'a');
+  const r2 = seeded01(seedKey, 'b');
 
   // ---- Appear anchored to bottom-center of the TILE (not cx)
   const baseY = tileY + tileH;
@@ -111,7 +116,7 @@ export function drawBus(p, cx, cy, r, opts = {}) {
   const aspH   = grassH * 0.38;
   const aspY   = grassY + (grassH - aspH) / 2;
 
-  // Grass tint (with gradient)
+  // Grass tint (with gradient) — seeded variety
   const g1 = pick(BUS_BASE_PALETTE.grass, r1);
   const g2 = pick(BUS_BASE_PALETTE.grass, r2);
   let grassTint = blendRGB(g1, g2, 0.4 + 0.3 * u);
@@ -128,42 +133,40 @@ export function drawBus(p, cx, cy, r, opts = {}) {
   fillRgb(p, aspColor, alpha);
   p.rect(tileX, aspY, tileW, aspH, r * 0.14);
 
-  // ---- Compute wheel baseline from road (kept in world space)
+  // ---- Wheel baseline from road
   const wheelY = aspY + aspH * 0.25;
 
-  // ---- Fit the bus "asset" to tile width (like car.js)
-  const designW = r * 6.4;                           // intrinsic bus width at radius r
-  const sidePad = Math.max(2, tileW * 0.08);         // a touch wider gutter than car
+  // ---- Fit the bus asset to tile width (like car.js)
+  const designW = r * 6.4;
+  const sidePad = Math.max(2, tileW * 0.08);
   const s = fitScaleToRectWidth(designW, tileW, sidePad, { allowUpscale: !!opts.allowUpscale });
 
-  // precompute colors for the asset
+  // Body/window colors — seeded body pick
   let bodyTint = pick(BUS_BASE_PALETTE.body, r1);
   if (opts.gradientRGB) bodyTint = blendRGB(bodyTint, opts.gradientRGB, val(BUS.body.colorBlend, u));
   bodyTint = applyExposureContrast(bodyTint, ex, ct);
   const winTint = applyExposureContrast(BUS_BASE_PALETTE.window, ex, ct);
 
-  // ---- Draw bus asset under a width-fit transform (anchor: bottom-center on wheelY)
+  // ---- Draw bus under width-fit transform
   beginFitScale(p, { cx: tileCx, anchorY: wheelY, scale: s });
   {
-    const w = designW;            // use intrinsic width; transform takes care of fitting
+    const w = designW;
     const bodyH = r * 2.0;
     const busX  = tileCx - w / 2;
 
-    // Wheels (smaller & better spaced: two rear, one front)
+    // Wheels (two rear, one front)
     const wheelD = Math.max(3, r * 0.85);
     fillRgb(p, BUS_BASE_PALETTE.wheel, 255);
-    // rear pair clustered near back
     p.circle(busX + w * 0.22, wheelY, wheelD);
     p.circle(busX + w * 0.38, wheelY, wheelD);
-    // front single
     p.circle(busX + w * 0.78, wheelY, wheelD);
 
-    // Body (full opaque)
+    // Body
     fillRgb(p, bodyTint, 255);
-    const bodyY = wheelY - bodyH * 1.00;   // stance
+    const bodyY = wheelY - bodyH * 1.00;
     p.rect(busX, bodyY, w, bodyH, r * 0.22);
 
-    // Windows (4 small + 1 big front, flush-right w/ larger TR radius)
+    // Windows
     fillRgb(p, winTint, 255);
     const smallCount = 4;
     const gap        = w * 0.02;
@@ -174,14 +177,12 @@ export function drawBus(p, cx, cy, r, opts = {}) {
     const usableForSmall = w - frontW - gap * (smallCount + 2);
     const smallW = Math.max(6, usableForSmall / smallCount);
 
-    // small windows (from left)
     let wx = busX + gap;
     for (let i = 0; i < smallCount; i++) {
       p.rect(wx, winY, smallW, winH, r * 0.08);
       wx += smallW + gap;
     }
 
-    // big front window (flush-right), bigger top-right radius
     const frontX = busX + w - frontW;
     const frontY = winY - Math.max(0, r * 0.02);
     p.rect(frontX, frontY, frontW, winH, r * 0.10, r * 0.30, 0, r * 0.08);

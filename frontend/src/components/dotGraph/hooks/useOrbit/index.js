@@ -8,9 +8,11 @@ import useRotation from './useRotation.js';
 import useIdleDrift from './useIdleDrift.js';
 import usePixelOffsets from './usePixelOffsets.js';
 import { useDynamicOffset } from '../../utils/dynamicOffset.ts';
-import {createGestureState } from './sharedGesture.ts';
+import { createGestureState } from './sharedGesture.ts';
+
 export default function useOrbit(params = {}) {
   const ROTATE_EVT = 'gp:orbit-rot';
+  const MENU_EVT   = 'gp:menu-open'; // listen for InfoPanel open/close
 
   const {
     isDragging = false,
@@ -29,7 +31,7 @@ export default function useOrbit(params = {}) {
     dataCount = params.dataCount ?? (Array.isArray(params.data) ? params.data.length : 0),
 
     idle = {},
-    thresholds = { mobile: 60, tablet: 65, desktop: 120 },
+    thresholds = { mobile: 60, tablet: 65, desktop: 90 },
   } = params;
 
   const {
@@ -43,6 +45,14 @@ export default function useOrbit(params = {}) {
   const groupRef = useRef();
 
   const gestureRef = useRef(createGestureState());
+
+  // Track InfoPanel open/close (from InfoPanel → window.dispatchEvent('gp:menu-open', { detail: { open } }))
+  const menuOpenRef = useRef(false);
+  useEffect(() => {
+    const onMenu = (e) => { menuOpenRef.current = !!e?.detail?.open; };
+    window.addEventListener(MENU_EVT, onMenu);
+    return () => window.removeEventListener(MENU_EVT, onMenu);
+  }, []);
 
   // ----- initial zoom target from data count -----
   const count = useMemo(() => (typeof dataCount === 'number' ? dataCount : 0), [dataCount]);
@@ -91,8 +101,6 @@ export default function useOrbit(params = {}) {
   const lastDesktopModeRef = useRef('off');
 
   // Gating for unwanted first flip:
-  // - ignore first pointer sample entirely
-  // - only allow rising 'in' toggle after we've seen the cursor OUTSIDE edge at least once
   const firstPointerSeenRef = useRef(false);
   const hasSeenNonEdgeRef = useRef(false);
 
@@ -130,52 +138,37 @@ export default function useOrbit(params = {}) {
   // Toggle pin (from HUD click OR mobile long-press)
   useEffect(() => {
     const onToggle = () => {
+      if (menuOpenRef.current) return; // ignore toggles while menu open
       if (!useDesktopLayout) {
-        // MOBILE/TABLET: force a visible, pinned 'in' state on toggle
         edgeCuePinnedRef.current = !edgeCuePinnedRef.current;
-        const next = {
-          visible: edgeCuePinnedRef.current,
-          mode: edgeCuePinnedRef.current ? 'in' : 'off',
-          insetX: 0,
-          insetY: 0,
-          pinned: edgeCuePinnedRef.current,
-        };
+        const next = { visible: edgeCuePinnedRef.current, mode: edgeCuePinnedRef.current ? 'in' : 'off', insetX: 0, insetY: 0, pinned: edgeCuePinnedRef.current };
         edgeCueLastModeRef.current = next.mode;
         edgeCueRef.current = next;
         broadcastEdgeCue(next);
-        // flip canonical dark/light
         broadcastLatchedState(!Boolean(window.__gpEdgeLatched));
-        // require leaving edge before another implicit flip
         hasSeenNonEdgeRef.current = false;
         return;
       }
 
-      // DESKTOP: only allow toggling when cue is currently visible/pinned
       const currentlyVisible = edgeCueRef.current?.visible || edgeCuePinnedRef.current;
       if (!currentlyVisible) return;
 
       edgeCuePinnedRef.current = !edgeCuePinnedRef.current;
 
       if (!edgeCuePinnedRef.current) {
-        // Unpin → resume live behavior
         const offPinned = { ...edgeCueRef.current, pinned: false };
         edgeCueRef.current = offPinned;
         broadcastEdgeCue(offPinned);
       } else {
-        // Pin → lock visible + keep last mode (prefer 'in' if we have it)
         const modeToUse = edgeCueRef.current.mode === 'off'
           ? (edgeCueLastModeRef.current === 'off' ? 'in' : edgeCueLastModeRef.current)
           : edgeCueRef.current.mode;
-
         const snap = { ...edgeCueRef.current, visible: true, pinned: true, mode: modeToUse };
         edgeCueLastModeRef.current = modeToUse;
         edgeCueRef.current = snap;
         broadcastEdgeCue(snap);
       }
-
-      // flip canonical dark/light on explicit desktop toggle
       broadcastLatchedState(!Boolean(window.__gpEdgeLatched));
-      // require leaving edge before another implicit flip
       hasSeenNonEdgeRef.current = false;
     };
 
@@ -194,6 +187,18 @@ export default function useOrbit(params = {}) {
     }
 
     const onPointerMove = (e) => {
+      // While info panel is open, force edge-drive off and stop cues
+      if (menuOpenRef.current) {
+        edgeHotzoneRef.current = false;
+        edgeDriveRef.current = { active: false, nx: 0, ny: 0, strength: 0 };
+        if (!edgeCuePinnedRef.current) {
+          const off = { visible: false, mode: 'off', insetX: 0, insetY: 0, pinned: false };
+          edgeCueRef.current = off;
+          broadcastEdgeCue(off);
+        }
+        return;
+      }
+
       const w = window.innerWidth || 0;
       const h = window.innerHeight || 0;
       if (w === 0 || h === 0) {
@@ -207,34 +212,24 @@ export default function useOrbit(params = {}) {
         return;
       }
 
-      const x = e.clientX;
-      const y = e.clientY;
-
-      // px-based bands
-      const insetX = 240;
-      const insetY = 80;
-
+      const x = e.clientX, y = e.clientY;
+      const insetX = 240, insetY = 80;
       const NEAR_MARGIN_PX = 40;
       const nearInsetX = insetX + NEAR_MARGIN_PX;
       const nearInsetY = insetY + NEAR_MARGIN_PX;
 
-      // top/bottom center "dead zone" across middle 20% of width ===
       const CENTER_GAP_START = w * 0.38;
       const CENTER_GAP_END   = w * 0.62;
       const inCenterGapX = x >= CENTER_GAP_START && x <= CENTER_GAP_END;
 
-      // for rotation
       const nx = (x / w) * 2 - 1;
       const ny = -((y / h) * 2 - 1);
 
-      // depth into bands (left/right unchanged)
       let sx = 0;
       if (x < insetX)                sx = (insetX - x) / insetX;
       else if (x > (w - insetX))     sx = (x - (w - insetX)) / insetX;
 
-      // depth into top/bottom — but suppress if cursor is inside the center gap horizontally
-      let syTop = 0;
-      let syBot = 0;
+      let syTop = 0, syBot = 0;
       if (!inCenterGapX) {
         if (y < insetY)            syTop = (insetY - y) / insetY;
         else if (y > (h - insetY)) syBot = (y - (h - insetY)) / insetY;
@@ -244,30 +239,23 @@ export default function useOrbit(params = {}) {
       const strength = Math.max(sx, sy);
       const inEdge = strength > 0;
 
-      // near-edge detection (respect the same center-gap suppression for top/bottom)
       const nearTop    = !inCenterGapX && y < nearInsetY;
       const nearBottom = !inCenterGapX && y > (h - nearInsetY);
       const nearLeft   = x < nearInsetX;
       const nearRight  = x > (w - nearInsetX);
-
       const nearEdge = !inEdge && (nearTop || nearBottom || nearLeft || nearRight);
 
-      // track for idle + edge-drive
       edgeHotzoneRef.current = inEdge;
       edgeDriveRef.current = inEdge
         ? { active: true, nx, ny, strength: Math.min(1, Math.max(0, strength)) }
         : { active: false, nx: 0, ny: 0, strength: 0 };
 
-      // Live candidate from cursor
       const candidate = {
         visible: inEdge || nearEdge,
         mode: inEdge ? 'in' : (nearEdge ? 'near' : 'off'),
-        insetX,
-        insetY,
-        pinned: edgeCuePinnedRef.current,
+        insetX, insetY, pinned: edgeCuePinnedRef.current,
       };
 
-      // If pinned → force visible and keep darkest look regardless of cursor
       let finalCue = candidate;
       if (edgeCuePinnedRef.current) {
         const modeToUse = candidate.mode === 'off'
@@ -279,23 +267,17 @@ export default function useOrbit(params = {}) {
         edgeCueLastModeRef.current = candidate.mode;
       }
 
-      // --- First pointer sample guard: seed state, do not flip ---
       if (!firstPointerSeenRef.current) {
         firstPointerSeenRef.current = true;
         lastDesktopModeRef.current = finalCue.mode;
-        // consider whether this first sample counts as "outside"
         hasSeenNonEdgeRef.current = finalCue.mode !== 'in';
         edgeCueRef.current = finalCue;
         broadcastEdgeCue(finalCue);
         return;
       }
 
-      // Outside edge → arm the next rising 'in'
-      if (finalCue.mode !== 'in') {
-        hasSeenNonEdgeRef.current = true;
-      }
+      if (finalCue.mode !== 'in') hasSeenNonEdgeRef.current = true;
 
-      // Rising-edge 'in' → flip canonical, but ONLY if we've seen outside first
       const prevMode = lastDesktopModeRef.current || 'off';
       const risingIn = finalCue.mode === 'in' && prevMode !== 'in' && hasSeenNonEdgeRef.current;
 
@@ -304,7 +286,6 @@ export default function useOrbit(params = {}) {
 
       if (risingIn) {
         broadcastLatchedState(!Boolean(window.__gpEdgeLatched));
-        // disarm until we leave edge again
         hasSeenNonEdgeRef.current = false;
       }
 
@@ -322,17 +303,14 @@ export default function useOrbit(params = {}) {
     lastActivityRef: laRef = lastActivityRef
   }) => {
     if (hoverActiveRef.current) return false;
+    if (menuOpenRef.current) return false; // treat as active while panel open
     if (useDesktopLayout && edgeHotzoneRef.current) return false;
     return isIdle({ userInteracting, hasInteractedRef: hiRef, lastActivityRef: laRef });
   };
 
   // ----- zoom -----
   const { radius, zoomTargetRef, zoomVelRef, setZoomTarget } = useZoom({
-    minRadius,
-    maxRadius,
-    initialTarget: initialTargetComputed,
-    markActivity,
-    gestureRef,
+    minRadius, maxRadius, initialTarget: initialTargetComputed, markActivity, gestureRef,
   });
 
   // ----- rotation -----
@@ -345,8 +323,9 @@ export default function useOrbit(params = {}) {
     radius,
     markActivity,
     isDragging,
+    gestureRef,
     edgeDriveRef,
-    gestureRef,  
+    menuOpenRef, // pass the panel gate down
   });
 
   const isPinchingRef          = rot?.isPinchingRef          ?? { current: false };

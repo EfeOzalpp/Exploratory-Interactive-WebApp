@@ -65,6 +65,31 @@
       }
       @keyframes spin { to { transform: rotate(360deg); } }
     </style>
+    
+    <script>
+  (function () {
+    const root = document.getElementById('butterfly-habits');
+    const loader = document.getElementById('initial-loader');
+    if (!root || !loader) return;
+
+    // Hide once React mounts something under #butterfly-habits
+    const obs = new MutationObserver(() => {
+      if (root.firstChild) {
+        loader.style.display = 'none';
+        obs.disconnect();
+      }
+    });
+    obs.observe(root, { childList: true, subtree: true });
+
+    // Fallback: if nothing changed by window load, hide anyway after a tick
+    window.addEventListener('load', () => {
+      if (loader.style.display !== 'none') {
+        requestAnimationFrame(() => { loader.style.display = 'none'; });
+      }
+    }, { passive: true });
+  })();
+</script>
+
   </head>
   <body>
     <noscript>Please enable JavaScript</noscript>

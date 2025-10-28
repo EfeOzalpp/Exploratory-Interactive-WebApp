@@ -67,7 +67,7 @@ function makePainter(
   const r = Math.min(cnv.width / dpr, cnv.height / dpr) * 0.8;
 
   // Sprite-only pixel/world scale relative to ~192px tuning
-  const pixelScale = Math.max(1, tileSize / 192);
+  const pixelScale = Math.max(1, tileSize / 128);
 
   const baseOpts = {
     alpha,
@@ -211,7 +211,7 @@ export function makeFrozenTextureFromDrawer({
   stepMs = 33,
 
   // higher quality is fine because we won’t repaint
-  generateMipmaps = true,
+  generateMipmaps = false,
   anisotropy = 2,
   minFilter = THREE.LinearMipmapLinearFilter,
   magFilter = THREE.LinearFilter,

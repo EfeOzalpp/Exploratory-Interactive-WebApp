@@ -74,7 +74,7 @@
   .cp-thumb-hitbox { width: 112px; height: 112px; }
   .cp-thumb.is-rect { width: 8px; height: 20px; }
   .qm-stage { height: 132px; width: 92vw; margin-bottom: -1px;}
-  .qm-answer-chip { padding: 9px 12px; border-radius: 9px; width: 80%;}
+  .qm-answer-chip { padding: 9px 12px; border-radius: 9px; width: 74%;}
   .qm-answer-abs { min-width: 100%; transform: translate(-50%, -50%) scale(0.95); }
   .cp-thumb {width: 32px; height: 32px;}
 }

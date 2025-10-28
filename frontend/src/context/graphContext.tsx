@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { unstable_batchedUpdates as batched } from "react-dom";
 import { subscribeSurveyData } from "../utils/sanityAPI";
+import useSectionCounts from "../utils/useSectionCounts";
 
 export type Mode = "relative" | "absolute";
 
@@ -77,6 +78,9 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     return sessionStorage.getItem("gp.myRole");
   });
 
+  // live counts (already powering GraphPicker)
+  const { counts } = useSectionCounts();
+
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -127,7 +131,7 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     } catch {}
   }, []);
 
-  // live data
+  // live data subscription for the active section
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeSurveyData({
@@ -139,6 +143,62 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     });
     return () => unsub();
   }, [section]);
+
+  // Sync identity fields when saveUserResponse updates sessionStorage (without remount)
+  useEffect(() => {
+    const onIdentityUpdated = () => {
+      try {
+        const id = sessionStorage.getItem("gp.myEntryId");
+        const sec = sessionStorage.getItem("gp.mySection");
+        const role = sessionStorage.getItem("gp.myRole");
+        setMyEntryId(id);
+        setMySection(sec);
+        setMyRole(role);
+      } catch {}
+    };
+    window.addEventListener("gp:identity-updated", onIdentityUpdated);
+    // also react to cross-tab storage changes
+    window.addEventListener("storage", onIdentityUpdated);
+    return () => {
+      window.removeEventListener("gp:identity-updated", onIdentityUpdated);
+      window.removeEventListener("storage", onIdentityUpdated);
+    };
+  }, []);
+
+  // --- One-time “better first view” after submit (no redirect, just initial choice) ---
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // only run immediately after a new submission
+    const justSubmitted = sessionStorage.getItem("gp.justSubmitted") === "1";
+    if (!justSubmitted) return;
+    if (!counts) return; // wait until counts are available
+
+    // tolerate a brief window where context hasn't updated yet
+    const effectiveMySection =
+      mySection || sessionStorage.getItem("gp.mySection") || "";
+
+    if (!effectiveMySection) return;
+
+    // keep visitors in Visitors
+    if (effectiveMySection === "visitor") {
+      sessionStorage.removeItem("gp.justSubmitted");
+      return;
+    }
+
+    const n = counts[effectiveMySection] ?? 0;
+    const SMALL_SECTION_THRESHOLD = 5;
+    if (n < SMALL_SECTION_THRESHOLD) {
+      // open on a fuller bucket the first time
+      setSection("all-massart");
+      // mark that we want the personalized panel opened when the graph is ready
+      try {
+        sessionStorage.setItem("gp.openPersonalOnNext", "1");
+      } catch {}
+    }
+
+    // clear the flag so we never run this again
+    sessionStorage.removeItem("gp.justSubmitted");
+  }, [counts, mySection]);
 
   const resetToStart = () => {
     batched(() => {

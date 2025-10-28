@@ -1,4 +1,3 @@
-// src/canvas/q5-lite.js
 // Tiny p5-ish engine + your existing startQ5 logic, without the Q5 dependency.
 
 /* ───────────────────────────────────────────────────────────
@@ -259,7 +258,11 @@ const REG_STYLE_DEFAULT = {
 };
 
 export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } = {}) {
-  if (REGISTRY.has(mount)) return REGISTRY.get(mount).controls;
+  // Guard against double inits on the same mount
+  if (REGISTRY.has(mount)) {
+    try { REGISTRY.get(mount).controls?.stop?.(); } catch {}
+    REGISTRY.delete(mount);
+  }
 
   const parentEl = ensureMount(mount);
 
@@ -294,10 +297,19 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   applyCanvasNonBlockingStyle(canvasEl);
   parentEl.appendChild(canvasEl);
 
+  // Context loss guard (for WebGL it matters; for 2D we still trap to stop loop)
+  const onContextLost = (e) => {
+    try { e?.preventDefault?.(); } catch {}
+    try { console.warn('[q5-lite] context lost'); } catch {}
+    stop();
+  };
+  canvasEl.addEventListener('webglcontextlost', onContextLost, { passive: false });
+
   const ctx = canvasEl.getContext('2d', { alpha: true });
   p = makeP(canvasEl, ctx);
 
   /* DPR + size */
+  let resizeRaf = null;
   function resizeToViewport() {
     const { w, h } = getViewportSize();
     p.pixelDensity(resolvePixelDensity(dprMode));
@@ -310,19 +322,17 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
     if (hero.x == null) hero.x = Math.round(p.width * 0.50);
     if (hero.y == null) hero.y = Math.round(p.height * 0.30);
   }
+  const resizeThrottled = () => {
+    if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(resizeToViewport);
+  };
   resizeToViewport();
-  window.addEventListener('resize', resizeToViewport, { passive: true });
+  window.addEventListener('resize', resizeThrottled, { passive: true });
 
   /* vis pause/resume */
   const visHandler = () => {
     if (document.visibilityState === 'visible') {
-      p.pixelDensity(resolvePixelDensity(dprMode));
-      const { w, h } = getViewportSize();
-      p.resizeCanvas(w, h);
-      // keep CSS/LT sizes in lockstep after tab returns
-      canvasEl.style.width  = w + 'px';
-      canvasEl.style.height = h + 'px';
-      cachedGrid.w = cachedGrid.h = cachedGrid.cell = 0;
+      resizeThrottled();
     }
   };
   document.addEventListener('visibilitychange', visHandler);
@@ -381,6 +391,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
 
   /* main loop */
   let running = true;
+  let rafId = null;
   function frame(now) {
     if (!running) return;
     p.__tick(now);
@@ -477,9 +488,9 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
       p.circle(hero.x, hero.y, style.r * 2);
     }
 
-    requestAnimationFrame(frame);
+    rafId = requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  rafId = requestAnimationFrame(frame);
 
   /* controls (API-compatible) */
   function setFieldItems(nextItems = []) {
@@ -548,8 +559,10 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   function setVisibleCanvas(v){ if (canvasEl?.style) canvasEl.style.opacity = v ? '1' : '0'; }
   function stop(){
     try { running = false; } catch {}
+    if (rafId != null) { try { cancelAnimationFrame(rafId); } catch {} }
     document.removeEventListener('visibilitychange', visHandler);
-    window.removeEventListener('resize', resizeToViewport);
+    window.removeEventListener('resize', resizeThrottled);
+    try { canvasEl?.removeEventListener?.('webglcontextlost', onContextLost); } catch {}
     try { canvasEl?.remove?.(); } catch {}
     REGISTRY.delete(mount);
   }
