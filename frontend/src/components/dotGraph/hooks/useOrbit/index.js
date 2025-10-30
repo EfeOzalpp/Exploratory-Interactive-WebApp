@@ -31,7 +31,7 @@ export default function useOrbit(params = {}) {
     dataCount = params.dataCount ?? (Array.isArray(params.data) ? params.data.length : 0),
 
     idle = {},
-    thresholds = { mobile: 60, tablet: 65, desktop: 90 },
+    thresholds = { mobile: 50, tablet: 65, desktop: 90 },
   } = params;
 
   const {

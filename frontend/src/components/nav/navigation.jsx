@@ -54,7 +54,7 @@ const Navigation = () => {
     closeGraph,
     setNavPanelOpen,
     navVisible,
-    darkMode,            // ← EdgeModeHint controls this
+    darkMode, // ← EdgeModeHint controls this
   } = useGraph();
 
   // keep context in sync with this component's "What's the Idea?" panel
@@ -97,8 +97,12 @@ const Navigation = () => {
 
   const showObserverButton = !hasCompletedSurvey || observerMode;
 
-  // THEME: use EdgeModeHint-controlled darkMode, but force LIGHT while info panel is open
-  const isDark = open ? false : !!darkMode;
+  // THEME:
+  // - X button should always mirror darkMode
+  // - Nav chrome can still force LIGHT while the info panel is open
+  const themeDark = !!darkMode;
+  const navChromeDark = open ? false : themeDark;
+  const xButtonDark = themeDark;
 
   const postCompleteOnly = hasCompletedSurvey && !observerMode;
 
@@ -112,12 +116,17 @@ const Navigation = () => {
         <div className="nav-right">
           {/* When the info panel is OPEN, render ONLY a single “x” button and nothing else */}
           {open ? (
-            <div className={["level-two", isDark ? "is-dark" : ""].join(" ").trim()}>
+            <div
+              className={["level-two", xButtonDark ? "is-dark" : ""]
+                .join(" ")
+                .trim()}
+            >
               <button
-                className={["info-close", isDark ? "is-dark" : ""].join(" ").trim()}
+                className={["info-close", xButtonDark ? "is-dark" : ""]
+                  .join(" ")
+                  .trim()}
                 onClick={() => setOpen(false)}
                 aria-label="Close info panel"
-                aria-pressed="true"
               >
                 {/* SVG X icon, same visual weight as + / - */}
                 <svg
@@ -141,13 +150,15 @@ const Navigation = () => {
                 className={[
                   "level-one",
                   burgerOpen ? "burger-closed" : "",
-                  isDark ? "is-dark" : "",
+                  navChromeDark ? "is-dark" : "",
                 ]
                   .join(" ")
                   .trim()}
               >
                 <button
-                  className={["nav-toggle", isDark ? "is-dark" : ""].join(" ").trim()}
+                  className={["nav-toggle", navChromeDark ? "is-dark" : ""]
+                    .join(" ")
+                    .trim()}
                   onClick={() => setOpen(true)}
                   aria-expanded={false}
                   aria-controls="info-overlay"
@@ -160,7 +171,7 @@ const Navigation = () => {
               <div
                 className={[
                   "level-two",
-                  isDark ? "is-dark" : "",
+                  navChromeDark ? "is-dark" : "",
                   postCompleteOnly ? "is-post-complete" : "",
                 ]
                   .join(" ")
@@ -178,7 +189,7 @@ const Navigation = () => {
                       className={[
                         "observe-results",
                         observerMode ? "active" : "",
-                        isDark ? "is-dark" : "",
+                        navChromeDark ? "is-dark" : "",
                       ]
                         .join(" ")
                         .trim()}
@@ -196,7 +207,7 @@ const Navigation = () => {
                   className={[
                     "burger-toggle",
                     burgerOpen ? "open" : "",
-                    isDark ? "is-dark" : "",
+                    navChromeDark ? "is-dark" : "",
                   ]
                     .join(" ")
                     .trim()}
@@ -206,12 +217,24 @@ const Navigation = () => {
                   aria-label={burgerOpen ? "Hide options" : "Show options"}
                 >
                   {burgerOpen ? (
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                    >
                       <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
                       <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                    >
                       <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
                     </svg>
                   )}
