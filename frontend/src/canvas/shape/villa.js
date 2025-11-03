@@ -88,10 +88,10 @@ const VILLA = {
     offsetEdgePx: 6,
     jitterPx: 4,
     wind: {
-      rotAmp: 0.07,
+      rotAmp: 0.03,
       rotAmpTopMul: 1.35,
       xShearAmp: 0.06,
-      speedRange: [1, 0.2],
+      speedRange: [0.6, 0.2],
       phaseJitter: Math.PI * 4,
     },
   }

@@ -7,7 +7,7 @@ import {
   drawClouds, drawSnow, drawHouse, drawPower, drawSun,
   drawVilla, drawCarFactory, drawCar, drawSea, drawBus, drawTrees
 } from './shape/index.js';
-import { bandFromWidth, GRID_MAP } from './grid/config.ts';
+import { bandFromWidth, getGridSpec } from './grid/config.ts';
 import { makeCenteredSquareGrid } from './grid/layoutCentered.ts';
 
 /* ───────────────────────────────────────────────────────────
@@ -271,6 +271,8 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   const hero = { x: null, y: null, visible: false };
   let canvasEl = null, p = null;
 
+  let questionnaireOpen = false;
+
   const liveStates = new Map();
   let ghosts = [];
 
@@ -280,14 +282,17 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   }
 
   // grid cache
-  let cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0 };
+  let cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, q: null };
+
   const computeGrid = () => {
-    if (p.width === cachedGrid.w && p.height === cachedGrid.h && cachedGrid.cell > 0) return cachedGrid;
-    const spec = GRID_MAP[bandFromWidth(p.width)];
+  if (p.width === cachedGrid.w && p.height === cachedGrid.h && cachedGrid.q === questionnaireOpen && cachedGrid.cell > 0) {
+   return cachedGrid;
+  }
+  const spec = getGridSpec(p.width, questionnaireOpen);
     const { cell, rows, cols } = makeCenteredSquareGrid({
       w: p.width, h: p.height, rows: spec.rows, useTopRatio: spec.useTopRatio ?? 1,
     });
-    cachedGrid = { w: p.width, h: p.height, cell, rows, cols };
+    cachedGrid = { w: p.width, h: p.height, cell, rows, cols, q: questionnaireOpen };
     return cachedGrid;
   };
 
@@ -566,9 +571,16 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
     try { canvasEl?.remove?.(); } catch {}
     REGISTRY.delete(mount);
   }
+  
+  function setQuestionnaireOpen(v){
+    questionnaireOpen = !!v;
+    // invalidate cache including the flag
+    cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, q: null };
+  }
 
   const controls = {
     setFieldItems, setFieldStyle, setFieldVisible, setHeroVisible, setVisible: setVisibleCanvas, stop,
+    setQuestionnaireOpen,
     get canvas(){ return canvasEl; },
   };
   REGISTRY.set(mount, { controls });

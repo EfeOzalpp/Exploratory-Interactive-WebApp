@@ -1,7 +1,7 @@
 // pages/FrontPage.jsx
 import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import RadialBackground from '../components/static/radialBackground';
-import Survey from '../components/survey/survey.jsx';
+import Survey from '../components/survey/survey.tsx';
 import Navigation from '../components/nav/navigation.jsx';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
@@ -130,7 +130,7 @@ const FrontPageInner = () => {
       <DeferredGamificationPreloader />
       <Navigation />
 
-      {/* 🔻 IMPORTANT: actually UNMOUNT the Q5 canvas when viz is ready or animation overlay is on */}
+      {/* actually UNMOUNT the Q5 canvas when viz is ready or animation overlay is on */}
       {(!readyForViz && !animationVisible) && (
         <Suspense fallback={null}>
           <CanvasEntry

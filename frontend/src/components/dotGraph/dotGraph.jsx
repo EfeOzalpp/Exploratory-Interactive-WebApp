@@ -30,6 +30,9 @@ import { SHAPE_FOOTPRINT } from './canvas/shapeFootprints.ts';
 // queue progress hook (ties into textureQueue)
 import useTextureQueueProgress from './canvas/textureQueueProgress.ts';
 
+// 🔽 Needed to strictly derive roles from section ids
+import { ROLE_SECTIONS } from '../survey/sectionPicker/sections';
+
 /* ---------- small utils ---------- */
 const nonlinearLerp = (a, b, t) => {
   const x = Math.max(0, Math.min(1, t));
@@ -67,8 +70,85 @@ const BLEED_FRAC = {
   carFactory: { top: 0, right: 0, bottom: 0, left: 0 },
 };
 
+/* ───────────────────────────────────────────────────────────
+   SCOPING: strict role-from-section + normalization + rules
+   (first-render safe via sessionStorage fallback)
+   ─────────────────────────────────────────────────────────── */
+
+// Canonical role buckets
+const ROLE_VISITOR = 'visitor';
+const ROLE_STUDENTS = 'all-students';
+const ROLE_STAFF = 'all-staff';
+const ROLE_UNKNOWN = 'unknown';
+
+// Canonical section buckets (plus concrete department ids)
+const BUCKETS = new Set(['all', 'all-massart', 'all-students', 'all-staff', 'visitor']);
+
+const normStr = (v) => String(v ?? '').trim().toLowerCase();
+
+// Normalize section ids/labels to canonical buckets; pass through dept ids
+function normSection(sectionRaw) {
+  const s = normStr(sectionRaw);
+  if (!s) return 'all'; // empty means Everyone
+  if (s === 'all' || s.includes('everyone')) return 'all';
+  if (s.includes('massart')) return 'all-massart';
+  if (s.includes('all-students') || s.includes('all students')) return 'all-students';
+  if (s.includes('all-staff') || s.includes('all staff') || s.includes('faculty/staff') || s.includes('faculty-staff')) return 'all-staff';
+  if (s.includes('visitor')) return 'visitor';
+  // anything else is a concrete department id (e.g., 'animation')
+  return s;
+}
+
+// Build fast lookup sets once
+const STUDENT_ID_SET = new Set(ROLE_SECTIONS.student.map(s => s.value));
+const STAFF_ID_SET   = new Set(ROLE_SECTIONS.staff.map(s => s.value));
+
+// Strictly derive the user's role from their saved section id
+function deriveRoleFromSectionId(mySectionRaw) {
+  const s = normSection(mySectionRaw);
+  if (s === 'visitor') return ROLE_VISITOR;
+  if (STUDENT_ID_SET.has(s) || s === 'all-students') return ROLE_STUDENTS;
+  if (STAFF_ID_SET.has(s)   || s === 'all-staff')    return ROLE_STAFF;
+  return ROLE_UNKNOWN;
+}
+
+// Compute the full allowed scope set for a given user
+function includedScopesForUser(role, mySectionRaw) {
+  const me = normSection(mySectionRaw);
+
+  switch (role) {
+    case ROLE_VISITOR: {
+      // Visitors ONLY in Everyone & Visitors
+      return new Set(['all', 'visitor']);
+    }
+    case ROLE_STUDENTS: {
+      const set = new Set(['all-students', 'all-massart', 'all']);
+      if (me && !BUCKETS.has(me)) set.add(me); // exact department
+      return set;
+    }
+    case ROLE_STAFF: {
+      const set = new Set(['all-staff', 'all-massart', 'all']);
+      if (me && !BUCKETS.has(me)) set.add(me); // exact department
+      return set;
+    }
+    case ROLE_UNKNOWN:
+    default: {
+      // Conservative default: my dept (if any) + MassArt + Everyone
+      const set = new Set(['all-massart', 'all']);
+      if (me && !BUCKETS.has(me)) set.add(me);
+      return set;
+    }
+  }
+}
+
+// Membership predicate used by DotGraph
+function allowPersonalInSection(role, mySectionRaw, sectionRaw) {
+  const here = normSection(sectionRaw); // empty -> 'all'
+  return includedScopesForUser(role, mySectionRaw).has(here);
+}
+
 const DotGraph = ({ isDragging = false, data = [] }) => {
-  const { myEntryId, mySection, myRole, observerMode, mode, section } = useGraph();
+  const { myEntryId, mySection, /* myRole (unused on purpose) */ observerMode, mode, section } = useGraph();
   const safeData = Array.isArray(data) ? data : [];
   const showCompleteUI = useObserverDelay(observerMode, 2000);
 
@@ -87,17 +167,35 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     [personalizedEntryId, safeData]
   );
 
-  // ===== SCOPE GUARD (only show in allowed scopes) =====
+  /* ───────────────────────────────────────────────────────────
+     First-render safe identity + strict role derivation
+     ─────────────────────────────────────────────────────────── */
+  const effectiveMySection = useMemo(() => {
+    if (mySection && mySection !== '') return mySection;
+    if (typeof window !== 'undefined') {
+      const s = sessionStorage.getItem('gp.mySection');
+      if (s && s !== '') return s;
+    }
+    return '';
+  }, [mySection]);
+
+  const viewerRole = useMemo(
+    () => deriveRoleFromSectionId(effectiveMySection),
+    [effectiveMySection]
+  );
+
   const shouldShowPersonalized = useMemo(() => {
-    if (!mySection) return false; // no submission yet => never show
-    if (section === mySection) return true;
-    if (section === 'all-staff')    return myRole === 'staff';
-    if (section === 'all-students') return myRole === 'student';
-    if (section === 'all-massart')  return myRole === 'student' || myRole === 'staff';
-    if (section === 'visitor')      return myRole === 'visitor';
-    if (section === 'all')          return true;
-    return false;
-  }, [section, mySection, myRole]);
+    const viewing = section || (typeof window !== 'undefined' ? sessionStorage.getItem('gp.viewingSection') : null) || 'all';
+    const ok = allowPersonalInSection(viewerRole, effectiveMySection, viewing);
+
+    // HARD GUARD: visitors *only* in Everyone & Visitors,
+    // even if their row appears in umbrella datasets.
+    if (viewerRole === ROLE_VISITOR) {
+      const v = normSection(viewing);
+      return v === 'all' || v === 'visitor';
+    }
+    return ok;
+  }, [viewerRole, effectiveMySection, section]);
 
   // Only skew under 768px and when we're actually showing the personalized card here
   const wantsSkew =
@@ -276,12 +374,21 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   useEffect(() => { onHoverEndRef.current = onHoverEnd; }, [onHoverEnd]);
   useEffect(() => { pointsRef.current = points; }, [points]);
 
-  // clear hover/tie when mode or section changes, unless spotlight is active
+  /* ───────────────────────────────────────────────────────────
+     CHANGE: On mode change, do NOT clear the selected tie line.
+     We still end any transient hover to avoid ghost tooltips.
+     On section change, we clear both hover and selected tie (as before).
+     ─────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    if (spotlightActiveRef.current) return;
+    onHoverEnd();          // stop hover on mode change, keep tie line
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (spotlightActiveRef.current) return;
     onHoverEnd();
-    setSelectedTieKey(null);
-  }, [mode, section]); // eslint-disable-line react-hooks/exhaustive-deps
+    setSelectedTieKey(null); // clear tie line when changing sections
+  }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // clear hover/tie when dataset size changes, unless spotlight is active
   useEffect(() => {
@@ -290,8 +397,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
     setSelectedTieKey(null);
   }, [safeData.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ===== Observer spotlight (programmatic, short-lived general tooltip) =====
-     Mount ONCE; use refs above to always call latest handlers/points. */
+  /* ===== Observer spotlight (programmatic, short-lived general tooltip) ===== */
   useEffect(() => {
     const onSpotlight = (evt) => {
       const { detail } = evt || {};
@@ -397,7 +503,7 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
   }, [safeData, linkKeyOf]);
 
   const [selectedTieKey, setSelectedTieKey] = useState(null);
-  useEffect(() => { setSelectedTieKey(null); }, [mode]);
+  // NOTE: removed the old `useEffect(() => setSelectedTieKey(null), [mode])`
 
   const selectedTieLinePoints = useMemo(() => {
     if (selectedTieKey == null || !tieBuckets.has(selectedTieKey)) return [];

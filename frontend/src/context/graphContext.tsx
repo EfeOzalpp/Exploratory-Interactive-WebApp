@@ -1,3 +1,4 @@
+// src/context/graphContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { unstable_batchedUpdates as batched } from "react-dom";
 import { subscribeSurveyData } from "../utils/sanityAPI";
@@ -22,11 +23,15 @@ export type GraphContextType = {
   data: any[];
   loading: boolean;
 
-  // survey gating
+  // survey gating (broad survey-on/off)
   isSurveyActive: boolean;
   setSurveyActive: (v: boolean) => void;
   hasCompletedSurvey: boolean;
   setHasCompletedSurvey: (v: boolean) => void;
+
+  // ✅ specific: question flow currently visible?
+  questionnaireOpen: boolean;
+  setQuestionnaireOpen: (v: boolean) => void;
 
   // observer mode
   observerMode: boolean;
@@ -45,15 +50,11 @@ export type GraphContextType = {
   darkMode: boolean;
   setDarkMode: (v: boolean) => void;
 
-  // NEW: tutorial mode
-  tutorialMode: boolean;
-  setTutorialMode: (v: boolean) => void;
-
-  // NEW: nav panel open (controls logo gating)
+  // nav panel open (controls logo gating)
   navPanelOpen: boolean;
   setNavPanelOpen: (v: boolean) => void;
 
-  // NEW: global nav visibility (hide/show entire nav)
+  // global nav visibility (hide/show entire nav)
   navVisible: boolean;
   setNavVisible: (v: boolean) => void;
 
@@ -78,7 +79,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     return sessionStorage.getItem("gp.myRole");
   });
 
-  // live counts (already powering GraphPicker)
   const { counts } = useSectionCounts();
 
   const [data, setData] = useState<any[]>([]);
@@ -86,6 +86,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [isSurveyActive, setSurveyActive] = useState<boolean>(false);
   const [hasCompletedSurvey, setHasCompletedSurvey] = useState<boolean>(false);
+
+  const [questionnaireOpen, setQuestionnaireOpen] = useState<boolean>(false);
 
   const [observerMode, setObserverMode] = useState<boolean>(false);
   const [vizVisible, setVizVisible] = useState<boolean>(false);
@@ -114,24 +116,9 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [darkMode]);
 
-  // NEW: tutorial mode — do NOT persist; always start false after a refresh.
-  const [tutorialMode, setTutorialMode] = useState<boolean>(false);
-
-  // NEW: nav panel open (drives logo gating)
   const [navPanelOpen, setNavPanelOpen] = useState<boolean>(false);
-
-  // NEW: global nav visibility (entire nav shown/hidden)
   const [navVisible, setNavVisible] = useState<boolean>(true);
 
-  // Cleanup any legacy flags that might force tutorial back on after refresh.
-  useEffect(() => {
-    try {
-      sessionStorage.removeItem("gp.tutorialMode");
-      sessionStorage.removeItem("gp.tutorialSeen");
-    } catch {}
-  }, []);
-
-  // live data subscription for the active section
   useEffect(() => {
     setLoading(true);
     const unsub = subscribeSurveyData({
@@ -144,7 +131,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsub();
   }, [section]);
 
-  // Sync identity fields when saveUserResponse updates sessionStorage (without remount)
   useEffect(() => {
     const onIdentityUpdated = () => {
       try {
@@ -157,7 +143,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
       } catch {}
     };
     window.addEventListener("gp:identity-updated", onIdentityUpdated);
-    // also react to cross-tab storage changes
     window.addEventListener("storage", onIdentityUpdated);
     return () => {
       window.removeEventListener("gp:identity-updated", onIdentityUpdated);
@@ -165,21 +150,16 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // --- One-time “better first view” after submit (no redirect, just initial choice) ---
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // only run immediately after a new submission
     const justSubmitted = sessionStorage.getItem("gp.justSubmitted") === "1";
     if (!justSubmitted) return;
-    if (!counts) return; // wait until counts are available
+    if (!counts) return;
 
-    // tolerate a brief window where context hasn't updated yet
     const effectiveMySection =
       mySection || sessionStorage.getItem("gp.mySection") || "";
-
     if (!effectiveMySection) return;
 
-    // keep visitors in Visitors
     if (effectiveMySection === "visitor") {
       sessionStorage.removeItem("gp.justSubmitted");
       return;
@@ -188,15 +168,12 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
     const n = counts[effectiveMySection] ?? 0;
     const SMALL_SECTION_THRESHOLD = 5;
     if (n < SMALL_SECTION_THRESHOLD) {
-      // open on a fuller bucket the first time
       setSection("all-massart");
-      // mark that we want the personalized panel opened when the graph is ready
       try {
         sessionStorage.setItem("gp.openPersonalOnNext", "1");
       } catch {}
     }
 
-    // clear the flag so we never run this again
     sessionStorage.removeItem("gp.justSubmitted");
   }, [counts, mySection]);
 
@@ -210,6 +187,7 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
       setMySection(null);
       setMyRole(null);
       setSection("all");
+      setQuestionnaireOpen(false); // ✅ ensure off
     });
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("gp.myEntryId");
@@ -236,6 +214,8 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setSurveyActive,
         hasCompletedSurvey,
         setHasCompletedSurvey,
+        questionnaireOpen,            
+        setQuestionnaireOpen,         
         observerMode,
         setObserverMode,
         vizVisible,
@@ -245,8 +225,6 @@ export const GraphProvider = ({ children }: { children: React.ReactNode }) => {
         setMode,
         darkMode,
         setDarkMode,
-        tutorialMode,
-        setTutorialMode,
         navPanelOpen,
         setNavPanelOpen,
         navVisible,

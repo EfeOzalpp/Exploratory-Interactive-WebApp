@@ -39,7 +39,7 @@ const FOOTPRINT: Record<ShapeKey, { w: number; h: number }> = {
   sea: { w: 2, h: 1 }, carFactory: { w: 2, h: 2 }, trees: { w: 1, h: 1 },
 };
 const BLEED: Partial<Record<ShapeKey, { top?: number; right?: number; bottom?: number; left?: number }>> = {
-  trees: { top: 0.45, left: 0.08, right: 0.08, bottom: 0.10 },
+  trees: { top: 0.75, left: 0.08, right: 0.08, bottom: 0.10 },
   clouds:{ top: 0.35, left: 0.18, right: 0.35, bottom: 0.35 },
   snow:  { top: 0.10, bottom: 0.10, left: 0.35, right: 0.35 },
   villa: { top: 0.08, bottom: 0.12, left: 0.08, right: 0.08 },
@@ -185,7 +185,7 @@ export function prewarmSpriteTextures(
     alpha = 215,
     dpr = typeof window !== 'undefined' ? Math.min(1.5, window.devicePixelRatio || 1.5) : 1,
     particleStepMs = 33,
-    particleFrames = 240,
+    particleFrames = 36,
     maxCount = 32,
   }: { tileSize?: number; alpha?: number; dpr?: number; particleStepMs?: number; particleFrames?: number; maxCount?: number } = {}
 ) {
@@ -248,16 +248,34 @@ export function prewarmSpriteTextures(
           } catch (err) {
             FAILED_PARTICLE_KEYS.add(key);
             if ((window as any).__GP_LOG_LOAD_ERRORS) {
-              console.warn('[SPRITE:FROZEN] build failed', key, err);
+              console.warn('[SPRITE:FROZEN] build failed (prewarm)', key, err);
+            }
+            // immediate static fallback so there’s always something
+            const sKey = staticKey({ shape, tileSize: TILE, dpr, alpha: alphaUse, bucketId, variant });
+            if (!textureRegistry.get(sKey)) {
+              textureRegistry.ensure({
+                key: sKey,
+                drawer,
+                tileSize: TILE,
+                dpr,
+                alpha: alphaUse,
+                gradientRGB: vs.rgb,
+                liveAvg: bucketAvg,
+                blend: vs.blend ?? 1.0,
+                footprint,
+                bleed,
+                seedKey: `${sKey}|seed:${shape}|${variant}`,
+                prio: 0,
+              });
             }
           }
         });
       }
     } else {
-      const key = staticKey({ shape, tileSize: TILE, dpr, alpha: alphaUse, bucketId, variant });
-      if (!textureRegistry.get(key)) {
+      const key2 = staticKey({ shape, tileSize: TILE, dpr, alpha: alphaUse, bucketId, variant });
+      if (!textureRegistry.get(key2)) {
         jobs.push({
-          key,
+          key: key2,
           drawer,
           tileSize: TILE,
           dpr,
@@ -267,7 +285,7 @@ export function prewarmSpriteTextures(
           blend: vs.blend ?? 1.0,
           footprint,
           bleed,
-          seedKey: `${key}|seed:${shape}|${variant}`, // match variant in RNG
+          seedKey: `${key2}|seed:${shape}|${variant}`, // match variant in RNG
           prio: 0,
         });
       }
@@ -354,7 +372,14 @@ export function SpriteShape({
   );
 
   React.useEffect(() => {
-    if (tex) return;
+    let cancelled = false;
+    let off: (() => void) | undefined;
+    let watchdog: any;
+
+    const setIfAlive = (t: THREE.CanvasTexture | null) => {
+      if (!cancelled && t) setTex(track(t));
+    };
+
     const drawer = DRAWERS[shape];
     if (!drawer) return;
 
@@ -370,10 +395,30 @@ export function SpriteShape({
       seedKey: `${key}|seed:${shape}|${variant}`, // keep RNG in sync with cache key
     } as const;
 
+    // quick exit if already have a texture
+    if (tex) return;
+
+    // helper to request the static texture (fallback)
+    const requestStatic = () => {
+      const sKey = staticKey({ shape, tileSize: TILE, dpr, alpha: alphaUse, bucketId, variant });
+      const existing = textureRegistry.get(sKey);
+      if (existing) { setIfAlive(existing); return; }
+      textureRegistry.ensure({ key: sKey, drawer, ...common, prio: 0 });
+      off = textureRegistry.onReady((readyKey, readyTex) => {
+        if (readyKey === sKey) setIfAlive(readyTex);
+      });
+    };
+
+    // particle path with fallback + watchdog
     if (wantsFrozen) {
-      const existing = particleCacheGet(key);
-      if (existing) { setTex(existing); return; }
-      if (FAILED_PARTICLE_KEYS.has(key)) { return; } // don’t retry a poisoned key
+      const cached = particleCacheGet(key);
+      if (cached) { setIfAlive(cached); return () => { /* no cleanup */ }; }
+
+      // If poisoned, skip straight to static fallback
+      if (FAILED_PARTICLE_KEYS.has(key)) {
+        requestStatic();
+        return () => { if (off) off(); };
+      }
 
       enqueueTexture(() => {
         try {
@@ -386,30 +431,46 @@ export function SpriteShape({
             minFilter: THREE.LinearMipmapLinearFilter,
             magFilter: THREE.LinearFilter,
           });
-          const tracked = track(texture);
-          particleCacheSet(key, tracked);
-          setTex(tracked);
+          particleCacheSet(key, track(texture));
+          setIfAlive(texture);
         } catch (err) {
           FAILED_PARTICLE_KEYS.add(key);
           if ((window as any).__GP_LOG_LOAD_ERRORS) {
             console.warn('[SPRITE:FROZEN] build failed (runtime)', key, err);
           }
+          // immediate static fallback
+          requestStatic();
         }
       }, 0);
-      return;
+
+      // watchdog: if the particle job stalls silently, fall back to static
+      watchdog = setTimeout(() => {
+        if (!cancelled && !particleCacheGet(key) && !textureRegistry.get(key)) {
+          requestStatic();
+        }
+      }, 1000);
+
+      return () => {
+        cancelled = true;
+        if (off) off();
+        if (watchdog) clearTimeout(watchdog);
+      };
     }
 
-    textureRegistry.ensure({
-      key,
-      drawer,
-      ...common,
-      prio: 0,
+    // static path
+    const existing = textureRegistry.get(key);
+    if (existing) { setIfAlive(existing); return; }
+    textureRegistry.ensure({ key, drawer, ...common, prio: 0 });
+    off = textureRegistry.onReady((readyKey, readyTex) => {
+      if (readyKey === key) setIfAlive(readyTex);
     });
-    const off = textureRegistry.onReady((readyKey, readyTex) => {
-      if (readyKey === key) setTex(track(readyTex));
-    });
-    return off;
-  }, [key, wantsFrozen, shape, alphaUse, bucketAvg, vs.blend, vs.rgb, TILE, dpr, simulateMs, particleStepMs, tex, variant]);
+
+    return () => { cancelled = true; if (off) off(); };
+  }, [
+    key, tex, wantsFrozen, shape, alphaUse, bucketAvg,
+    vs.blend, vs.rgb, TILE, dpr, simulateMs, particleStepMs,
+    variant, bucketId
+  ]);
 
   if (!tex) return null;
 
