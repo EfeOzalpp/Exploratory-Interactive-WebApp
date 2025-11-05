@@ -100,14 +100,15 @@ Everything else — positioning, balancing, and color blending — is procedural
 - React + TypeScript  
 - React Three Fiber / Drei  
 - Custom Q5 Engine (procedural 2D rendering)  
-- Framer Motion  
-- Context API  
-- CSS Grid / Tailwind principles  
+- Sanity.io (content & survey data) 
+- Context API
+- Lottie.js  
+- CSS Flexbox
 
 🚀 **Local Setup**
 
-    git clone https://github.com/yourusername/participatory-climate-app
-    cd participatory-climate-app
+    git clone https://github.com/EfeOzalpp/Exploratory-Interactive-WebApp
+    cd Exploratory-Interactive-WebApp
     npm install
     npm run dev
 
