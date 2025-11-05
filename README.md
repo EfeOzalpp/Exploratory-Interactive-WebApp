@@ -3,7 +3,7 @@
 <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
   <div>
     <img src="./project_screenshots/6.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
-    <img src="./project_screenshots/14.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
+    <img src="./project_screenshots/8.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
   </div>
   <div>
     <img src="./project_screenshots/2.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
