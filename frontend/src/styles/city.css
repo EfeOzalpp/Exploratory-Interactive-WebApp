@@ -1,0 +1,118 @@
+/* Boundary: fixed, centered, handles slide in/out and width cap */
+.city-button-boundary { position: fixed; top: 0; left: 50%; transform: translate(-50%, -5%); z-index: 100; width: max-content; max-width: 92vw; transition: transform 220ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease; }
+.city-button-boundary.shown { opacity: 1; pointer-events: auto; }
+.city-button-boundary.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, -120%); }
+
+/* Button: size to content, no stretching */
+.city-button { inline-size: max-content; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; border-radius: 0 0 8px 8px; border: 1px solid rgba(0,0,0,0.1); background: #fff; cursor: pointer; color: rgb(6,21,1); transition: background 0.2s ease, transform 220ms cubic-bezier(.2,.8,.2,1); }
+.city-button:hover { background: #f7f7f7; transform: translateY(3%); }
+
+/* Chevron flip */
+.city-chevron { transition: transform .25s ease; }
+.city-button.open .city-chevron { transform: rotate(180deg); }
+
+/* Label fade + collapse (no layout when hidden) */
+.city-button-text { display: inline-block; white-space: nowrap; overflow: hidden; opacity: 1; transition: opacity .25s ease; }
+.city-button-text.hidden-text { opacity: 0; width: 0; margin: 0; padding: 0; }
+
+/* When open, remove gap so the chevron sits dead-center */
+.city-button.open { gap: 0; }
+
+/* Overlay container (unchanged) */
+.city-overlay { position: fixed; inset: 0; z-index: 20; pointer-events: none; transform: translateY(-100%); transition: transform 220ms ease; }
+.city-overlay.open { transform: translateY(0); }
+.city-canvas-host { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ——— Responsive ——— */
+
+/* Mobile <768px */
+/* Mobile <768px — docked on right, ~40% up from bottom, rotated */
+@media (max-width: 767px) {
+  /* Move boundary from centered top to right edge, mid-height */
+  .city-button-boundary {
+    position: fixed;
+    right: -10%;           /* hug the right edge */
+    left: auto;         /* cancel desktop centering */
+    top: 60vh;          /* ≈ 40% from bottom */
+    bottom: auto;
+    transform: translateY(-50%); /* vertically center around that 60vh anchor */
+    max-width: none;    /* no width cap needed when vertical */
+    opacity: 1;
+    pointer-events: auto;
+    transition:
+      opacity 220ms ease,
+      transform 220ms cubic-bezier(.2,.8,.2,1);
+  }
+
+  /* Slide fully off to the right when hidden (stay vertically centered) */
+  .city-button-boundary.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) translateX(110%);
+  }
+
+  /* Button itself goes vertical; keep a small gap from the edge */
+  .city-button {
+    transform: rotate(-90deg);
+    transform-origin: center center; /* rotate around its own center */
+    height: auto;                    /* no fixed height when rotated */
+    gap: 8px;
+    padding: 12px 16px 36px 16px;
+    border-radius: 8px 0 0 8px;      /* rounded outer edge */
+    transition: background 0.2s ease,
+                transform 220ms cubic-bezier(.2,.8,.2,1);
+    border-radius: 8px 8px 0px 0px !important; 
+  }
+
+  /* Gentle nudge on hover (accounting for rotation) */
+  .city-button:hover {
+    background: #f7f7f7;
+    transform: rotate(-90deg) translateX(-2%);
+  }
+
+  /* Chevron size (you can keep your 18px) */
+  .city-chevron { width: 18px; height: 18px; }
+
+  /* Keep your label fade behavior */
+  .city-button-text { white-space: nowrap; }
+
+  /* Optional: when open, remove the gap so chevron centers nicely (preserve rotation) */
+  .city-button.open { gap: 0; right: 50%; position: relative;}
+}
+
+
+/* Tablet ≥768px (same styling) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .city-button-boundary { transform: translate(-50%, -7%); }
+  .city-button { padding: 22px 40px 20px; border: 1px solid rgba(138,138,138,.78); color: rgb(6, 21, 1);}
+  .city-button:hover { background: #f9f9f9; transform: translateY(3%) scale(1.02); }
+  .city-chevron { width: 22px; height: 22px; }
+}
+
+/* Desktop ≥1024 (same styling) */
+@media (min-width: 1025px) {
+  .city-button-boundary { transform: translate(-50%, -7%); }
+  .city-button { padding: 24px 24px 16px; border: 1px solid rgba(138,138,138,.78); }
+  .city-button:hover { background: #f9f9f9; transform: translateY(3%) scale(1.02); }
+  .city-chevron { width: 22px; height: 22px; }
+}
+
+/* ===== City button — Dark mode variants (global) ===== */
+.city-button.is-dark {
+  background-color: #292929;
+  color: #fff;
+  border-color: #444;
+}
+
+.city-button.is-dark:hover {
+  background-color: #333333;
+  border-color: #555;
+}
+
+/* Optional: slightly brighter seam on the mobile right edge */
+@media (max-width: 767px) {
+  .city-button.is-dark {
+    /* when vertical on the right edge, a subtle inner seam looks nice */
+    box-shadow: inset -1px 0 0 rgba(255,255,255,0.06);
+  }
+}

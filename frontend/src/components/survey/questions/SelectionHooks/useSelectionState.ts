@@ -1,4 +1,3 @@
-// src/components/survey/questions/SelectionHooks/useSelectionState.ts
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { calcRadii, pointOnCircle, clientToSvg, makeRingPath as makeRingPathRaw, triPointsPath } from './geometry.ts';
 import { usePointerDrag } from './usePointerDrag.ts';
@@ -7,7 +6,8 @@ import { clamp, easeFn, colorForFactory } from './colors.ts';
 type ShapeKey = 'triangle' | 'circle' | 'square' | 'diamond';
 type Weights = Record<ShapeKey, number>;
 
-const TRI_R = 28, CIR_R = 26, SQR_S = 44, DM_S = 44;
+// Base (desktop) sizes — these get scaled on mobile via shapeScale
+const BASE_TRI_R = 28, BASE_CIR_R = 26, BASE_SQR_S = 44, BASE_DM_S = 44;
 const MARGIN_EXTRA = 2;
 
 // ── Sticky-deactivation thresholds
@@ -19,34 +19,79 @@ const BASE_BUCKET_CAP = 2;
 const CAP_STEP_PER_DEACTIVATED = 0.5;
 const MIN_BUCKET_CAP = 0.5; // do not go below this
 
-const extentFor = (k: ShapeKey) => {
-  switch (k) {
-    case 'triangle': return TRI_R + MARGIN_EXTRA;
-    case 'circle':   return CIR_R + MARGIN_EXTRA;
-    case 'square':   return SQR_S / 2 + MARGIN_EXTRA;
-    case 'diamond':  return (DM_S / 2) * Math.SQRT2 + MARGIN_EXTRA;
-  }
-};
-
 const activeSetOf = (deactivated: Set<ShapeKey>) =>
   (['triangle', 'circle', 'square', 'diamond'] as ShapeKey[]).filter(k => !deactivated.has(k));
+
+// Hook-local helper: responsive media query -> shape scale
+function useShapeScale() {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('matchMedia' in window)) return;
+    const mql = window.matchMedia('(max-width: 768px)');
+    const update = () => setScale(mql.matches ? 1.18 : 1);
+    update();
+    mql.addEventListener?.('change', update);
+    // @ts-ignore legacy
+    mql.addListener?.(update);
+    return () => {
+      mql.removeEventListener?.('change', update);
+      // @ts-ignore legacy
+      mql.removeListener?.(update);
+    };
+  }, []);
+  return scale;
+}
 
 export function useSelectionState({
   size,
   onWeightsChange,
+  onDragHover, // ← NEW: notify current dragged shape for cross-component highlight
 }: {
   size: number;
   onWeightsChange?: (weights: Weights) => void;
+  onDragHover?: (shape?: ShapeKey) => void;
 }) {
+  const shapeScale = useShapeScale();
+
+  // Derived, responsive sizes
+  const TRI_R = Math.round(BASE_TRI_R * shapeScale);
+  const CIR_R = Math.round(BASE_CIR_R * shapeScale);
+  const SQR_S = Math.round(BASE_SQR_S * shapeScale);
+  const DM_S  = Math.round(BASE_DM_S  * shapeScale);
+
+  const extentFor = (k: ShapeKey) => {
+    switch (k) {
+      case 'triangle': return TRI_R + MARGIN_EXTRA;
+      case 'circle':   return CIR_R + MARGIN_EXTRA;
+      case 'square':   return SQR_S / 2 + MARGIN_EXTRA;
+      case 'diamond':  return (DM_S / 2) * Math.SQRT2 + MARGIN_EXTRA;
+    }
+  };
+
   const { half, inset, R, OUTER_R, R_ACTIVE } = calcRadii(size);
   const maxRadiusFor = (k: ShapeKey) => Math.max(0, OUTER_R - extentFor(k));
 
-  const initialPos: Record<ShapeKey, { x: number; y: number }> = {
-    triangle: { x: half - R * 0.45, y: half - R * 0.35 },
-    circle:   { x: half + R * 0.25, y: half - R * 0.20 },
-    square:   { x: half - R * 0.55, y: half + R * 0.15 },
-    diamond:  { x: half + R * 0.35, y: half + R * 0.45 },
+  // --- Cardinal angles for the "+" initial layout
+  const ANGLES: Record<ShapeKey, number> = {
+    circle:   -Math.PI / 2, // top
+    square:    Math.PI,     // left
+    triangle:  0,           // right
+    diamond:   Math.PI / 2, // bottom
   };
+
+  // Equal placement: r = 0.5 * R_ACTIVE (weights start at 0.5)
+  const makeInitialPos = () => {
+    const baseWeight = BASE_BUCKET_CAP / 4; // 0.5
+    const rMid = (1 - baseWeight) * R_ACTIVE; // 0.5 * R_ACTIVE
+    const res = {} as Record<ShapeKey, { x: number; y: number }>;
+    (['triangle', 'circle', 'square', 'diamond'] as ShapeKey[]).forEach((k) => {
+      const r = Math.min(rMid, maxRadiusFor(k));
+      res[k] = pointOnCircle(half, ANGLES[k], r);
+    });
+    return res;
+  };
+
+  const initialPos: Record<ShapeKey, { x: number; y: number }> = makeInitialPos();
 
   // --- Refs & state
   const [pos, setPos] = useState(initialPos);
@@ -62,15 +107,15 @@ export function useSelectionState({
     square:   BASE_BUCKET_CAP / 4,
     diamond:  BASE_BUCKET_CAP / 4,
   });
-  // Visual lerp copy
   const visualWRef = useRef<Weights>({ ...weightsRef.current });
   const [, bump] = useState(0);
 
+  // Lock initial angles to the '+' layout
   const angleRef = useRef<Record<ShapeKey, number>>({
-    triangle: Math.atan2(initialPos.triangle.y - half, initialPos.triangle.x - half),
-    circle:   Math.atan2(initialPos.circle.y   - half, initialPos.circle.x   - half),
-    square:   Math.atan2(initialPos.square.y   - half, initialPos.square.x   - half),
-    diamond:  Math.atan2(initialPos.diamond.y  - half, initialPos.diamond.x  - half),
+    triangle: ANGLES.triangle,
+    circle:   ANGLES.circle,
+    square:   ANGLES.square,
+    diamond:  ANGLES.diamond,
   });
 
   // Sticky deactivation set
@@ -98,14 +143,12 @@ export function useSelectionState({
   const tickRef = useRef<number | null>(null);
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null);
 
-  // UPDATED: read deactivated set and pin those at the outer boundary (maxRadiusFor)
   const layoutFromVisualWeights = (dragging: ShapeKey | null, pointer?: {x:number,y:number} | null) => {
     const nextPos: typeof pos = { ...posRef.current };
     const deactivated = deactivatedRef.current;
 
     (['triangle', 'circle', 'square', 'diamond'] as ShapeKey[]).forEach(k => {
       if (deactivated.has(k) && dragging !== k) {
-        // hard-pin at the *outer* boundary of the dead band
         const rPinned = maxRadiusFor(k);
         const thetaCurrent = angleRef.current[k];
         nextPos[k] = pointOnCircle(half, thetaCurrent, rPinned);
@@ -145,7 +188,6 @@ export function useSelectionState({
       const TW = { ...weightsRef.current };
       const deactivated = deactivatedRef.current;
 
-      // Deactivated shapes: force both targets and visuals to 0 (pin at rim in layout)
       deactivated.forEach(k => { TW[k] = 0; VW[k] = 0; });
 
       for (const k of keys) {
@@ -217,6 +259,9 @@ export function useSelectionState({
     const svg = svgRef.current;
     if (!dragging || !svg) return;
 
+    // Keep highlight while dragging
+    try { onDragHover?.(dragging); } catch {}
+
     const p = clientToSvg(svg, ev.clientX, ev.clientY);
     lastPointerRef.current = p;
 
@@ -230,12 +275,9 @@ export function useSelectionState({
     const nextW: Weights = { ...weightsRef.current };
     const deactivated = new Set(deactivatedRef.current);
 
-    // Reactivate dragged if brought back in
     if (wDrag >= REACTIVATE_EPS) deactivated.delete(dragging);
-    // Deactivate dragged if pushed to rim
     if (wDrag <= DEACTIVATE_EPS) deactivated.add(dragging);
 
-    // Prevent “all off”
     if (activeSetOf(deactivated).length === 0) {
       deactivated.delete(dragging);
     }
@@ -245,16 +287,13 @@ export function useSelectionState({
     const all = ['triangle', 'circle', 'square', 'diamond'] as ShapeKey[];
     const actives = activeSetOf(deactivated);
 
-    // Pin visuals for all deactivated shapes right away (no inward creep)
     deactivated.forEach(k => { visualWRef.current[k] = 0; });
 
-    // SPECIAL CASE: only one active → fix at center, others hard off
     if (actives.length === 1) {
       const sole = actives[0];
       deactivated.delete(sole);
       all.forEach(k => { nextW[k] = (k === sole) ? 1 : 0; });
 
-      // Persist and render (pointer ignored to avoid bleed)
       weightsRef.current = nextW;
       deactivatedRef.current = deactivated;
       visualWRef.current[sole] = 1;
@@ -266,36 +305,31 @@ export function useSelectionState({
       return;
     }
 
-    // NORMAL CASE (2–4 actives): use dynamic cap
     const dynamicCap = Math.max(MIN_BUCKET_CAP, BASE_BUCKET_CAP - CAP_STEP_PER_DEACTIVATED * deactivated.size);
-
     const currentSum = all.reduce((a, k) => a + nextW[k], 0);
     const need = dynamicCap - currentSum;
 
-    // Distribute only among ACTIVE others
     const others = all.filter(k => k !== dragging);
     addToGroup(nextW, others as ShapeKey[], need, deactivated);
 
-    // Enforce clamps and force 0 for deactivated ones
     all.forEach(k => {
       if (deactivated.has(k)) nextW[k] = 0;
       else nextW[k] = clamp(nextW[k], 0, 1);
     });
 
-    // Persist targets and sticky set
     weightsRef.current = nextW;
     deactivatedRef.current = deactivated;
 
-    // Immediate layout during drag
     layoutFromVisualWeights(dragging, p);
 
-    // Keep easing other shapes
     runVisualLerp();
     fireWeights(nextW);
   };
 
   const handleEnd = (_ev: PointerEvent) => {
     draggingRef.current = null;
+    // Clear drag highlight on release (hover will take over if applicable)
+    try { onDragHover?.(undefined); } catch {}
     runVisualLerp();
   };
 
@@ -303,22 +337,20 @@ export function useSelectionState({
     if (!svgRef.current) return;
     e.preventDefault();
     draggingRef.current = key;
+    // Immediately highlight the shape being grabbed
+    try { onDragHover?.(key); } catch {}
     start(svgRef.current, e, handleMove, handleEnd);
   };
 
   // --- weights callback (rounded emission + rounded logs)
-  // NOTE: start as null and allow a forced first emit
   const lastWeightsKeyRef = useRef<string | null>(null);
   const fireWeights = (W: Weights, force = false) => {
     const s = JSON.stringify(W);
     if (force || s !== lastWeightsKeyRef.current) {
       lastWeightsKeyRef.current = s;
-
-      // Round to 2 decimals for emission + logs (internal state stays high-precision)
       const rounded = Object.fromEntries(
         Object.entries(W).map(([k, v]) => [k, Number((v as number).toFixed(2))])
       ) as Weights;
-
       onWeightsChange?.(rounded);
     }
   };
@@ -327,28 +359,30 @@ export function useSelectionState({
   useEffect(() => {
     deactivatedRef.current = new Set();
     layoutFromVisualWeights(null, null);
-    fireWeights(weightsRef.current, true); // ← force the initial emit so answers aren't null
+    fireWeights(weightsRef.current, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [shapeScale]);
 
   // --- colors
   const SHAPE_COLORS: Record<ShapeKey, string> = {
-    triangle: '#F4A42F', 
-    circle:   '#4498E6', 
+    triangle: '#F4A42F',
+    circle:   '#4498E6',
     square:   '#64B883',
-    diamond:  '#9E82F1', 
+    diamond:  '#9E82F1',
   };
   const OUTER_GRAY = '#6f7781';
   const colorFor = useMemo(() => colorForFactory(OUTER_GRAY, SHAPE_COLORS), []);
 
   // --- ring + triangle geometry
-  const triPoints = useMemo(() => triPointsPath(TRI_R), []);
+  const triPoints = useMemo(() => triPointsPath(TRI_R), [TRI_R]);
   const makeRingPath = (outerR: number, innerR: number) => makeRingPathRaw(half, outerR, innerR);
 
   return {
     // sizes
     sizeViewBox: size,
     half, inset, R, OUTER_R, R_ACTIVE,
+    // responsive metrics
+    TRI_R, CIR_R, SQR_S, DM_S,
     // refs
     svgRef,
     // visuals/state

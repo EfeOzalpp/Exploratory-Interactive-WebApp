@@ -3,6 +3,7 @@ import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import RadialBackground from '../components/static/radialBackground';
 import Survey from '../components/survey/survey.tsx';
 import Navigation from '../components/nav/navigation.jsx';
+import CityButton from '../components/nav/CityButton.tsx';
 import DataVisualization from '../components/dataVisualization';
 import { useDynamicMargin } from '../utils/dynamicMargin.ts';
 import { GraphProvider, useGraph } from "../context/graphContext.tsx";
@@ -13,6 +14,12 @@ import '../styles/global-styles.css';
 const CanvasEntry = React.lazy(() =>
   import(/* webpackChunkName: "canvas-entry" */ '../canvas')
 );
+
+// City overlay canvas instance (renders into #city-canvas-root)
+const CityOverlay = React.lazy(() =>
+  import(/* webpackChunkName: "city-overlay" */ '../components/nav/CityOverlay.jsx')
+);
+
 // HUD bits (lazy)
 const EdgeCue = React.lazy(() =>
   import(/* webpackChunkName: "edge-cue" */ '../components/dotGraph/darkMode.jsx')
@@ -45,22 +52,31 @@ const FrontPageInner = () => {
   const [answers, setAnswers] = useState({});
   const [liveAvg, setLiveAvg]   = useState(0.5); // drives visual lerps
   const [allocAvg, setAllocAvg] = useState(0.5); // drives shape reallocation only on commit
+  const [cityPanelOpen, setCityPanelOpen] = useState(false);
 
-  const { vizVisible, openGraph, closeGraph, observerMode, hasCompletedSurvey } = useGraph();
+  const {
+    vizVisible,
+    openGraph,
+    closeGraph,
+    observerMode,
+    hasCompletedSurvey,
+    questionnaireOpen, // ← drives CityButton visibility and overlay availability
+  } = useGraph();
+
   const setGraphVisible = (v) => (v ? openGraph() : closeGraph());
 
-  // when to allow the heavy viz
+  // Heavy viz allowed when visible AND (observer or completed survey)
   const readyForViz = useMemo(
     () => vizVisible && (observerMode || hasCompletedSurvey),
     [vizVisible, observerMode, hasCompletedSurvey]
   );
 
-  // optional auto-open once allowed
+  // Auto-open once allowed
   useEffect(() => {
     if (observerMode || hasCompletedSurvey) openGraph();
   }, [observerMode, hasCompletedSurvey, openGraph]);
 
-  // idle prefetch of the canvas chunk if we aren't ready for viz yet
+  // Idle prefetch of the canvas chunk if we aren't ready for viz yet
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (readyForViz) return;
@@ -75,16 +91,13 @@ const FrontPageInner = () => {
     }
   }, [readyForViz]);
 
-  const showModeToggle = readyForViz;
-
-  // keep the zoom-preventer from interfering with R3F canvas
+  // Prevent pinch/ctrl zoom outside graph & outside overlays
   useEffect(() => {
     const preventZoom = (event) => {
       const target = event.target;
       const isInsideGraph = target.closest('.graph-container, .dot-graph-container');
-      const isCanvasOverlay = target.closest('#canvas-root');
-
-      // Only block if NOT inside graph AND NOT over the canvas overlay
+      const isCanvasOverlay =
+        target.closest('#canvas-root') || target.closest('#city-canvas-root');
       if (!isInsideGraph && !isCanvasOverlay) {
         const multiTouch = Array.isArray(event.touches) ? event.touches.length > 1 : false;
         if (event.ctrlKey || multiTouch) {
@@ -92,13 +105,11 @@ const FrontPageInner = () => {
         }
       }
     };
-
     document.addEventListener('wheel', preventZoom, { passive: false });
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
     document.addEventListener('touchmove', preventZoom, { passive: false });
-
     return () => {
       document.removeEventListener('wheel', preventZoom);
       document.removeEventListener('gesturestart', preventZoom);
@@ -108,7 +119,7 @@ const FrontPageInner = () => {
     };
   }, []);
 
-  // reset transient UI state when the overlay animation plays
+  // Reset transient UI state when the overlay animation plays
   useEffect(() => {
     if (animationVisible) {
       setAnswers({});
@@ -116,6 +127,13 @@ const FrontPageInner = () => {
       setAllocAvg(0.5);
     }
   }, [animationVisible]);
+
+  // Keep city overlay closed if questionnaire closes
+  useEffect(() => {
+    if (!questionnaireOpen && cityPanelOpen) setCityPanelOpen(false);
+  }, [questionnaireOpen, cityPanelOpen]);
+
+  const showModeToggle = readyForViz;
 
   return (
     <div className="app-content">
@@ -130,8 +148,17 @@ const FrontPageInner = () => {
       <DeferredGamificationPreloader />
       <Navigation />
 
-      {/* actually UNMOUNT the Q5 canvas when viz is ready or animation overlay is on */}
-      {(!readyForViz && !animationVisible) && (
+      {/* City button appears only while questionnaire is open */}
+      {questionnaireOpen && (
+        <CityButton
+          isOpen={cityPanelOpen}
+          onToggle={() => setCityPanelOpen((o) => !o)}
+          shown
+        />
+      )}
+
+      {/* Intro canvas UNMOUNTED while city overlay is open or while animation overlay is on */}
+      {(!readyForViz && !animationVisible && !cityPanelOpen) && (
         <Suspense fallback={null}>
           <CanvasEntry
             answers={answers}
@@ -139,6 +166,13 @@ const FrontPageInner = () => {
             allocAvg={allocAvg}   // allocation (placement) – updates on commit only
             visible={true}        // we mount it only when we want it visible
           />
+        </Suspense>
+      )}
+
+      {/* City overlay canvas mounts only when button is open AND questionnaire is open */}
+      {(cityPanelOpen && questionnaireOpen) && (
+        <Suspense fallback={null}>
+          <CityOverlay open={true} liveAvg={liveAvg} />
         </Suspense>
       )}
 

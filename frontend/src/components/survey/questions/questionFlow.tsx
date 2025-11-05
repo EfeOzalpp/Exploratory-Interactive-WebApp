@@ -192,7 +192,8 @@ export default function QuestionFlow({
 
   return (
     <div className="questionnaire">
-      <div className={`questions ${slabClass}`}>
+      <div className="answer-question">
+       <div className={`questions ${slabClass}`}>
         <div className="q-count">
           {current + 1}/{questions.length}
         </div>
@@ -200,9 +201,9 @@ export default function QuestionFlow({
           {q.prompt}
           <span className={`q-shape-badge q-shape--${currentShape}`} aria-label={`Shape: ${currentShape}`} />
         </h3>
-      </div>
+       </div>
 
-      <div className={`survey-flow ${slabClass}`}>
+        <div className={`survey-flow ${slabClass}`}>
         <div className="selection-part">
           {/* STABLE callback prevents map re-renders while dragging */}
           <SelectionMap onWeightsChange={onMapStable} />
@@ -210,8 +211,8 @@ export default function QuestionFlow({
 
         {/* Each option is tied to its own shape (circle, square, triangle, diamond) */}
         <AnswersList question={q} factors={mapFactors} />
+       </div>
       </div>
-
       <div className="survey-actions">
         <button type="button" className="begin-button2" onClick={next} disabled={!!submitting}>
           <span>{current < questions.length - 1 ? 'Next' : 'Finish'}</span>

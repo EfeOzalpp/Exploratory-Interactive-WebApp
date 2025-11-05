@@ -1,3 +1,4 @@
+// canvas/q5-lite.js
 // Tiny p5-ish engine + your existing startQ5 logic, without the Q5 dependency.
 
 /* ───────────────────────────────────────────────────────────
@@ -7,7 +8,7 @@ import {
   drawClouds, drawSnow, drawHouse, drawPower, drawSun,
   drawVilla, drawCarFactory, drawCar, drawSea, drawBus, drawTrees
 } from './shape/index.js';
-import { bandFromWidth, getGridSpec } from './grid/config.ts';
+import { getGridSpec } from './grid/config.ts';
 import { makeCenteredSquareGrid } from './grid/layoutCentered.ts';
 
 /* ───────────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ function getViewportSize() {
   return { w, h };
 }
 
-function ensureMount(mount) {
+function ensureMount(mount, zIndex) {
   let el = document.querySelector(mount);
   if (!el) {
     el = document.createElement('div');
@@ -201,7 +202,7 @@ function ensureMount(mount) {
   el.style.inset = '0';
   el.style.height = '100dvh';
   el.style.width = '100vw';
-  el.style.zIndex = '2';
+  el.style.zIndex = String(Number.isFinite(zIndex) ? zIndex : 2); // ← honor zIndex
   el.style.pointerEvents = 'none';
   el.style.touchAction = 'auto';
   el.style.userSelect = 'none';
@@ -213,7 +214,7 @@ function applyCanvasNonBlockingStyle(el) {
   if (!el?.style) return;
   el.style.position = 'absolute';
   el.style.inset = '0';
-  el.style.zIndex = '2';
+  el.style.zIndex = '0'; // canvas stays inside the stacking context of the parent mount
   el.style.pointerEvents = 'none';
   el.style.touchAction = 'auto';
   el.style.userSelect = 'none';
@@ -257,14 +258,14 @@ const REG_STYLE_DEFAULT = {
   exitMs: 300,
 };
 
-export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } = {}) {
+export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1', zIndex = 2 } = {}) {
   // Guard against double inits on the same mount
   if (REGISTRY.has(mount)) {
     try { REGISTRY.get(mount).controls?.stop?.(); } catch {}
     REGISTRY.delete(mount);
   }
 
-  const parentEl = ensureMount(mount);
+  const parentEl = ensureMount(mount, zIndex);
 
   const style = { ...REG_STYLE_DEFAULT };
   const field = { items: [], visible: false, epoch: 0 };
@@ -285,10 +286,10 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   let cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, q: null };
 
   const computeGrid = () => {
-  if (p.width === cachedGrid.w && p.height === cachedGrid.h && cachedGrid.q === questionnaireOpen && cachedGrid.cell > 0) {
-   return cachedGrid;
-  }
-  const spec = getGridSpec(p.width, questionnaireOpen);
+    if (p.width === cachedGrid.w && p.height === cachedGrid.h && cachedGrid.q === questionnaireOpen && cachedGrid.cell > 0) {
+      return cachedGrid;
+    }
+    const spec = getGridSpec(p.width, questionnaireOpen);
     const { cell, rows, cols } = makeCenteredSquareGrid({
       w: p.width, h: p.height, rows: spec.rows, useTopRatio: spec.useTopRatio ?? 1,
     });
@@ -302,7 +303,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
   applyCanvasNonBlockingStyle(canvasEl);
   parentEl.appendChild(canvasEl);
 
-  // Context loss guard (for WebGL it matters; for 2D we still trap to stop loop)
+  // Context loss guard
   const onContextLost = (e) => {
     try { e?.preventDefault?.(); } catch {}
     try { console.warn('[q5-lite] context lost'); } catch {}
@@ -375,7 +376,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
     }
   }
 
-  // NEW: sandbox each shape with p.push/pop and post-restore DPR check
+  // sandbox each shape
   function renderOneSandboxed(p, it, rEff, sharedOpts, rootAppearK) {
     p.push();
     try {
@@ -444,8 +445,8 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
       sea:   10,
       bus: 11,
       sun:   0,
-      trees:   12,
-      clouds:1,
+      trees: 12,
+      clouds: 1,
     };
 
     // ghosts
@@ -571,7 +572,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
     try { canvasEl?.remove?.(); } catch {}
     REGISTRY.delete(mount);
   }
-  
+
   function setQuestionnaireOpen(v){
     questionnaireOpen = !!v;
     // invalidate cache including the flag
@@ -591,12 +592,37 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1' } 
 // Build a p-like facade on an existing canvas (no animation / no DOM attach).
 export function makePFromCanvas(canvas, { dpr = 1 } = {}) {
   const ctx = canvas.getContext('2d', { alpha: true });
-  const p = makeP(canvas, ctx);          // reuse the same facade your drawers expect
+  const p = makeP(canvas, ctx);
   const cssW = canvas.style.width  ? parseFloat(canvas.style.width)  : canvas.width  / dpr;
   const cssH = canvas.style.height ? parseFloat(canvas.style.height) : canvas.height / dpr;
   p.pixelDensity(Math.max(1, dpr || 1));
   p.resizeCanvas(cssW, cssH);
   return p;
+}
+
+export function stopQ5(mount = '#canvas-root') {
+  try {
+    const rec = REGISTRY.get(mount);
+    if (rec?.controls?.stop) rec.controls.stop();
+  } catch {}
+  REGISTRY.delete(mount);
+  // If we created a fixed container for this mount, remove it to fully free resources.
+  try {
+    const el = document.querySelector(mount);
+    if (el && el.classList?.contains('gp-q5-layer')) {
+      el.remove();
+    }
+  } catch {}
+}
+
+export function isQ5Running(mount = '#canvas-root') {
+  return REGISTRY.has(mount);
+}
+
+export function stopAllQ5() {
+  for (const key of [...REGISTRY.keys()]) {
+    stopQ5(key);
+  }
 }
 
 export default startQ5;

@@ -198,7 +198,7 @@ export default function GamificationPersonalized({
 
   const bandInfo = classifyBand({ below: b, equal: e, above: a });
 
-  // --- Personalized relative line (second-person, explicit ties/near)
+  // --- Personalized relative line (highlight only Top / Middle / Bottom words; numbers stay neutral) ---
   let relativeLine = null;
   if (mode === 'relative') {
     const { band, tie, b: bb, e: ee, a: aa } = bandInfo;
@@ -207,30 +207,30 @@ export default function GamificationPersonalized({
       relativeLine = <>You’re the first one here.</>;
     } else if (band === 'top') {
       relativeLine = tie === 'tiedTop'
-        ? <>You’re sharing the very top with <Strong>{ee}</Strong>.</>
-        : <>You’re on top, ahead of everyone else.</>;
+        ? <>You’re sharing the very <Strong>Top</Strong> with {ee}.</>
+        : <>You’re on <Strong>Top</Strong>, ahead of everyone else.</>;
     } else if (band === 'nearTop') {
       relativeLine = ee > 0
-        ? <>You’re close to the top, tied with <Strong>{ee}</Strong> and behind <Strong>{aa}</Strong>.</>
-        : <>You’re close to the top, behind <Strong>{aa}</Strong>.</>;
+        ? <>You’re close to the <Strong>Top</Strong>, tied with {ee} and behind {aa}.</>
+        : <>You’re close to the <Strong>Top</Strong>, behind {aa}.</>;
     } else if (band === 'bottom') {
       relativeLine = tie === 'tiedBottom'
-        ? <>You’re at the bottom, tied with <Strong>{ee}</Strong>.</>
-        : <>You’re at the bottom, everyone else is ahead.</>;
+        ? <>You’re at the <Strong>Bottom</Strong>, tied with {ee}.</>
+        : <>You’re at the <Strong>Bottom</Strong>, everyone else is ahead.</>;
     } else if (band === 'nearBottom') {
       relativeLine = ee > 0
-        ? <>You’re near the bottom, tied with <Strong>{ee}</Strong> and ahead of <Strong>{bb}</Strong>.</>
-        : <>You’re near the bottom, ahead of <Strong>{bb}</Strong>.</>;
+        ? <>You’re near the <Strong>Bottom</Strong>, tied with {ee} and ahead of {bb}.</>
+        : <>You’re near the <Strong>Bottom</Strong>, ahead of {bb}.</>;
     } else {
       // middle
       if (tie === 'tiedMiddle') {
-        relativeLine = <>You’re in the middle, tied with <Strong>{ee}</Strong>.</>;
+        relativeLine = <>You’re in the <Strong>Middle</Strong>, tied with {ee}.</>;
       } else if (aa < bb) {
-        relativeLine = <>You’re in the middle, behind <Strong>{aa}</Strong>.</>;
+        relativeLine = <>You’re in the <Strong>Middle</Strong>, behind {aa}.</>;
       } else if (bb < aa) {
-        relativeLine = <>You’re in the middle, ahead of <Strong>{bb}</Strong>.</>;
+        relativeLine = <>You’re in the <Strong>Middle</Strong>, ahead of {bb}.</>;
       } else {
-        relativeLine = <>You’re in the middle, ahead of <Strong>{bb}</Strong> and behind <Strong>{aa}</Strong>.</>;
+        relativeLine = <>You’re in the <Strong>Middle</Strong>, ahead of {bb} and behind {aa}.</>;
       }
     }
 
@@ -239,7 +239,11 @@ export default function GamificationPersonalized({
 
   const line =
     mode === 'relative'
-      ? relativeLine
+      ? (
+        <>
+          {relativeLine} <span style={{ opacity: 0.6 }}>🙂</span>
+        </>
+      )
       : (
         <>
           <strong style={{ textShadow: `0 0 12px ${color}, 0 0 22px ${knobColor}` }}>

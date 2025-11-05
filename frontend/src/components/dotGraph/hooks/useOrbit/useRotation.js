@@ -159,7 +159,7 @@ export default function useRotation({
   useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
     const DEADZONE_PX = 2.0 * dpr;
-    const PX_TO_RAD   = (isTabletLike ? 0.009 : 0.005) / dpr;
+    const PX_TO_RAD   = (isTabletLike ? 0.004 : 0.006) / dpr;
 
     // Helper: did this touch start over the WebGL canvas?
     const isSceneTouchTarget = (target) => {

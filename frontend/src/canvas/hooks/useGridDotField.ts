@@ -35,16 +35,71 @@ type PoolItem = PlannerPoolItem & {
 
 type Engine = { ready: React.MutableRefObject<boolean>; controls: React.MutableRefObject<any> };
 
-const START_POOL_SIZE = 28;
-const QUESTION_POOL_SIZE = 25; 
+// ───────────────────────────────────────────────────────────────────────────────
+// Responsive pool sizes (start/default vs questionnaire/open vs overlay)
+// Adjust these to your taste. Overlay uses its own set.
+// ───────────────────────────────────────────────────────────────────────────────
+const START_POOL_SIZE_SM = 18;
+const START_POOL_SIZE_MD = 26;
+const START_POOL_SIZE_LG = 28;
 
-function targetPoolSize(isOpen: boolean) {
-  return isOpen ? QUESTION_POOL_SIZE : START_POOL_SIZE;
+const QUESTION_POOL_SIZE_SM = 24;
+const QUESTION_POOL_SIZE_MD = 32;
+const QUESTION_POOL_SIZE_LG = 28;
+
+// Overlay targeted counts (example values)
+const OVERLAY_POOL_SIZE_SM = 60;
+const OVERLAY_POOL_SIZE_MD = 80;
+const OVERLAY_POOL_SIZE_LG = 100;
+
+// Helper to classify width into sm/md/lg
+function widthBucket(width?: number): 'sm' | 'md' | 'lg' {
+  if (width == null) return 'lg';
+  if (width <= 768) return 'sm';
+  if (width <= 1024) return 'md';
+  return 'lg';
+}
+
+// Single truth for target pool size
+function targetPoolSize(opts: { isQuestionnaireOpen: boolean; isOverlay: boolean; width?: number }) {
+  const bucket = widthBucket(opts.width);
+  if (opts.isOverlay) {
+    return bucket === 'sm' ? OVERLAY_POOL_SIZE_SM
+         : bucket === 'md' ? OVERLAY_POOL_SIZE_MD
+         : OVERLAY_POOL_SIZE_LG;
+  }
+  if (opts.isQuestionnaireOpen) {
+    return bucket === 'sm' ? QUESTION_POOL_SIZE_SM
+         : bucket === 'md' ? QUESTION_POOL_SIZE_MD
+         : QUESTION_POOL_SIZE_LG;
+  }
+  return bucket === 'sm' ? START_POOL_SIZE_SM
+       : bucket === 'md' ? START_POOL_SIZE_MD
+       : START_POOL_SIZE_LG;
 }
 
 const clamp01 = (v?: number) => (typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5);
 
-function buildCandidates(rows: number, cols: number, spec: GridSpec) {
+// IMPORTANT: always derive logical size from the canvas backing store.
+// This avoids rect-based reads that can be mid-animation or subpixel.
+function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
+  if (!canvas) {
+    const w = (typeof window !== 'undefined') ? window.innerWidth : 1024;
+    const h = (typeof window !== 'undefined') ? window.innerHeight : 768;
+    return { w: Math.round(w), h: Math.round(h) };
+  }
+  const dpr = (canvas as any)._dpr || (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+  const w = (canvas.width || 0) / dpr;
+  const h = (canvas.height || 0) / dpr;
+  // Fallback to cssW/cssH if present (engine sets these)
+  const cssW = (canvas as any)._cssW;
+  const cssH = (canvas as any)._cssH;
+  const W = Number.isFinite(cssW) ? cssW : w;
+  const H = Number.isFinite(cssH) ? cssH : h;
+  return { w: Math.round(W), h: Math.round(H) };
+}
+
+function buildCandidates(rows: number, cols: number, spec: GridSpec, opts?: { overlay?: boolean }) {
   const useTop = Math.max(0.01, Math.min(1, spec.useTopRatio ?? 1));
   const usedRows = Math.max(1, Math.round(rows * useTop));
   const centerR = (usedRows - 1) / 2;
@@ -59,7 +114,9 @@ function buildCandidates(rows: number, cols: number, spec: GridSpec) {
       out.push({ r, c, d2 });
     }
   }
-  out.sort((a, b) => a.d2 - b.d2);
+  if (!opts?.overlay) {
+    out.sort((a, b) => a.d2 - b.d2);
+  }
   return out.map(({ r, c }) => ({ r, c }));
 }
 
@@ -98,7 +155,8 @@ function scoreSkyCandidate(
   r0:number, c0:number, wCell:number, hCell:number,
   rows:number, cols:number, usedRows:number,
   placedSky: Array<{r0:number; c0:number; w:number; h:number}>,
-  salt:number
+  salt:number,
+  centerBias = true
 ){
   const cx = c0 + wCell / 2;
   const cy = r0 + hCell / 2;
@@ -106,7 +164,7 @@ function scoreSkyCandidate(
   const usedCy = (usedRows - 1) / 2;
 
   const dCenter2 = (cx - gridCx) ** 2 + (cy - usedCy) ** 2;
-  const centerPenalty = -0.12 * dCenter2;
+  const centerPenalty = centerBias ? (-0.12 * dCenter2) : 0;
 
   let minD2 = Infinity;
   for (const s of placedSky) {
@@ -163,7 +221,8 @@ function scoreGroundCandidate(
   segCenterC: number,
   bandTop: number,
   bandBot: number,
-  shape?: ShapeName
+  shape?: ShapeName,
+  opts?: { centerBias?: boolean; segPull?: boolean }
 ) {
   if (r0 < bandTop || (r0 + hCell - 1) > bandBot) return -1e9;
 
@@ -175,15 +234,18 @@ function scoreGroundCandidate(
   const dCol2 = (colCenter - gridColCenter) ** 2;
   const dRow2 = (rowCenter - usedRowCenter) ** 2;
 
-  const wCol = 1.0;
-  const wRow = 0.6;
+  const centerBias = opts?.centerBias ?? true;
+  const segPullOn  = opts?.segPull ?? true;
+  
+  const wCol = centerBias ? 1.0 : 0;
+  const wRow = centerBias ? 0.6 : 0;
 
   const edgeLeft  = Math.max(0, 2 - c0);
   const edgeRight = Math.max(0, (c0 + wCell) - (cols - 2));
   const edgePenalty = (edgeLeft + edgeRight) * 6;
-
+  
   const lanePenalty = (lane != null && (c0 % 3) !== lane) ? 2 : 0;
-  const segPull = -0.9 * (colCenter - segCenterC) ** 2;
+  const segPull = segPullOn ? (-0.9 * (colCenter - segCenterC) ** 2) : 0;
 
   const jitter = (hash32(`g|${r0},${c0},${wCell},${hCell}`) & 0xff) / 255 * 0.2;
 
@@ -252,9 +314,13 @@ function ensureAtLeastOneSunAtLowAvg(
 export function useGridDotField(
   engine: Engine,
   allocAvg: number | undefined,
-  viewportKey?: number | string
+  viewportKey?: number | string,
+  // tell the hook whether this is the overlay instance
+  opts?: { overlay?: boolean }
 ) {
   const { questionnaireOpen } = useGraph();
+  const isOverlay = !!opts?.overlay;
+
   const tRef = useRef(clamp01(allocAvg));
   tRef.current = clamp01(allocAvg);
 
@@ -283,20 +349,33 @@ export function useGridDotField(
     }
   };
 
-  ensurePoolSize(targetPoolSize(questionnaireOpen));
+  // Initial guess (will be corrected once engine is ready)
+  const initialW =
+    (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : undefined;
+  ensurePoolSize(targetPoolSize({
+    isQuestionnaireOpen: questionnaireOpen,
+    isOverlay,
+    width: initialW
+  }));
 
   useEffect(() => {
     if (!engine?.ready?.current) return;
 
     engine.controls.current?.setQuestionnaireOpen?.(questionnaireOpen);
 
-    const canvas = engine.controls.current?.canvas;
-    const rect = canvas?.getBoundingClientRect?.();
-    const w = Math.round(rect?.width ?? window.innerWidth);
-    const h = Math.round(rect?.height ?? window.innerHeight);
+    // 🔒 SINGLE SOURCE OF TRUTH: logical canvas size (not rect)
+    const canvas = engine.controls.current?.canvas as HTMLCanvasElement | null | undefined;
+    const { w, h } = getCanvasLogicalSize(canvas);
+
+    // Ensure pool matches responsive size for the *actual* logical size
+    ensurePoolSize(targetPoolSize({
+      isQuestionnaireOpen: questionnaireOpen,
+      isOverlay,
+      width: w
+    }));
 
     const band = bandFromWidth(w);
-    const spec = getGridSpec(w, questionnaireOpen);
+    const spec = getGridSpec(w, questionnaireOpen, { overlay: isOverlay });
 
     const { cell, rows, cols } = makeCenteredSquareGrid({
       w, h, rows: spec.rows, useTopRatio: spec.useTopRatio ?? 1,
@@ -309,7 +388,7 @@ export function useGridDotField(
     const usedRows = Math.max(1, Math.round(rows * Math.max(0.01, Math.min(1, spec.useTopRatio ?? 1))));
 
     const float20 = interpolateConditionMix20(tRef.current);
-    const desiredSize = targetPoolSize(questionnaireOpen);
+    const desiredSize = targetPoolSize({ isQuestionnaireOpen: questionnaireOpen, isOverlay, width: w });
     const targetCounts = scaleMixToCount(float20, desiredSize);
 
     const pool = poolRef.current!;
@@ -327,7 +406,7 @@ export function useGridDotField(
       const items = byKind[kind];
       if (!items.length) return;
       const u = tRef.current;
-      const map = planForBucket(kind, items, u, salt);
+      const map = planForBucket(kind, items, u, salt, isOverlay ? 'overlay' : 'default');
       for (const p of nextPool) {
         if (p.cond !== kind) continue;
         const asn = map.get(p.id);
@@ -341,7 +420,7 @@ export function useGridDotField(
       (r, c) => cellForbidden(r, c, rows, cols, spec)
     );
 
-    const fallbackCells = buildCandidates(rows, cols, spec);
+    const fallbackCells = buildCandidates(rows, cols, spec, { overlay: isOverlay });
 
     const placed: Array<{ id:number; x:number; y:number; shape?: ShapeName; footprint: FootRect }> = [];
     let cursor = 0;
@@ -358,7 +437,10 @@ export function useGridDotField(
         const lane = pickLane(isHouse ? 'house' : 'villa', item.id, salt);
 
         const { top: bandTop, bot: bandBot } =
-          RowRules.preferredGroundBand(item.shape, usedRows, band, hCell, { questionnaire: questionnaireOpen });
+          RowRules.preferredGroundBand(item.shape, usedRows, band, hCell, {
+            questionnaire: questionnaireOpen,
+            overlay: isOverlay,
+          });
         const rowOrder = rowOrderFromBand(bandTop, bandBot);
 
         const candidates: Array<{ r0:number; c0:number; score:number }> = [];
@@ -373,7 +455,8 @@ export function useGridDotField(
                 r0, c0, wCell, hCell,
                 lane, segCenterC,
                 bandTop, bandBot,
-                item.shape
+                item.shape,
+                { centerBias: !isOverlay, segPull: !isOverlay }
               );
               candidates.push({ r0, c0, score });
             }
@@ -390,13 +473,14 @@ export function useGridDotField(
             for (const seg of segs) {
               const segCenterC = (seg.cStart + seg.cEnd + wCell) / 2;
               for (let c0 = seg.cStart; c0 <= seg.cEnd; c0++) {
-                const score = scoreGroundCandidate(
-                  rows, cols, usedRows,
-                  r0, c0, wCell, hCell,
-                  lane, segCenterC,
-                  bandTop, bandBot,
-                  item.shape
-                ) - 4;
+              const score = scoreGroundCandidate(
+                rows, cols, usedRows,
+                r0, c0, wCell, hCell,
+                lane, segCenterC,
+                bandTop, bandBot,
+                item.shape,
+                { centerBias: !isOverlay, segPull: !isOverlay }
+              ) - 4;
                 candidates.push({ r0, c0, score });
               }
             }
@@ -409,8 +493,10 @@ export function useGridDotField(
           if (hit) { rectHit = hit; break; }
         }
       } else {
-        const { rMin, rMax } = RowRules.skyBand(item.shape, usedRows, band, { questionnaire: questionnaireOpen });
-
+        const { rMin, rMax } = RowRules.skyBand(item.shape, usedRows, band, {
+          questionnaire: questionnaireOpen,
+           overlay: isOverlay,
+        });
         const placedSky = placed
           .filter(p => isSky(p.shape))
           .map(p => ({ r0: p.footprint.r0, c0: p.footprint.c0, w: p.footprint.w, h: p.footprint.h }));
@@ -420,9 +506,10 @@ export function useGridDotField(
           const segs = allowedSegmentsForRow(r0, wCell, hCell, rows, cols, spec);
           for (const seg of segs) {
             for (let c0 = seg.cStart; c0 <= seg.cEnd; c0++) {
-              const score = scoreSkyCandidate(
-                r0, c0, wCell, hCell, rows, cols, usedRows, placedSky, salt
-              );
+            const score = scoreSkyCandidate(
+              r0, c0, wCell, hCell, rows, cols, usedRows, placedSky, salt,
+              /*centerBias*/ !isOverlay
+            );
               skyCandidates.push({ r0, c0, score });
             }
           }
@@ -469,5 +556,5 @@ export function useGridDotField(
 
     engine.controls.current?.setFieldItems?.(placed);
     engine.controls.current?.setFieldVisible?.(true);
-  }, [engine, allocAvg, questionnaireOpen, viewportKey]);
+  }, [engine, allocAvg, questionnaireOpen, viewportKey, isOverlay]);
 }

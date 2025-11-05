@@ -108,7 +108,7 @@ export default function GamificationGeneral({
 
   if (!dotId || percentage === undefined || color === undefined) return null;
 
-  // --- RELATIVE MODE (compact text with emoji arrows; include tie & counts) ---
+  // --- RELATIVE MODE (highlight only Top / Middle / Bottom words; numbers stay neutral) ---
   let relativeLine = null;
 
   if (mode === 'relative') {
@@ -118,26 +118,28 @@ export default function GamificationGeneral({
       if (canonicalTie === 'tiedTop') {
         relativeLine = (
           <>
-            Top spot ⬆️<br />
-            Tied with <Strong>{e}</Strong>
+            <Strong>Top</Strong> spot ⬆️<br />
+            Tied with {e}
           </>
         );
       } else {
-        relativeLine = <>Top of the group ⬆️</>;
+        relativeLine = <>
+          <Strong>Top</Strong> of the group ⬆️
+        </>;
       }
     } else if (isNearTop) {
       if (e > 0) {
         relativeLine = (
           <>
-            Near top ⬆️<br />
-            Tied with <Strong>{e}</Strong>, behind <Strong>{a}</Strong>
+            Near <Strong>Top</Strong> ⬆️<br />
+            Tied with {e}, behind {a}
           </>
         );
       } else {
         relativeLine = (
           <>
-            Near top ⬆️<br />
-            Behind <Strong>{a}</Strong>
+            Near <Strong>Top</Strong> ⬆️<br />
+            Behind {a}
           </>
         );
       }
@@ -145,26 +147,26 @@ export default function GamificationGeneral({
       if (canonicalTie === 'tiedBottom') {
         relativeLine = (
           <>
-            Bottom ⬇️<br />
-            Tied with <Strong>{e}</Strong>
+            <Strong>Bottom</Strong> ⬇️<br />
+            Tied with {e}
           </>
         );
       } else {
-        relativeLine = <>Bottom ⬇️</>;
+        relativeLine = <><Strong>Bottom</Strong> ⬇️</>;
       }
     } else if (isNearBottom) {
       if (e > 0) {
         relativeLine = (
           <>
-            Near bottom ⬇️<br />
-            Tied with <Strong>{e}</Strong>, ahead of <Strong>{b}</Strong>
+            Near <Strong>Bottom</Strong> ⬇️<br />
+            Tied with {e}, ahead of {b}
           </>
         );
       } else {
         relativeLine = (
           <>
-            Near bottom ⬇️<br />
-            Ahead of <Strong>{b}</Strong>
+            Near <Strong>Bottom</Strong> ⬇️<br />
+            Ahead of {b}
           </>
         );
       }
@@ -172,29 +174,29 @@ export default function GamificationGeneral({
       if (canonicalTie === 'tiedMiddle') {
         relativeLine = (
           <>
-            Middle =<br />
-            Tied with <Strong>{e}</Strong>, ahead of <Strong>{b}</Strong>, behind <Strong>{a}</Strong>
+            <Strong>Middle</Strong> =<br />
+            Tied with {e}, ahead of {b}, behind {a}
           </>
         );
       } else if (a < b) {
         relativeLine = (
           <>
-            Middle =<br />
-            Behind <Strong>{a}</Strong>
+            <Strong>Middle</Strong> =<br />
+            Behind {a}
           </>
         );
       } else if (b < a) {
         relativeLine = (
           <>
-            Middle =<br />
-            Ahead of <Strong>{b}</Strong>
+            <Strong>Middle</Strong> =<br />
+            Ahead of {b}
           </>
         );
       } else {
         relativeLine = (
           <>
-            Middle =<br />
-            Ahead of <Strong>{b}</Strong>, behind <Strong>{a}</Strong>
+            <Strong>Middle</Strong> =<br />
+            Ahead of {b}, behind {a}
           </>
         );
       }

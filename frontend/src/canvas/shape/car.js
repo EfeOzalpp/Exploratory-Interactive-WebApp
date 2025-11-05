@@ -285,8 +285,14 @@ export function drawCar(p, cx, cy, r, opts = {}) {
     tileW = r * 3.0; tileH = r * 3.0; tileX = cx - tileW / 2; tileY = cy - tileH / 2;
   }
 
+  // When we have a footprint, recompute the geometric center from the tile
+  // so road + body share the exact same anchor.
+  const cx0 = (cell && f) ? (tileX + tileW / 2) : cx;
+
   // sprite-aware seedKey: prefer external (from sprite factory), else local tile-based
-  const seedKey = (opts && (opts.seedKey ?? opts.seed)) ?? `car|${Math.round(tileX)}|${Math.round(tileY)}|${Math.round(tileW)}x${Math.round(tileH)}`;
+  const seedKey =
+    (opts && (opts.seedKey ?? opts.seed)) ??
+    `car|${Math.round(tileX)}|${Math.round(tileY)}|${Math.round(tileW)}x${Math.round(tileH)}`;
 
   // ground layers (deterministic two-tone grass for variety)
   const rGrass1 = rFromKey(seedKey, 'ground:grass1');
@@ -300,7 +306,7 @@ export function drawCar(p, cx, cy, r, opts = {}) {
   // appear anchored to bottom-center of tile
   const baseY = tileY + tileH;
   const m = applyShapeMods({
-    p, x: cx, y: baseY, r,
+    p, x: cx0, y: baseY, r,
     opts: { alpha, timeMs: opts.timeMs, liveAvg: opts.liveAvg, rootAppearK: opts.rootAppearK },
     mods: {
       appear: { scaleFrom: 0.0, alphaFrom: 0.0, anchor: 'bottom-center', ease: 'back', backOvershoot: 1.25 },
@@ -311,7 +317,7 @@ export function drawCar(p, cx, cy, r, opts = {}) {
   p.push();
   p.translate(m.x, m.y);
   p.scale(m.scaleX, m.scaleY);
-  p.translate(-cx, -baseY);
+  p.translate(-cx0, -baseY);
 
   // grass
   const g1 = pick(CAR_BASE_PALETTE.grass, rGrass1);
@@ -338,8 +344,8 @@ export function drawCar(p, cx, cy, r, opts = {}) {
   const sidePad = Math.max(2, tileW * 0.06);           // small visual gutter
   const s = fitScaleToRectWidth(designW, tileW, sidePad, { allowUpscale: !!opts.allowUpscale });
 
-  beginFitScale(p, { cx, anchorY: wheelY, scale: s });
-  drawCarAsset(p, cx, wheelY, r, {
+  beginFitScale(p, { cx: cx0, anchorY: wheelY, scale: s });
+  drawCarAsset(p, cx0, wheelY, r, {
     alpha,
     exposure: ex,
     contrast: ct,
