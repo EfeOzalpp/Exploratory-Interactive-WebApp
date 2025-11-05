@@ -135,5 +135,5 @@ Every architectural decision aims to keep the system reactive, procedural, and h
 
 The result is a living interface — part visualization, part expression, and entirely driven by human input.
 
-> “Instead of showing charts about climate — we built a world that feels it.”
+> “Instead of showing charts about climate — I built a world that feels it.”
 ```
