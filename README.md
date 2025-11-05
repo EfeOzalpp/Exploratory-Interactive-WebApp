@@ -1,11 +1,16 @@
 # 🌍 Participatory Climate App — 3D Interactive Survey Experience
 
-<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 1rem;">
-  <img src="./project_screenshots/6.png" style="max-width: 45%; height: auto;" alt="Climate Inclusive App">
-  <img src="./project_screenshots/14.png" style="max-width: 45%; height: auto;" alt="Climate Inclusive App">
-  <img src="./project_screenshots/2.png" style="max-width: 45%; height: auto;" alt="Climate Inclusive App">
-  <img src="./project_screenshots/1.png" style="max-width: 45%; height: auto;" alt="Climate Inclusive App">
+<div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+  <div>
+    <img src="./project_screenshots/6.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
+    <img src="./project_screenshots/14.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
+  </div>
+  <div>
+    <img src="./project_screenshots/2.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
+    <img src="./project_screenshots/1.png" style="width: 45%; min-width: 300px;" alt="Climate Inclusive App">
+  </div>
 </div>
+
 
 **Participatory Climate App** is a fully interactive web application that visualizes survey results about climate change in a **gamified 3D environment**.  
 
