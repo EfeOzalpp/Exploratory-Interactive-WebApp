@@ -24,7 +24,7 @@ export default function CityButton({
           type="button"
         >
           <span className={`city-button-text ${isOpen ? 'hidden-text' : ''}`}>
-            Full City
+            Your City
           </span>
           <Chevron className="city-chevron" isOpen={isOpen} />
         </button>

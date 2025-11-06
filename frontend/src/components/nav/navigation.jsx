@@ -4,6 +4,7 @@ import InfoPanel from "./infoPanel.jsx";
 import InfoGraph from "./infoGraph.jsx";
 import GraphPicker from "./graphPicker";
 import { useGraph } from "../../context/graphContext.tsx";
+import EdgeModeHint from "../../cues/EdgeModeHint";
 import "../../styles/navigation.css";
 import "../../styles/info-graph.css";
 
@@ -11,9 +12,8 @@ const DEFAULT_SECTION = "fine-arts";
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
-  const [burgerOpen, setBurgerOpen] = useState(true);
+  const [burgerOpen, setBurgerOpen] = useState(false);
 
-  // Track GraphPicker open + whether we’re on phone (<=768px)
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isPhone, setIsPhone] = useState(
     typeof window !== "undefined"
@@ -54,20 +54,18 @@ const Navigation = () => {
     closeGraph,
     setNavPanelOpen,
     navVisible,
-    darkMode, // ← EdgeModeHint controls this
+    darkMode,
   } = useGraph();
 
-  // keep context in sync with this component's "What's the Idea?" panel
   useEffect(() => {
     setNavPanelOpen?.(open);
   }, [open, setNavPanelOpen]);
 
-  // Hide the entire nav on phones when navVisible=false
   const navClassName = [
     "navigation",
     isPhone && pickerOpen && !open ? "picker-open-mobile" : "",
     !navVisible ? "nav-hidden-mobile" : "",
-    open ? "info-open" : "", // used by CSS to hide side menu while info panel is open
+    open ? "info-open" : "",
   ]
     .join(" ")
     .trim();
@@ -76,7 +74,6 @@ const Navigation = () => {
     if (isPhone && !navVisible) setOpen(false);
   }, [isPhone, navVisible]);
 
-  // still collapse observer if survey completed
   useEffect(() => {
     if (hasCompletedSurvey && observerMode) setObserverMode(false);
   }, [hasCompletedSurvey, observerMode, setObserverMode]);
@@ -97,9 +94,6 @@ const Navigation = () => {
 
   const showObserverButton = !hasCompletedSurvey || observerMode;
 
-  // THEME:
-  // - X button should always mirror darkMode
-  // - Nav chrome can still force LIGHT while the info panel is open
   const themeDark = !!darkMode;
   const navChromeDark = open ? false : themeDark;
   const xButtonDark = themeDark;
@@ -114,7 +108,6 @@ const Navigation = () => {
         </div>
 
         <div className="nav-right">
-          {/* When the info panel is OPEN, render ONLY a single “x” button and nothing else */}
           {open ? (
             <div
               className={["level-two", xButtonDark ? "is-dark" : ""]
@@ -128,7 +121,6 @@ const Navigation = () => {
                 onClick={() => setOpen(false)}
                 aria-label="Close info panel"
               >
-                {/* SVG X icon, same visual weight as + / - */}
                 <svg
                   viewBox="0 0 24 24"
                   width="18"
@@ -145,16 +137,17 @@ const Navigation = () => {
             </div>
           ) : (
             <>
-              {/* LEVEL ONE — collapsible (only when info is CLOSED) */}
+              {/* LEVEL ONE — top stack (only when info is CLOSED) */}
               <div
                 className={[
                   "level-one",
-                  burgerOpen ? "burger-closed" : "",
+                  !burgerOpen ? "burger-closed" : "",
                   navChromeDark ? "is-dark" : "",
                 ]
                   .join(" ")
                   .trim()}
               >
+                {/* Primary button */}
                 <button
                   className={["nav-toggle", navChromeDark ? "is-dark" : ""]
                     .join(" ")
@@ -165,6 +158,9 @@ const Navigation = () => {
                 >
                   {"What's the Idea?"}
                 </button>
+
+                {/* Theme toggle — same button style as nav-toggle, no wrapper */}
+                {<EdgeModeHint />}
               </div>
 
               {/* LEVEL TWO — vertical stack (only when info is CLOSED) */}
@@ -216,7 +212,7 @@ const Navigation = () => {
                   aria-controls="nav-tools"
                   aria-label={burgerOpen ? "Hide options" : "Show options"}
                 >
-                  {burgerOpen ? (
+                  {!burgerOpen ? (
                     <svg
                       viewBox="0 0 24 24"
                       width="18"
@@ -245,7 +241,6 @@ const Navigation = () => {
         </div>
       </nav>
 
-      {/* Info panel */}
       <InfoPanel open={open} onClose={() => setOpen(false)}>
         <InfoGraph />
       </InfoPanel>

@@ -1,119 +1,95 @@
-// src/cues/EdgeModeHint.jsx
-import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import HintBubble from "../tooltip/hintBubble";
+import React, { useEffect, useRef } from "react";
 import { useGraph } from "../context/graphContext.tsx";
 
-const ROOT_ID = "gp-edge-cue-hint-root";
-
 /**
- * EdgeModeHint (JSX)
- * - Listens to 'gp:edge-cue' and 'gp:edge-hint-request'
- * - Shows a clickable bubble for exactly 3s (no reset while visible)
- * - Clicking toggles GraphContext.darkMode
+ * EdgeModeHint (simplified with icon)
+ * - Same styling as .nav-toggle
+ * - Shows Sun icon when prompting "Light Mode"
+ * - Shows Moon icon when prompting "Dark Mode"
  */
+
+function SunIcon(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="4" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+function MoonIcon(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      {...props}
+    >
+      {/* Crescent moon: draw via path */}
+      <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+    </svg>
+  );
+}
+
 export default function EdgeModeHint() {
   const { darkMode, setDarkMode } = useGraph();
+  const textRef = useRef(darkMode ? "Dark mode" : "Light mode");
 
-  const [mount, setMount] = useState(null);
-  const [show, setShow] = useState(false);
-  const [text, setText] = useState(darkMode ? "Dark mode" : "Light mode");
-
-  // Refs for stable behavior
-  const timerRef = useRef(null);          // active hide timer
-  const showRef = useRef(false);          // mirror of show to avoid stale closure
-  const darkModeRef = useRef(darkMode);   // latest theme for reveal text
-
-  // Keep refs in sync
-  useEffect(() => { showRef.current = show; }, [show]);
   useEffect(() => {
-    darkModeRef.current = darkMode;
-    if (showRef.current) setText(darkMode ? "Dark mode" : "Light mode");
+    textRef.current = darkMode ? "Dark mode" : "Light mode";
   }, [darkMode]);
-
-  // Ensure portal root
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    let root = document.getElementById(ROOT_ID);
-    if (!root) {
-      root = document.createElement("div");
-      root.id = ROOT_ID;
-      document.body.appendChild(root);
-    }
-    setMount(root);
-  }, []);
-
-  // 3s one-shot reveal (ignore if already visible)
-  const reveal3s = () => {
-    if (showRef.current) return;
-    setText(darkModeRef.current ? "Dark mode" : "Light mode");
-    setShow(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setShow(false);
-      timerRef.current = null;
-    }, 3000);
-  };
-
-  // Install listeners ONCE (don’t tie to darkMode)
-  useEffect(() => {
-    const onEdgeCue = () => reveal3s();
-    const onHintReq = () => reveal3s();
-
-    window.addEventListener("gp:edge-cue", onEdgeCue);
-    window.addEventListener("gp:edge-hint-request", onHintReq);
-    return () => {
-      window.removeEventListener("gp:edge-cue", onEdgeCue);
-      window.removeEventListener("gp:edge-hint-request", onHintReq);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []); // ← important
-
-  if (!mount || !show) return null;
 
   const toggle = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const next = !darkModeRef.current;
-    setDarkMode(next);
-    setText(next ? "Dark mode" : "Light mode");
-    // let the existing timer close the bubble; do NOT reset it here
+    setDarkMode(!darkMode);
+    textRef.current = !darkMode ? "Dark mode" : "Light mode";
   };
 
   const onKeyDown = (e) => {
     if (e.key === "Enter" || e.key === " ") toggle(e);
   };
 
-  return createPortal(
-    <div
-      className="cue-bubble"
-      style={{
-        position: "fixed",
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 4,
-        pointerEvents: "auto",
-      }}
+  const label = darkMode ? "Light Mode" : "Dark Mode";
+  const Icon = darkMode ? SunIcon : MoonIcon;
+
+  return (
+    <button
+      type="button"
+      aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={toggle}
+      onKeyDown={onKeyDown}
+      className="nav-toggle"
+      style={{ display: "inline-flex", alignItems: "center", gap: 8, flexDirection: "row-reverse" }}
     >
-      <button
-        type="button"
-        aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-        onClick={toggle}
-        onKeyDown={onKeyDown}
-        style={{ all: "unset", cursor: "pointer", display: "inline-block" }}
-      >
-        <HintBubble
-          show
-          placement="top"
-          className={`edge-mode-hint ${darkMode ? "is-dark" : "is-light"}`}
-        >
-          <h4>{text}</h4>
-          <p style={{ margin: 2, opacity: 0.8}}>
-            {darkMode ? "Click for light" : "Click for dark"}
-          </p>
-        </HintBubble>
-      </button>
-    </div>,
-    mount
+      <Icon />
+      <span>{label}</span>
+    </button>
   );
 }

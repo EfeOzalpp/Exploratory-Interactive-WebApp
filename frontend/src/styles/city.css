@@ -19,7 +19,7 @@
 .city-button.open { gap: 0; }
 
 /* Overlay container (unchanged) */
-.city-overlay { position: fixed; inset: 0; z-index: 20; pointer-events: none; transform: translateY(-100%); transition: transform 220ms ease; }
+.city-overlay { position: fixed; inset: 0; z-index: 20; pointer-events: all; transform: translateY(-100%); transition: transform 220ms ease; }
 .city-overlay.open { transform: translateY(0); }
 .city-canvas-host { position: absolute; inset: 0; width: 100%; height: 100%; }
 

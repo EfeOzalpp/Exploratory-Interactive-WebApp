@@ -22,7 +22,7 @@ const SHAPE_BANDS: Record<BreakBand, Record<ShapeName, Band>> = {
     carFactory: { topK: 0.30, botK: 0.60 },
     car:    { topK: 0.30, botK: 0.78 },
     bus:    { topK: 0.30, botK: 0.82 },
-    sea:    { topK: 0.20, botK: 0.90 },
+    sea:    { topK: 0.30, botK: 0.90 },
     trees:  { topK: 0.30, botK: 0.90 },
   },
 
@@ -37,8 +37,8 @@ const SHAPE_BANDS: Record<BreakBand, Record<ShapeName, Band>> = {
     carFactory: { topK: 0.50, botK: 0.90 },
     car:    { topK: 0.50, botK: 0.70 },
     bus:    { topK: 0.50, botK: 0.82 },
-    sea:    { topK: 0.18, botK: 0.82 },
-    trees:  { topK: 0.70, botK: 0.90 },
+    sea:    { topK: 0.4, botK: 1 },
+    trees:  { topK: 0.70, botK: 1 },
   },
 
   large: {

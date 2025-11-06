@@ -202,7 +202,6 @@ export default function useRotation({
           holdTimerRef.current = setTimeout(() => {
             if (holdArmedRef.current && holdSceneRef.current && !isPinchingRef.current && !(gestureRef?.current?.pinching)) {
               setLatched(!getLatched());
-              window.dispatchEvent(new CustomEvent('gp:edge-hint-request', { detail: { source: 'long-press' } }));
               holdArmedRef.current = false;
             }
           }, HOLD_MS);

@@ -3,29 +3,28 @@
   <head>
     <title>Butterfly Effect</title>
     <meta charset="utf-8" />
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
 
-    <!-- Tint browser UI / island -->
-    <!-- Modern: use theme-color (works on Android Chrome + iOS 15.4+) -->
+    <!-- Browser/theme colors -->
     <meta name="theme-color" content="#c9ecfc" />
-    <!-- Optional: match dark mode too (can keep same color if you want) -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#c9ecfc">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#a8d9f5">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#c9ecfc" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#a8d9f5" />
 
-    <!-- iOS PWA status bar (lets page color bleed under notch when installed) -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- iOS PWA status bar -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <meta name="theme-color" content="#c9ecfc" />
-    <meta name="Butterfly Effect"
-          content="Your daily habits can make or break the future of climate and environment as we shape it in our present." />
+    <meta
+      name="Butterfly Effect"
+      content="Your daily habits can make or break the future of climate and environment as we shape it in our present."
+    />
 
-    <!-- PNG for favicons and Apple touch -->
+    <!-- Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/butterfly-habits-logo.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/butterfly-habits-logo.png" />
-
-    <!-- SVG as a fallback for browsers that support it -->
     <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/butterfly-habits-logo-mini.svg" />
 
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
@@ -35,10 +34,9 @@
         height: 100%;
         margin: 0;
         background-color: #c9ecfc; /* matches theme-color for seamless top chrome */
-        /* If you're using iOS PWA with black-translucent, make sure the background fills the safe area */
       }
 
-      /* Optional: ensure safe areas are covered on iOS */
+      /* Ensure safe areas are covered on iOS */
       body {
         padding-top: constant(safe-area-inset-top);
         padding-top: env(safe-area-inset-top);
@@ -54,6 +52,11 @@
         align-items: center;
         z-index: 9999;
         background: transparent; /* keep page color visible during load */
+        transition: opacity .25s ease;
+      }
+      #initial-loader.is-hidden {
+        opacity: 0;
+        pointer-events: none;
       }
       .spinner {
         width: 50px;
@@ -65,52 +68,64 @@
       }
       @keyframes spin { to { transform: rotate(360deg); } }
     </style>
-    
-    <script>
-  (function () {
-    const root = document.getElementById('butterfly-habits');
-    const loader = document.getElementById('initial-loader');
-    if (!root || !loader) return;
-
-    // Hide once React mounts something under #butterfly-habits
-    const obs = new MutationObserver(() => {
-      if (root.firstChild) {
-        loader.style.display = 'none';
-        obs.disconnect();
-      }
-    });
-    obs.observe(root, { childList: true, subtree: true });
-
-    // Fallback: if nothing changed by window load, hide anyway after a tick
-    window.addEventListener('load', () => {
-      if (loader.style.display !== 'none') {
-        requestAnimationFrame(() => { loader.style.display = 'none'; });
-      }
-    }, { passive: true });
-  })();
-</script>
-
   </head>
+
   <body>
     <noscript>Please enable JavaScript</noscript>
+
     <div id="initial-loader">
       <div class="spinner"></div>
     </div>
+
     <div id="butterfly-habits"></div>
 
+    <!-- Robust loader controller: attach after DOM exists; always register fallbacks -->
     <script>
-      // When React attaches, remove loader
-      window.addEventListener('DOMContentLoaded', () => {
-        const root = document.getElementById('butterfly-habits');
-        const loader = document.getElementById('initial-loader');
-        if (root && loader) {
-          const observer = new MutationObserver(() => {
-            loader.style.display = 'none';
-            observer.disconnect();
-          });
-          observer.observe(root, { childList: true });
+      (function () {
+        function hideLoader() {
+          const loader = document.getElementById('initial-loader');
+          if (loader && !loader.classList.contains('is-hidden')) {
+            // prefer class for possible transitions
+            loader.classList.add('is-hidden');
+            // final hard hide after transition to avoid accidental focus/scroll
+            setTimeout(() => { if (loader) loader.style.display = 'none'; }, 300);
+          }
         }
-      });
+
+        function setupObserver() {
+          const root = document.getElementById('butterfly-habits');
+          if (!root) return false;
+
+          // Hide immediately if React already mounted something
+          if (root.firstChild) {
+            hideLoader();
+            return true;
+          }
+
+          const obs = new MutationObserver(() => {
+            if (root.firstChild) {
+              hideLoader();
+              obs.disconnect();
+            }
+          });
+          obs.observe(root, { childList: true, subtree: true });
+          return true;
+        }
+
+        // 1) When DOM is ready, try to set up the observer
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => { setupObserver(); }, { once: true });
+        } else {
+          setupObserver();
+        }
+
+        // 2) Fallbacks that ALWAYS run
+        // a) window.load – last-resort once everything finished loading
+        window.addEventListener('load', () => { hideLoader(); }, { passive: true, once: true });
+
+        // b) Hard timeout – prevents “stuck spinner” if React fails to mount
+        setTimeout(hideLoader, 4000);
+      })();
     </script>
   </body>
 </html>

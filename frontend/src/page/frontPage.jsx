@@ -24,9 +24,6 @@ const CityOverlay = React.lazy(() =>
 const EdgeCue = React.lazy(() =>
   import(/* webpackChunkName: "edge-cue" */ '../components/dotGraph/darkMode.jsx')
 );
-const EdgeModeHint = React.lazy(() =>
-  import(/* webpackChunkName: "edge-mode-hint" */ '../cues/EdgeModeHint')
-);
 const ModeToggle = React.lazy(() =>
   import(/* webpackChunkName: "mode-toggle" */ '../components/nav-bottom/modeToggle')
 );
@@ -141,7 +138,6 @@ const FrontPageInner = () => {
       {readyForViz && (
         <Suspense fallback={null}>
           <EdgeCue />
-          <EdgeModeHint />
         </Suspense>
       )}
 
