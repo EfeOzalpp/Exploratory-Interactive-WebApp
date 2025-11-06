@@ -1,4 +1,4 @@
-# Exploratory Climate App
+# Butterlfy Effect
 
 <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
   <div>
