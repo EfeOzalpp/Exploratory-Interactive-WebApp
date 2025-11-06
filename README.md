@@ -1,4 +1,4 @@
-# Participatory Climate App
+# Exploratory Climate App
 
 <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
   <div>
@@ -9,7 +9,9 @@
   </div>
 </div>
 
-**Participatory Climate App** visualizes results of a short climate survey in an interactive 3D world.  
+---
+
+**Butterlfy Effect** visualizes results of a short climate survey in an interactive 3D world.  
 Users receive personalized, color-coded feedback and can explore other results in an orbitable space.
 
 ---
