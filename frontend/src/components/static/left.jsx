@@ -1,9 +1,9 @@
 // src/components/static/left/index.jsx (a.k.a. Logo.jsx)
 import React from "react";
-import { useGraph } from "../../context/graphContext.tsx";
+import { useAppState } from "../../context/appStateContext.tsx";
 
 const Logo = () => {
-  const { observerMode, hasCompletedSurvey, darkMode, navPanelOpen } = useGraph();
+  const { observerMode, hasCompletedSurvey, darkMode, navPanelOpen } = useAppState();
 
   // Dark logo is allowed only when observing or post-complete — AND only if the info panel is NOT open.
   // If navPanelOpen is true (InfoPanel open), we force the light logo.

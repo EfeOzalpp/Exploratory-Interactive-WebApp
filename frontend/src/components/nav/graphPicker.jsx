@@ -2,7 +2,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { ROLE_SECTIONS } from "../survey/sectionPicker/sections";
 import useSectionCounts from "../../utils/useSectionCounts";
-import { useGraph } from "../../context/graphContext.tsx";
+import { useAppState } from "../../context/appStateContext.tsx";
 
 const SPECIAL = [
   { id: "all",          label: "Everyone" },
@@ -40,7 +40,7 @@ export default function GraphPicker({
   onChange,
 }) {
   const { counts } = useSectionCounts();
-  const { mySection } = useGraph(); // ← user’s section from context (persisted in sessionStorage on submit)
+  const { mySection } = useAppState(); // ← user’s section from context (persisted in sessionStorage on submit)
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState(null); // null | 'student' | 'staff'

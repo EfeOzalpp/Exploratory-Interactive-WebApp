@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { useGraph } from "../../context/graphContext.tsx";
+import { useAppState } from "../../context/appStateContext.tsx";
 
 /**
- * EdgeModeHint (simplified with icon)
+ * DarkModeToggle (simplified with icon)
  * - Same styling as .nav-toggle
  * - Shows Sun icon when prompting "Light Mode"
  * - Shows Moon icon when prompting "Dark Mode"
@@ -57,8 +57,8 @@ function MoonIcon(props) {
   );
 }
 
-export default function EdgeModeHint() {
-  const { darkMode, setDarkMode } = useGraph();
+export default function DarkmodeHint() {
+  const { darkMode, setDarkMode } = useAppState();
   const textRef = useRef(darkMode ? "Dark mode" : "Light mode");
 
   useEffect(() => {
@@ -76,7 +76,6 @@ export default function EdgeModeHint() {
     if (e.key === "Enter" || e.key === " ") toggle(e);
   };
 
-  const label = darkMode ? "Light Mode" : "Dark Mode";
   const Icon = darkMode ? SunIcon : MoonIcon;
 
   return (
@@ -89,7 +88,7 @@ export default function EdgeModeHint() {
       style={{ display: "inline-flex", alignItems: "center", gap: 8, flexDirection: "row-reverse" }}
     >
       <Icon />
-      <span>{label}</span>
+      <span>{darkMode ? "Light mode" : "Dark mode"}</span>
     </button>
   );
 }

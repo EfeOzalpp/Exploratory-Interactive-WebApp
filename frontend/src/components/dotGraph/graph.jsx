@@ -5,8 +5,8 @@ import { AdaptiveDpr, AdaptiveEvents, Preload } from '@react-three/drei';
 import * as THREE from 'three';
 
 import DotGraph from './dotGraph';
-import { useGraph } from '../../context/graphContext.tsx';
-import { useRealMobileViewport } from '../real-mobile.ts';
+import { useAppState } from '../../context/appStateContext.tsx';
+import { useRealMobileViewport } from '../../utils/real-mobile.ts';
 import { bumpGeneration, resetQueue } from './canvas/textureQueue.ts';
 import { disposeAllSpriteTextures } from './canvas/ShapeSpriteFactory.tsx';
 
@@ -138,7 +138,7 @@ function WebGLCanvas({ data, isDragging, lowFidelity, dpr }) {
 
 /* --------------------------------- Wrapper -------------------------------- */
 const Graph = ({ isDragging }) => {
-  const { data: surveyData, loading, section, vizVisible } = useGraph();
+  const { data: surveyData, loading, section, vizVisible } = useAppState();
   const isRealMobile = useRealMobileViewport();
 
   const safeData = Array.isArray(surveyData) ? surveyData : [];

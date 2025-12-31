@@ -3,8 +3,8 @@ import Logo from "../static/left";
 import InfoPanel from "./infoPanel.jsx";
 import InfoGraph from "./infoGraph.jsx";
 import GraphPicker from "./graphPicker";
-import { useGraph } from "../../context/graphContext.tsx";
-import EdgeModeHint from "./darkmodeToggle.jsx";
+import { useAppState } from "../../context/appStateContext.tsx";
+import DarkModeButton from "./darkmodeToggle.jsx";
 import "../../styles/navigation.css";
 import "../../styles/info-graph.css";
 
@@ -55,7 +55,7 @@ const Navigation = () => {
     setNavPanelOpen,
     navVisible,
     darkMode,
-  } = useGraph();
+  } = useAppState();
 
   useEffect(() => {
     setNavPanelOpen?.(open);
@@ -160,7 +160,7 @@ const Navigation = () => {
                 </button>
 
                 {/* Theme toggle — same button style as nav-toggle, no wrapper */}
-                {<EdgeModeHint />}
+                {<DarkModeButton />}
               </div>
 
               {/* LEVEL TWO — vertical stack (only when info is CLOSED) */}

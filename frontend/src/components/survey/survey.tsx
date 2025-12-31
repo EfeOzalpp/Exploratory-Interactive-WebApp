@@ -1,7 +1,7 @@
 // src/components/survey/survey.tsx
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useGraph } from '../../context/graphContext.tsx';
+import { useAppState } from '../../context/appStateContext.tsx';
 import '../../styles/survey.css';
 import { ROLE_SECTIONS } from './sectionPicker/sections';
 import QuestionFlow from './questions/questionFlow.tsx';
@@ -10,8 +10,20 @@ import { saveUserResponse } from '../../utils/saveUserResponse.ts';
 
 type Audience = 'student' | 'staff' | 'visitor' | '';
 
+type RoleKey = 'student' | 'staff';
+const isRoleKey = (r: Audience): r is RoleKey => r === 'student' || r === 'staff';
+
+type SectionHeader = { type: 'header'; id: string; label: string };
+type SectionOption = {
+  type: 'option';
+  value: string;
+  label: string;
+  aliases?: string[];
+};
+type SectionItem = SectionHeader | SectionOption;
+
 const RoleStep = React.lazy(() => import('./rolePicker/roleStep'));
-const SectionPickerIntro = React.lazy(() => import('./sectionPicker/sectionPicker'));
+const SectionPickerIntro = React.lazy(() => import('./sectionPicker/sectionPicker.tsx'));
 const DoneOverlayR3F = React.lazy(() => import('./buttonLoader/DoneOverlayR3F.jsx'));
 
 export default function Survey({
@@ -35,21 +47,32 @@ export default function Survey({
   const [fadeState, setFadeState] = useState<'fade-in' | 'fade-out'>('fade-in');
 
   // latches
-  const [finished, setFinished] = useState(false);         // hide QuestionFlow right after submit
+  const [finished, setFinished] = useState(false); // hide QuestionFlow right after submit
   const [showCompleteButton, setShowCompleteButton] = useState(false); // show Exit overlay
 
   const exitingRef = useRef(false);
 
   const {
-    setSurveyActive, setHasCompletedSurvey, setSection, setMySection, setMyEntryId,
-    observerMode, openGraph, section, resetToStart, setNavVisible, hasCompletedSurvey,
+    setSurveyActive,
+    setHasCompletedSurvey,
+    setSection,
+    setMySection,
+    setMyEntryId,
+    observerMode,
+    openGraph,
+    section,
+    resetToStart,
+    setNavVisible,
+    hasCompletedSurvey,
     setQuestionnaireOpen,
-  } = useGraph();
+  } = useAppState();
 
   // Keep questionnaireOpen in sync with our stage (and finished latch)
   useEffect(() => {
     setQuestionnaireOpen(stage === 'questions' && !observerMode && !finished);
-    return () => { setQuestionnaireOpen(false); };
+    return () => {
+      setQuestionnaireOpen(false);
+    };
   }, [stage, observerMode, finished, setQuestionnaireOpen]);
 
   // Phone detection
@@ -58,6 +81,7 @@ export default function Survey({
       ? window.matchMedia('(max-width: 768px)').matches
       : false
   );
+
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mql = window.matchMedia('(max-width: 768px)');
@@ -91,14 +115,26 @@ export default function Survey({
     }, 70);
   };
 
-  const availableSections = useMemo(() => {
+  // Normalize ROLE_SECTIONS into what SectionPickerIntro expects:
+  // - option items must have { value, label, aliases? }
+  // - headers have { type:'header', id, label }
+  const availableSections = useMemo<SectionItem[]>(() => {
     if (!audience || audience === 'visitor') return [];
+
+    const toOption = (s: any): SectionOption => ({
+      type: 'option',
+      value: String(s?.value ?? ''),
+      label: String(s?.label ?? ''),
+      aliases: Array.isArray(s?.aliases) ? s.aliases : undefined,
+    });
+
     if (audience === 'student') {
-      return (ROLE_SECTIONS.student || []).map((s: any) => ({ ...s, type: 'option' }));
+      return (ROLE_SECTIONS.student || []).map(toOption).filter((o) => o.value);
     }
+
     if (audience === 'staff') {
-      const stu = (ROLE_SECTIONS.student || []).map((s: any) => ({ ...s, type: 'option' }));
-      const fac = (ROLE_SECTIONS.staff || []).map((s: any) => ({ ...s, type: 'option' }));
+      const stu = (ROLE_SECTIONS.student || []).map(toOption).filter((o) => o.value);
+      const fac = (ROLE_SECTIONS.staff || []).map(toOption).filter((o) => o.value);
       return [
         { type: 'header', id: 'staff', label: 'Institutional departments' },
         ...fac,
@@ -106,11 +142,15 @@ export default function Survey({
         ...stu,
       ];
     }
+
     return [];
   }, [audience]);
 
   const handleRoleNext = () => {
-    if (!audience) { setError('Choose whether you are Student, Staff, or Visitor.'); return; }
+    if (!audience) {
+      setError('Choose whether you are Student, Staff, or Visitor.');
+      return;
+    }
     setError('');
     if (audience === 'visitor') {
       transitionTo('questions', () => {
@@ -123,7 +163,10 @@ export default function Survey({
   };
 
   const handleBeginFromSection = () => {
-    if (!surveySection) { setError('Select your section.'); return; }
+    if (!surveySection) {
+      setError('Select your section.');
+      return;
+    }
     setError('');
     transitionTo('questions', () => setAnimationVisible(false));
   };
@@ -200,22 +243,31 @@ export default function Survey({
       setSurveyWrapperClass('');
       setFinished(false);
     });
-    resetToStart();         // sets hasCompletedSurvey=false, closes viz, clears identity
+    resetToStart(); // sets hasCompletedSurvey=false, closes viz, clears identity
     setNavVisible(true);
-    Promise.resolve().then(() => { exitingRef.current = false; });
+    Promise.resolve().then(() => {
+      exitingRef.current = false;
+    });
   };
 
   const handleAudienceChange = (role: Audience) => {
-    setAudience(role); setError('');
+    setAudience(role);
+    setError('');
+
+    // ✅ Only index ROLE_SECTIONS when role is student/staff
     const allowed = role === 'staff'
-      ? [...(ROLE_SECTIONS.student || []), ...(ROLE_SECTIONS.staff || [])].map((s: any) => s.value)
-      : (ROLE_SECTIONS[role] || []).map((s: any) => s.value);
-    setSurveySection(prev =>
-      allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''
-    );
+      ? [...(ROLE_SECTIONS.student || []), ...(ROLE_SECTIONS.staff || [])].map((s) => s.value)
+      : isRoleKey(role)
+        ? (ROLE_SECTIONS[role] || []).map((s) => s.value)
+        : [];
+
+    setSurveySection((prev) => (allowed.includes(prev) ? prev : role === 'visitor' ? 'visitor' : ''));
   };
 
-  const handleSectionChange = (val: string) => { setSurveySection(val); setError(''); };
+  const handleSectionChange = (val: string) => {
+    setSurveySection(val);
+    setError('');
+  };
 
   // Render
   if (exitingRef.current) {
@@ -242,12 +294,7 @@ export default function Survey({
       {!observerMode && (
         <Suspense fallback={null}>
           {stage === 'role' && (
-            <RoleStep
-              value={audience}
-              onChange={handleAudienceChange}
-              onNext={handleRoleNext}
-              error={error}
-            />
+            <RoleStep value={audience} onChange={handleAudienceChange} onNext={handleRoleNext} error={error} />
           )}
 
           {stage === 'section' && (

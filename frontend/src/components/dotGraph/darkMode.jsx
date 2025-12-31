@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useGraph } from '../../context/graphContext.tsx';
+import { useAppState } from '../../context/appStateContext.tsx';
 
-const ROOT_ID = 'gp-edge-cue-root';
+const ROOT_ID = 'gp-darkmode-root';
 
-export default function EdgeCue() {
-  const { darkMode } = useGraph(); // ← canonical source
+export default function DarkMode() {
+  const { darkMode } = useAppState(); 
   const [mount, setMount] = useState(null);
 
   // Ensure portal root
@@ -41,7 +41,7 @@ export default function EdgeCue() {
           position: 'absolute',
           inset: -1,
           borderRadius: 0,
-          backgroundColor: 'rgba(13, 14, 15, 0.91)', // dark overlay for dark mode
+          backgroundColor: 'rgba(13, 14, 15, 0.91)',
           opacity: 1,
           transform: 'scale(1)',
           transition: 'opacity 140ms linear, transform 140ms ease-out',

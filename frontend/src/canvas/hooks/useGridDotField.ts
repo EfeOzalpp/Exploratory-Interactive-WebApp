@@ -1,7 +1,7 @@
 // src/canvas/hooks/useGridDotField.ts
 import { useEffect, useRef } from 'react';
 import { bandFromWidth, getGridSpec, type GridSpec } from '../grid/config.ts';
-import { useGraph } from '../../context/graphContext.tsx';
+import { useAppState } from '../../context/appStateContext.tsx';
 import { makeCenteredSquareGrid } from '../grid/layoutCentered.ts';
 import { createOccupancy } from '../grid/occupancy.ts';
 import { cellCenterToPx } from '../grid/coords.ts';
@@ -318,7 +318,7 @@ export function useGridDotField(
   // tell the hook whether this is the overlay instance
   opts?: { overlay?: boolean }
 ) {
-  const { questionnaireOpen } = useGraph();
+  const { questionnaireOpen } = useAppState();
   const isOverlay = !!opts?.overlay;
 
   const tRef = useRef(clamp01(allocAvg));

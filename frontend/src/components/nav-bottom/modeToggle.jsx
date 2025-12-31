@@ -1,12 +1,12 @@
 // src/components/nav-bottom/ModeToggle.jsx
 import React, { useMemo } from "react";
-import { useGraph } from "../../context/graphContext.tsx";
+import { useAppState } from "../../context/appStateContext.tsx";
 import { avgWeightOf } from "../../utils/useRelativePercentiles.ts";
 import { useAbsoluteScore } from "../../utils/useAbsoluteScore.ts";
 import '../../styles/nav-bottom.css';
 
 export default function ModeToggle() {
-  const { mode, setMode, data, myEntryId, observerMode } = useGraph();
+  const { mode, setMode, data, myEntryId, observerMode } = useAppState();
 
   // Pool + personal metrics (used for nicer titles when not observing)
   const poolValues = useMemo(

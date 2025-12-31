@@ -3,12 +3,12 @@ import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 
-import CompleteButton from '../completeButton.jsx';
+import CompleteButton from '../survey/completeButton.jsx';
 import GamificationPersonalized from '../gamification/gamificationPersonalized';
 import GamificationGeneral from '../gamification/gamificationGeneral';
 
-import { useGraph } from '../../context/graphContext.tsx';
-import { useRealMobileViewport } from '../real-mobile.ts';
+import { useAppState } from '../../context/appStateContext.tsx';
+import { useRealMobileViewport } from '../../utils/real-mobile.ts';
 import { sampleStops, rgbString } from '../../utils/hooks.ts';
 import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
 import { useAbsoluteScore } from '../../utils/useAbsoluteScore.ts';
@@ -148,7 +148,7 @@ function allowPersonalInSection(role, mySectionRaw, sectionRaw) {
 }
 
 const DotGraph = ({ isDragging = false, data = [] }) => {
-  const { myEntryId, mySection, /* myRole (unused on purpose) */ observerMode, mode, section } = useGraph();
+  const { myEntryId, mySection, /* myRole (unused on purpose) */ observerMode, mode, section } = useAppState();
   const safeData = Array.isArray(data) ? data : [];
   const showCompleteUI = useObserverDelay(observerMode, 2000);
 

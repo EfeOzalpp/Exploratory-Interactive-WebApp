@@ -1,5 +1,5 @@
 import React from 'react';
-import FrontPage from './page/frontPage';
+import FrontPage from './frontPage';
 
 function App() {
   return (

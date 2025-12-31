@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGraph } from '../../context/graphContext.tsx';
+import { useAppState } from '../../context/appStateContext.tsx';
 import "../../styles/city.css";
 
 export default function CityButton({
@@ -11,7 +11,7 @@ export default function CityButton({
   onToggle: () => void;
   shown?: boolean;
 }) {
-  const { darkMode } = useGraph(); // ← global dark mode
+  const { darkMode } = useAppState(); // ← global dark mode
 
   return (
     <div className={`city-button-boundary ${shown ? 'shown' : 'hidden'}`}>

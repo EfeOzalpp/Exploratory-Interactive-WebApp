@@ -6,9 +6,9 @@ import React, {
   Suspense,
   useMemo,
 } from 'react';
-import { useGraph } from '../../context/graphContext.tsx';
+import { useAppState } from '../../context/appStateContext.tsx';
 import { useRelativePercentiles, avgWeightOf } from '../../utils/useRelativePercentiles.ts';
-import EmptyStateArt from '../../components/emptyStateArt';
+import EmptyStateArt from './emptyStateArt.jsx';
 import '../../styles/graph.css';
 
 const Lottie = React.lazy(() =>
@@ -57,7 +57,7 @@ const BarGraph = () => {
     hasCompletedSurvey,
     myEntryId,
     darkMode,            // ← NEW: drive colors from context
-  } = useGraph();
+  } = useAppState();
 
   const { getForId } = useRelativePercentiles(data);
 
