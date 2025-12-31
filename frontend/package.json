@@ -1,6 +1,6 @@
 {
-  "name": "my-app",
-  "version": "0.1.0",
+  "name": "butterfly-effect",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "@react-three/drei": "^9.120.4",
