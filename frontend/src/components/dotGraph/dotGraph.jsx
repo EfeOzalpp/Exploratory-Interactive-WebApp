@@ -30,7 +30,7 @@ import { SHAPE_FOOTPRINT } from './canvas/shapeFootprints.ts';
 // queue progress hook (ties into textureQueue)
 import useTextureQueueProgress from './canvas/textureQueueProgress.ts';
 
-// 🔽 Needed to strictly derive roles from section ids
+// Needed to strictly derive roles from section ids
 import { ROLE_SECTIONS } from '../survey/sectionPicker/sections';
 
 /* ---------- small utils ---------- */

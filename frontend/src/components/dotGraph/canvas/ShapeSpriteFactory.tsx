@@ -177,6 +177,9 @@ export function hasSpriteTexture(key: string) {
 /* --------------------- failure sentinel for particle builds ---------------- */
 const FAILED_PARTICLE_KEYS = new Set<string>();
 
+/* --------------------- in-flight guard for frozen builds -------------- */
+const FROZEN_INFLIGHT = new Set<string>();
+
 /* ------------------------------- prewarm API ------------------------------- */
 export function prewarmSpriteTextures(
   items: Array<{ avg: number; orderIndex?: number; seed?: string | number }>,
@@ -189,7 +192,6 @@ export function prewarmSpriteTextures(
     maxCount = 32,
   }: { tileSize?: number; alpha?: number; dpr?: number; particleStepMs?: number; particleFrames?: number; maxCount?: number } = {}
 ) {
-  // CAP TILE SIZE ON ALL DEVICES (desktop too)
   const TILE = Math.min(tileSize, 128);
   const simulateMs = Math.max(0, particleFrames * particleStepMs);
 
@@ -198,17 +200,15 @@ export function prewarmSpriteTextures(
   const particleJobs: Array<() => void> = [];
 
   const limited = items.slice(0, Math.max(1, maxCount));
+
   for (let i = 0; i < limited.length; i++) {
     const it = limited[i];
 
-    // Shape decision (same as runtime)
     const tShape = clamp01(Number.isFinite(it.avg) ? it.avg : 0.5);
     const shape = shapeForAvg(tShape, it.seed ?? tShape, it.orderIndex);
 
-    // Bucket (with downshift) for style/keys
     const { bucketId, bucketAvg } = quantizeAvgWithDownshift(it.avg);
 
-    // Choose ONE representative variant per (shape,bucket) during prewarm to keep memory in check.
     const variant = pickVariantSlot(`${shape}|B${bucketId}|${it.seed ?? ''}|${it.orderIndex ?? 0}`);
     const seenKey = `${shape}:${bucketId}:V${variant}`;
     if (seen.has(seenKey)) continue;
@@ -222,8 +222,20 @@ export function prewarmSpriteTextures(
     const alphaUse = vs.alpha ?? alpha;
 
     if (PARTICLE_SHAPES.has(shape)) {
-      const key = frozenKey({ shape, tileSize: TILE, dpr, alpha: alphaUse, simulateMs, stepMs: particleStepMs, bucketId, variant });
-      if (!particleCacheGet(key) && !FAILED_PARTICLE_KEYS.has(key)) {
+      const key = frozenKey({
+        shape,
+        tileSize: TILE,
+        dpr,
+        alpha: alphaUse,
+        simulateMs,
+        stepMs: particleStepMs,
+        bucketId,
+        variant,
+      });
+
+      if (!particleCacheGet(key) && !FAILED_PARTICLE_KEYS.has(key) && !FROZEN_INFLIGHT.has(key)) {
+        FROZEN_INFLIGHT.add(key);
+
         particleJobs.push(() => {
           try {
             const { texture } = makeFrozenTextureFromDrawer({
@@ -236,7 +248,7 @@ export function prewarmSpriteTextures(
               blend: vs.blend ?? 1.0,
               footprint,
               bleed,
-              seedKey: `${key}|seed:${shape}|${variant}`, // match variant in RNG
+              seedKey: `${key}|seed:${shape}|${variant}`,
               simulateMs,
               stepMs: particleStepMs,
               generateMipmaps: true,
@@ -268,6 +280,8 @@ export function prewarmSpriteTextures(
                 prio: 0,
               });
             }
+          } finally {
+            FROZEN_INFLIGHT.delete(key);
           }
         });
       }
@@ -285,20 +299,20 @@ export function prewarmSpriteTextures(
           blend: vs.blend ?? 1.0,
           footprint,
           bleed,
-          seedKey: `${key2}|seed:${shape}|${variant}`, // match variant in RNG
+          seedKey: `${key2}|seed:${shape}|${variant}`,
           prio: 0,
         });
       }
     }
-  }
+  } 
 
   if (jobs.length) textureRegistry.prewarm(jobs, { prioBase: 0 } as any);
-  for (const run of particleJobs) enqueueTexture(run, 0);
+  for (const run of particleJobs) enqueueTexture(run, 1000);
 
   if (typeof window !== 'undefined') {
     (window as any).__GP_PARTICLE_TEX = { size: particleCacheSize() };
   }
-}
+} 
 
 /* --------------------------------- Sprite --------------------------------- */
 export function SpriteShape({
@@ -420,28 +434,33 @@ export function SpriteShape({
         return () => { if (off) off(); };
       }
 
-      enqueueTexture(() => {
-        try {
-          const { texture } = makeFrozenTextureFromDrawer({
-            ...common,
-            simulateMs,
-            stepMs: particleStepMs,
-            generateMipmaps: true,
-            anisotropy: 1,
-            minFilter: THREE.LinearMipmapLinearFilter,
-            magFilter: THREE.LinearFilter,
-          });
-          particleCacheSet(key, track(texture));
-          setIfAlive(texture);
-        } catch (err) {
-          FAILED_PARTICLE_KEYS.add(key);
-          if ((window as any).__GP_LOG_LOAD_ERRORS) {
-            console.warn('[SPRITE:FROZEN] build failed (runtime)', key, err);
+      if (!FROZEN_INFLIGHT.has(key)) {
+        FROZEN_INFLIGHT.add(key);
+
+        enqueueTexture(() => {
+          try {
+            const { texture } = makeFrozenTextureFromDrawer({
+              ...common,
+              simulateMs,
+              stepMs: particleStepMs,
+              generateMipmaps: true,
+              anisotropy: 1,
+              minFilter: THREE.LinearMipmapLinearFilter,
+              magFilter: THREE.LinearFilter,
+            });
+            particleCacheSet(key, track(texture));
+            setIfAlive(texture);
+          } catch (err) {
+            FAILED_PARTICLE_KEYS.add(key);
+            if ((window as any).__GP_LOG_LOAD_ERRORS) {
+              console.warn('[SPRITE:FROZEN] build failed (runtime)', key, err);
+            }
+            requestStatic();
+          } finally {
+            FROZEN_INFLIGHT.delete(key);
           }
-          // immediate static fallback
-          requestStatic();
-        }
-      }, 0);
+        }, 0);
+      }
 
       // watchdog: if the particle job stalls silently, fall back to static
       watchdog = setTimeout(() => {
