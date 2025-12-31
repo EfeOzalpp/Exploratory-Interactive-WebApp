@@ -1,0 +1,271 @@
+frontend/src/:.
+|   App.js
+|   App.test.js
+|   index.js
+|   reportWebVitals.js
+|   setupTests.js
+|   
++---canvas
+|   |   index.jsx
+|   |   q5-lite.js
+|   |   q5.js.d.ts
+|   |   
+|   +---color
+|   |       colorStops.ts
+|   |       colorUtils.ts
+|   |       
+|   +---condition
+|   |       conditionMix.ts
+|   |       conditionPlanner.ts
+|   |       conditions.ts
+|   |       
+|   +---grid
+|   |       config.ts
+|   |       coords.ts
+|   |       footprintUtils.ts
+|   |       layoutCentered.ts
+|   |       occupancy.ts
+|   |       
+|   +---hooks
+|   |       rowRules.ts
+|   |       useAvgColor.ts
+|   |       useColor.ts
+|   |       useGridDotField.ts
+|   |       useLiveAvg.ts
+|   |       useQ5Engine.ts
+|   |       useViewportKey.ts
+|   |       
+|   +---shape
+|   |   |   bus.js
+|   |   |   car.js
+|   |   |   carFactory.js
+|   |   |   clouds.js
+|   |   |   house.js
+|   |   |   index.js
+|   |   |   power.js
+|   |   |   sea.js
+|   |   |   snow.js
+|   |   |   sun.js
+|   |   |   trees.js
+|   |   |   villa.js
+|   |   |   
+|   |   +---particles
+|   |   |       particle-1.ts
+|   |   |       particle-2.ts
+|   |   |       
+|   |   \---utils
+|   |           appear.ts
+|   |           colorAdapter.ts
+|   |           colorBlend.ts
+|   |           geom.ts
+|   |           hash.ts
+|   |           osc.ts
+|   |           shapeMods.ts
+|   |           standaloneWrappers.js
+|   |           useLerp.ts
+|   |           
+|   +---state
+|   |       visualState.ts
+|   |       
+|   \---utils
+|           avgToStyle.ts
+|           
++---components
+|   |   Canvas-Old.jsx
+|   |   completeButton.jsx
+|   |   dataVisualization.jsx
+|   |   decoy.tsx
+|   |   emptyStateArt.jsx
+|   |   real-mobile.ts
+|   |   
+|   +---dotGraph
+|   |   |   darkMode.jsx
+|   |   |   dotGraph.jsx
+|   |   |   folder-tree.txt
+|   |   |   graph.jsx
+|   |   |   ringHalo.jsx
+|   |   |   
+|   |   +---canvas
+|   |   |       CanvasAnimatedTexture.ts
+|   |   |       CanvasTextureBridge.ts
+|   |   |       initShapeField.ts
+|   |   |       particleCache.ts
+|   |   |       shapeFootprints.ts
+|   |   |       shapeForAvg.ts
+|   |   |       ShapeSpriteFactory.tsx
+|   |   |       textureQueue.ts
+|   |   |       textureQueueProgress.ts
+|   |   |       textureRegistry.ts
+|   |   |       
+|   |   +---hooks
+|   |   |   |   useDotPoints.js
+|   |   |   |   useHoverBubble.js
+|   |   |   |   useObserverDelay.js
+|   |   |   |   
+|   |   |   \---useOrbit
+|   |   |           index.js
+|   |   |           sharedGesture.ts
+|   |   |           useActivity.js
+|   |   |           useIdleDrift.js
+|   |   |           usePixelOffsets.js
+|   |   |           useRotation.js
+|   |   |           useZoom.js
+|   |   |           
+|   |   \---utils
+|   |           dynamicOffset.ts
+|   |           math.js
+|   |           positions.js
+|   |           
+|   +---dragGraph
+|   |       barGraph.jsx
+|   |       
+|   +---gamification
+|   |       gamificationGeneral.jsx
+|   |       gamificationPersonalized.jsx
+|   |       rankLogic.js
+|   |       
+|   +---nav
+|   |       CityButton.tsx
+|   |       CityOverlay.jsx
+|   |       graphPicker.jsx
+|   |       infoGraph.jsx
+|   |       infoPanel.jsx
+|   |       navigation.jsx
+|   |       
+|   +---nav-bottom
+|   |       modeToggle.jsx
+|   |       
+|   +---static
+|   |       left.jsx
+|   |       radialBackground.jsx
+|   |       
+|   \---survey
+|       |   folder_tree.txt
+|       |   survey.tsx
+|       |   types.ts
+|       |   
+|       +---buttonLoader
+|       |       DoneOverlayR3F.jsx
+|       |       
+|       +---questions
+|       |   |   AnswersList.tsx
+|       |   |   hoverBus.ts
+|       |   |   questionFlow.tsx
+|       |   |   questions.ts
+|       |   |   scoring.ts
+|       |   |   SelectionMap.tsx
+|       |   |   
+|       |   \---SelectionHooks
+|       |           colors.ts
+|       |           geometry.ts
+|       |           usePointerDrag.ts
+|       |           useSelectionState.ts
+|       |           
+|       +---rolePicker
+|       |       rolePicker.jsx
+|       |       roleStep.jsx
+|       |       
+|       \---sectionPicker
+|               sectionPicker.jsx
+|               sections.js
+|               
++---context
+|       graphContext.tsx
+|       
++---cues
+|       EdgeModeHint.jsx
+|       
++---fonts
+|   |   fonts1.css
+|   |   
+|   +---heebo
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1E1yysd0mg7UiCXC5VkK8.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1E1yysdUmg7UiCXC5V.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1ECSysd0mg7UiCXC5VkK8.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1ECSysdUmg7UiCXC5V.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EiS2sd0mg7UiCXC5VkK8.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EiS2sdUmg7UiCXC5V.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EiSysd0mg7UiCXC5VkK8.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EiSysdUmg7UiCXC5V.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1Euyysd0mg7UiCXC5VkK8.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EuyysdUmg7UiCXC5V.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EVyusd0mg7UiCXC5VkK8.woff
+|   |       NGSpv5_NC0k9P_v6ZUCbLRAHxK1EVyusdUmg7UiCXC5V.woff
+|   |       
+|   \---poppins
+|           pxiAyp8kv8JHgFVrJJLmE0tCMPShSkFE.woff
+|           pxiAyp8kv8JHgFVrJJLmE0tDMPShSkFEkm8.woff
+|           pxiAyp8kv8JHgFVrJJLmE0tMMPShSkFEkm8.woff
+|           pxiByp8kv8JHgFVrLDz8Z11lE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLDz8Z1JlE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLDz8Z1xlE92JQEk.woff
+|           pxiByp8kv8JHgFVrLEj6Z11lE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLEj6Z1JlE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLEj6Z1xlE92JQEk.woff
+|           pxiByp8kv8JHgFVrLFj_Z11lE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLFj_Z1JlE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLFj_Z1xlE92JQEk.woff
+|           pxiByp8kv8JHgFVrLGT9Z11lE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLGT9Z1JlE92JQEl8qw.woff
+|           pxiByp8kv8JHgFVrLGT9Z1xlE92JQEk.woff
+|           pxiDyp8kv8JHgFVrJJLm21lVF9eIYktMqg.woff
+|           pxiDyp8kv8JHgFVrJJLm21lVFteIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLm21lVGdeIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLmg1hVF9eIYktMqg.woff
+|           pxiDyp8kv8JHgFVrJJLmg1hVFteIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLmg1hVGdeIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLmr19VF9eIYktMqg.woff
+|           pxiDyp8kv8JHgFVrJJLmr19VFteIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLmr19VGdeIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLmv1pVF9eIYktMqg.woff
+|           pxiDyp8kv8JHgFVrJJLmv1pVFteIYktMqlap.woff
+|           pxiDyp8kv8JHgFVrJJLmv1pVGdeIYktMqlap.woff
+|           pxiEyp8kv8JHgFVrJJbedHFHGPezSQ.woff
+|           pxiEyp8kv8JHgFVrJJfedHFHGPc.woff
+|           pxiEyp8kv8JHgFVrJJnedHFHGPezSQ.woff
+|           pxiGyp8kv8JHgFVrJJLucHtGOvWDSA.woff
+|           pxiGyp8kv8JHgFVrJJLucXtGOvWDSHFF.woff
+|           pxiGyp8kv8JHgFVrJJLufntGOvWDSHFF.woff
+|           pxiGyp8kv8JHgFVrLPTucHtGOvWDSA.woff
+|           pxiGyp8kv8JHgFVrLPTucXtGOvWDSHFF.woff
+|           pxiGyp8kv8JHgFVrLPTufntGOvWDSHFF.woff
+|           
++---lottie-for-UI
+|       hand.json
+|       lottieOption.jsx
+|       radio-button.json
+|       tree1.json
+|       tree2.json
+|       tree3.json
+|       
++---page
+|       frontPage.jsx
+|       
++---styles
+|       city.css
+|       gamification.css
+|       global-styles.css
+|       graph.css
+|       info-graph.css
+|       nav-bottom.css
+|       navigation.css
+|       survey.css
+|       
++---tooltip
+|       hintBubble.jsx
+|       
+\---utils
+        dynamicMargin.ts
+        gamificationCopyPreloader.tsx
+        hooks.ts
+        liveAverage.ts
+        quantizeAvg.ts
+        sanityAPI.js
+        sanityClient.js
+        saveUserResponse.ts
+        useAbsoluteScore.ts
+        useGamificationPools.ts
+        useRelativePercentiles.ts
+        useSectionCounts.js
+        useSectionCounts.ts
+        
