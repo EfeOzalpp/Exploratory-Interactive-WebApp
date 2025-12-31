@@ -2,8 +2,8 @@
 Procedural web application built with React, Canvas, and Three.js.
 
 <p>
-  <img src="./screenshots+gifs/survey.gif" width="45%" />
-  <img src="./screenshots+gifs/visualization.gif" width="45%" />
+  <img src="./screenshots+gifs/survey.gif" width="49%" />
+  <img src="./screenshots+gifs/visualization.gif" width="49%" />
 </p>
 
 A weight-based questionnaire feeds continuous input into a deterministic 2D rendering system, whose output is reused as sprite textures in a Three.js scene visualizing both personalized and previous responses. 
@@ -31,9 +31,9 @@ Each step below corresponds to the screenshots shown from left to right.
 Onboarding | Questionnaire | "Your city" button toggled state
 <br />
 <p>
-  <img src="./screenshots+gifs/mobile1.png" width="15%" />
-  <img src="./screenshots+gifs/mobile3.png" width="15%" />
-  <img src="./screenshots+gifs/mobile4.png" width="15%" />
+  <img src="./screenshots+gifs/mobile1.png" width="25%" />
+  <img src="./screenshots+gifs/mobile3.png" width="25%" />
+  <img src="./screenshots+gifs/mobile4.png" width="25%" />
 </p>
 
 <br />
@@ -43,9 +43,9 @@ Onboarding | Questionnaire | "Your city" button toggled state
 Solo mode and dark mode toggled separately
 <br />
 <p>
-  <img src="./screenshots+gifs/mobile5.png" width="15%" />
-  <img src="./screenshots+gifs/mobile8.png" width="15%" />
-  <img src="./screenshots+gifs/mobile9.png" width="15%" />
+  <img src="./screenshots+gifs/mobile5.png" width="25%" />
+  <img src="./screenshots+gifs/mobile8.png" width="25%" />
+  <img src="./screenshots+gifs/mobile9.png" width="25%" />
 </p>
 
 #### Tech used
