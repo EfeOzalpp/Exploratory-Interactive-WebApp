@@ -1,6 +1,6 @@
 // src/components/dotGraph/canvas/CanvasTextureBridge.ts
 import * as THREE from 'three';
-import { makePFromCanvas } from '../../../canvas/q5-lite.js';
+import { makePFromCanvas } from '../../../canvas/canvas-engine.js';
 
 type Drawer = (p: any, x: number, y: number, r: number, opts?: any) => void;
 

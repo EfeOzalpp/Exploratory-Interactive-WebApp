@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useAvgColor } from './useAvgColor.ts';                     // ⬅ explicit .ts
-import { BRAND_STOPS_VIVID, type Stop } from '../color/colorStops.ts'; // ⬅ explicit .ts
+import { useAvgColor } from './useAvgColor.ts';                    
+import { BRAND_STOPS_VIVID, type Stop } from '../color/colorStops.ts'; 
 
 type LiveAvgDotOpts = { liveAvg?: number; radius?: number; stops?: Stop[]; enableConsole?: boolean };
 

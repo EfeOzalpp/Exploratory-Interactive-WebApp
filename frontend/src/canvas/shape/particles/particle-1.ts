@@ -1,5 +1,4 @@
 // src/canvas/shape/particles/particle-1.ts
-// Reusable particle emitter for q5/p5.
 // Deterministic stratified spawning (no frame-to-frame reseed bursts).
 // Pool mode (fixed count + respawn).
 // Optional "live-follow" smoothing so size/length track changing inputs

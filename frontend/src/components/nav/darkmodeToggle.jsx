@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { useGraph } from "../context/graphContext.tsx";
+import { useGraph } from "../../context/graphContext.tsx";
 
 /**
  * EdgeModeHint (simplified with icon)

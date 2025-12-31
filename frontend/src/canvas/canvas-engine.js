@@ -1,9 +1,4 @@
-// canvas/q5-lite.js
-// Tiny p5-ish engine + your existing startQ5 logic, without the Q5 dependency.
-
-/* ───────────────────────────────────────────────────────────
-   Imports MUST be at the top (ESLint import/first)
-   ─────────────────────────────────────────────────────────── */
+// canvas/canvas-engine.js
 import {
   drawClouds, drawSnow, drawHouse, drawPower, drawSun,
   drawVilla, drawCarFactory, drawCar, drawSea, drawBus, drawTrees
@@ -30,7 +25,7 @@ function resolvePixelDensity(mode) {
 }
 
 /* ───────────────────────────────────────────────────────────
-   Minimal p5-ish facade (now with engine p-state stack)
+   p-state stack
    ─────────────────────────────────────────────────────────── */
 function makeP(canvas, ctx) {
   let _delta = 16, _last = performance.now();
@@ -178,7 +173,7 @@ function makeP(canvas, ctx) {
 }
 
 /* ───────────────────────────────────────────────────────────
-   startQ5 engine (API-compatible with your existing code)
+   startCanvasEngine (API-compatible with existing code)
    ─────────────────────────────────────────────────────────── */
 
 const REGISTRY = new Map();
@@ -207,9 +202,10 @@ function ensureMount(mount, zIndex) {
   el.style.touchAction = 'auto';
   el.style.userSelect = 'none';
   el.style.webkitTapHighlightColor = 'transparent';
-  el.classList.add('gp-q5-layer');
+  el.classList.add('be-canvas-layer');
   return el;
 }
+
 function applyCanvasNonBlockingStyle(el) {
   if (!el?.style) return;
   el.style.position = 'absolute';
@@ -223,7 +219,7 @@ function applyCanvasNonBlockingStyle(el) {
   el.setAttribute('tabindex', '-1');
 }
 
-/* background radial (kept from your q5.js) */
+/* background radial */
 function drawBackground(p) {
   const BG = '#b4e4fdff';
   p.background(BG);
@@ -258,7 +254,7 @@ const REG_STYLE_DEFAULT = {
   exitMs: 300,
 };
 
-export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1', zIndex = 2 } = {}) {
+export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = 'fixed1', zIndex = 2 } = {}) {
   // Guard against double inits on the same mount
   if (REGISTRY.has(mount)) {
     try { REGISTRY.get(mount).controls?.stop?.(); } catch {}
@@ -306,7 +302,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1', z
   // Context loss guard
   const onContextLost = (e) => {
     try { e?.preventDefault?.(); } catch {}
-    try { console.warn('[q5-lite] context lost'); } catch {}
+    try { console.warn('[canvas] context lost'); } catch {}
     stop();
   };
   canvasEl.addEventListener('webglcontextlost', onContextLost, { passive: false });
@@ -434,7 +430,7 @@ export function startQ5({ mount = '#canvas-root', onReady, dprMode = 'fixed1', z
 
     const useGhosts = style.exitMs > 0;
 
-    // Match original z-order from q5.js
+    // z-order helper
     const Z = {
       villa: 3,
       house: 2,
@@ -600,7 +596,7 @@ export function makePFromCanvas(canvas, { dpr = 1 } = {}) {
   return p;
 }
 
-export function stopQ5(mount = '#canvas-root') {
+export function stopCanvasEngine(mount = '#canvas-root') {
   try {
     const rec = REGISTRY.get(mount);
     if (rec?.controls?.stop) rec.controls.stop();
@@ -609,20 +605,20 @@ export function stopQ5(mount = '#canvas-root') {
   // If we created a fixed container for this mount, remove it to fully free resources.
   try {
     const el = document.querySelector(mount);
-    if (el && el.classList?.contains('gp-q5-layer')) {
+    if (el && el.classList?.contains('be-canvas-layer')) {
       el.remove();
     }
   } catch {}
 }
 
-export function isQ5Running(mount = '#canvas-root') {
+export function isCanvasRunning(mount = '#canvas-root') {
   return REGISTRY.has(mount);
 }
 
-export function stopAllQ5() {
+export function stopAllCanvasEngines() {
   for (const key of [...REGISTRY.keys()]) {
-    stopQ5(key);
+    stopCanvasEngine(key);
   }
 }
 
-export default startQ5;
+export default startCanvasEngine;

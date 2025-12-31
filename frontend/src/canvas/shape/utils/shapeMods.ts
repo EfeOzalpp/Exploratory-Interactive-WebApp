@@ -148,7 +148,7 @@ export interface ShapeMods {
 }
 
 export interface ApplyShapeModsOpts {
-  p: any; // q5 / p5 instance
+  p: any; // canvas instance
   x: number;
   y: number;
   r: number; // base diameter

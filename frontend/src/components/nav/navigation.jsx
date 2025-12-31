@@ -4,7 +4,7 @@ import InfoPanel from "./infoPanel.jsx";
 import InfoGraph from "./infoGraph.jsx";
 import GraphPicker from "./graphPicker";
 import { useGraph } from "../../context/graphContext.tsx";
-import EdgeModeHint from "../../cues/EdgeModeHint";
+import EdgeModeHint from "./darkmodeToggle.jsx";
 import "../../styles/navigation.css";
 import "../../styles/info-graph.css";
 

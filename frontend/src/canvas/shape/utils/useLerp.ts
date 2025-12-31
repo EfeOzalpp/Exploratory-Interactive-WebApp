@@ -1,6 +1,6 @@
 // src/canvas/shape/utils/useLerp.ts
 // Minimal lerp helpers shared across shapes/effects.
-// You can import the functions directly OR call useLerp() to get them.
+// import the functions directly OR call useLerp() to get them.
 
 export type Range = [number, number];
 

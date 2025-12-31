@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQ5Engine } from './hooks/useQ5Engine.ts';
+import { useCanvasEngine } from './hooks/useCanvasEngine.ts';
 import { useColor } from './hooks/useColor.ts';
 import { useGridDotField } from './hooks/useGridDotField.ts';
 import { useViewportKey } from './hooks/useViewportKey.ts';
@@ -14,7 +14,7 @@ export default function CanvasEntry({
   liveAvg = 0.5,
   allocAvg = 0.5,
 }) {
-  const engine = useQ5Engine({ visible, dprMode: 'auto' });
+  const engine = useCanvasEngine({ visible, dprMode: 'auto' });
 
   // Debounced key that bumps on viewport resize/orientation
   const viewportKey = useViewportKey(120);

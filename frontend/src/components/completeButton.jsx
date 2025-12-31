@@ -1,5 +1,4 @@
 // CompleteButton.js
-import React from 'react';
 
 const CompleteButton = () => {
   return (

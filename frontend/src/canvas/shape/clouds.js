@@ -1,5 +1,5 @@
 import { oscillateSaturation, rgbToHsl, hslToRgb } from '../color/colorUtils.ts';
-import { cssToRgbViaP5 } from './utils/colorAdapter.ts';
+import { cssToRgbViaCanvas } from './utils/colorAdapter.ts';
 import { makeArchLobes } from './utils/geom.ts';
 import { displacementOsc } from './utils/osc.ts';
 import { blendRGB } from './utils/colorBlend.ts';
@@ -137,7 +137,7 @@ export function drawClouds(p, _cx, _cy, _r, opts) {
 
   const baseTint =
     (typeof opts?.cloudCss === 'string' && opts.cloudCss.trim().length > 0)
-      ? cssToRgbViaP5(p, opts.cloudCss)
+      ? cssToRgbViaCanvas(p, opts.cloudCss)
       : blendRGB(CLOUD_BASE, opts?.gradientRGB, cloudBlend);
 
   const sMax = Math.max(0, Math.min(1, val(CLOUDS.sCap, u)));
@@ -206,7 +206,7 @@ export function drawClouds(p, _cx, _cy, _r, opts) {
 
     let rainTint =
       (typeof opts?.rainCss === 'string' && opts.rainCss.trim().length > 0)
-        ? cssToRgbViaP5(p, opts.rainCss)
+        ? cssToRgbViaCanvas(p, opts.rainCss)
         : blendRGB(CLOUDS_BASE_PALETTE.rain, opts?.gradientRGB, rainBlend);
 
     rainTint = applyExposureContrast(rainTint, ex, ct);

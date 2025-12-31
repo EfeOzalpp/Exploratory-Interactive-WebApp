@@ -1,21 +1,21 @@
 // components/nav/CityOverlay.jsx
 import React from 'react';
-import { useQ5Engine } from '../../canvas/hooks/useQ5Engine.ts';
+import { useCanvasEngine } from '../../canvas/hooks/useCanvasEngine.ts';
 import { useViewportKey } from '../../canvas/hooks/useViewportKey.ts';
 import { useGridDotField } from '../../canvas/hooks/useGridDotField.ts';
 import { useColor } from '../../canvas/hooks/useColor.ts';
-import { stopQ5 } from '../../canvas/q5-lite';
+import { stopCanvasEngine } from '../../canvas/canvas-engine';
 
 export default function CityOverlay({ open, liveAvg = 0.5, allocAvg }) {
   // When overlay opens, stop the intro canvas so they never overlap
   React.useEffect(() => {
     if (open) {
-      try { stopQ5('#canvas-root'); } catch {}
+      try { stopCanvasEngine('#canvas-root'); } catch {}
     }
   }, [open]);
 
   // Mount the engine *inside* the overlay host
-  const engine = useQ5Engine({
+  const engine = useCanvasEngine({
     visible: open,
     dprMode: 'auto',
     mount: '#city-canvas-root', // ← important: mount inside overlay

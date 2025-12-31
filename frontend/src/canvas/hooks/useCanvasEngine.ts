@@ -1,6 +1,6 @@
-// components/canvas/hooks/useQ5Engine.ts
+// components/canvas/hooks/useCanvasEngine.ts
 import { useEffect, useRef, useState } from 'react';
-import { startQ5, type Q5Controls, stopQ5 } from '../q5-lite.js';
+import { startCanvasEngine, stopCanvasEngine, type CanvasEngineControls } from '../canvas-engine.js';
 
 function disposeTexturesIfAny() {
   try { (window as any).__GP_DISPOSE_TEX?.(); } catch {}
@@ -16,7 +16,7 @@ type EngineOpts = {
   zIndex?: number;         // NEW: override z-index safely
 };
 
-export function useQ5Engine(opts: EngineOpts = {}) {
+export function useCanvasEngine(opts: EngineOpts = {}) {
   const {
     visible = true,
     dprMode = 'cap2',
@@ -25,17 +25,16 @@ export function useQ5Engine(opts: EngineOpts = {}) {
     zIndex = 2,
   } = opts;
 
-  const controlsRef = useRef<Q5Controls | null>(null);
+  const controlsRef = useRef<CanvasEngineControls | null>(null);
   const readyRef = useRef(false);
   const [readyTick, setReadyTick] = useState(0);
 
   useEffect(() => {
     // init
-    controlsRef.current = startQ5({
+    controlsRef.current = startCanvasEngine({
       mount,
-      dprMode,
-      layout,       // ← pass through
-      zIndex,       // ← pass through
+      dprMode,       
+      zIndex,       
       onReady: () => {
         readyRef.current = true;
         setReadyTick((t) => t + 1);
@@ -49,7 +48,7 @@ export function useQ5Engine(opts: EngineOpts = {}) {
       controlsRef.current = null;
       disposeTexturesIfAny();
       // Make sure the specific mount is fully torn down
-      try { stopQ5(mount); } catch {}
+      try { stopCanvasEngine(mount); } catch {}
     };
   }, [dprMode, mount, layout, zIndex]);
 
