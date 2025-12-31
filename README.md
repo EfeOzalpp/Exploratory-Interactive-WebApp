@@ -1,152 +1,57 @@
-# Butterfly Effect
+### Butterfly Effect
+Procedural web application built with React, Canvas, and Three.js.
 
-<div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-  <div>
-    <img src="./project_screenshots/1.png" style="width: 24%; min-width: 140px;" alt="Climate Inclusive App">
-    <img src="./project_screenshots/2.png" style="width: 24%; min-width: 140px;" alt="Climate Inclusive App">
-    <img src="./project_screenshots/3.png" style="width: 24%; min-width: 140px;" alt="Climate Inclusive App">
-    <img src="./project_screenshots/4.png" style="width: 24%; min-width: 140px;" alt="Climate Inclusive App">
-  </div>
-</div>
+<p>
+  <img src="./screenshots+gifs/survey.gif" width="45%" />
+  <img src="./screenshots+gifs/visualization.gif" width="45%" />
+</p>
 
----
+A weight-based questionnaire feeds continuous input into a deterministic 2D rendering system, whose output is reused as sprite textures in a Three.js scene visualizing both personalized and previous responses. 
 
-**Butterlfy Effect** visualizes results of a short climate survey in an interactive 3D world.  
-Users receive personalized, color-coded feedback and can explore other results in an orbitable space.
+Live at: https://butterflyeff3ct.online/
 
----
+Notable implementations:
+- Stores survey results together with user category (visitor, student, staff/faculty) in a Sanity.io schema and uses this data after completion for sorting and visualization.
+- Uses a grid-based layout system for 2D canvas rendering to manage sprite placement and prevent overlap with other UI elements.
+- Renders graphics as reusable off-screen sprite textures, including snapshotting particle-based visuals after a short simulation step.
+- Maintains performance and scalability by limiting the number of render variants, reusing cached textures, preventing duplicate texture generation on first load, and preparing textures off-screen for smoother initial rendering.
 
-## Features
+#### Key code entry points: 
 
-- **Feedback Cards:** Adaptive gradients, tone, and motion.  
-- **3D Visualization:** Three.js + React Three Fiber; orbit/zoom; dynamic nodes.  
-- **Custom 2D Canvas:** Lightweight engine (no p5.js/PixiJS) for animated shapes.  
-- **Touch-Ready UI:** Pinch-zoom, drag, rotate; accessibility-friendly.  
-- **Anchoring System:** DOM labels stay aligned to 3D anchors during camera motion.
+Weighted-survey: https://github.com/EfeOzalpp/butterfly-effect/tree/main/frontend/src/components/survey
 
----
+2D canvas: https://github.com/EfeOzalpp/butterfly-effect/tree/main/frontend/src/canvas 
 
-## Technical Highlights
+3D scene: https://github.com/EfeOzalpp/butterfly-effect/tree/main/frontend/src/components/dotGraph
 
-### Bridging 3D and DOM
+<br />
 
-The app integrates **Three.js (via React Three Fiber)** with **React DOM** through a custom anchoring system.  
-Unlike `@react-three/drei`’s `Html` component, this approach maintains alignment and visual stability during camera movement.
+Each step below corresponds to the screenshots shown from left to right.
+<br />
+Onboarding | Questionnaire | "Your city" button toggled state
+<br />
+<p>
+  <img src="./screenshots+gifs/mobile1.png" width="15%" />
+  <img src="./screenshots+gifs/mobile3.png" width="15%" />
+  <img src="./screenshots+gifs/mobile4.png" width="15%" />
+</p>
 
-```css
-transform: translateX(var(--offset-px));
-```
+<br />
 
-This ensures each element remains visually locked to its projected 3D anchor, preventing UI drift and maintaining immersion.
+3D scene entered from "explore answers" or 3D scene entered through survey completion | 
+<br />
+Solo mode and dark mode toggled separately
+<br />
+<p>
+  <img src="./screenshots+gifs/mobile5.png" width="15%" />
+  <img src="./screenshots+gifs/mobile8.png" width="15%" />
+  <img src="./screenshots+gifs/mobile9.png" width="15%" />
+</p>
 
----
+#### Tech used
+- React 18
+- Three.js / React Three Fiber  
+- HTML Canvas  
+- TypeScript  
+- Sanity.io (CMS) 
 
-## Procedural City Generation Engine
-
-Driven by `liveAvg`.  
-The system uses a **Condition Planner (A–D)** with quota curves, footprints, and per-band rules that rebalance across viewports (start, questionnaire, overlay).
-
----
-
-## Adaptive Grid & Placement Logic
-
-- Responsive grid based on screen size  
-- Per-shape forbidden zones  
-- Deterministic pseudo-randomness for natural variation  
-
-No physics required.  
-In overlay mode, centering bias is disabled so `RowRules` can create a cinematic spread.
-
----
-
-## Dual Rendering Pipelines (DOM + Canvas)
-
-**React DOM** handles interactivity, while a **Q5-based Canvas Engine** renders visuals.  
-Both share state through `GraphContext`, ensuring the city remains persistent across all phases.
-
----
-
-## Deterministic World Planning
-
-Procedural positions are generated using hashed IDs for consistent, reproducible layouts.
-
-```js
-const key = `${shape}|${row},${col}`;
-const rand = hash32(key) / 0xffff;
-```
-
-This guarantees stable, deterministic world generation between sessions.
-
----
-
-## Gradient & Environmental Reactivity
-
-In overlay mode, the gradient hue shifts dynamically based on the user’s `liveAvg`.  
-Cool blues represent lower averages, while warm ambers indicate higher ones — blending emotion with data.
-
----
-
-## Engine Architecture & Extensibility
-
-The system operates as a **modular engine**, not a static animation.  
-Adding a new shape requires only defining its footprint and quota — positioning, scaling, and blending are handled automatically.
-
-```js
-{ shape: 'tower', footprint: { w: 1, h: 4 } }
-```
-
----
-
-## Stack
-
-- React + TypeScript  
-- React Three Fiber / Drei  
-- Custom Q5 Engine (procedural 2D rendering)  
-- Sanity.io (content & survey data)  
-- Context API  
-- Lottie.js  
-- CSS Flexbox
-
----
-
-## Local Setup
-
-```bash
-git clone https://github.com/EfeOzalpp/Exploratory-Interactive-WebApp
-cd Exploratory-Interactive-WebApp
-npm install
-npm run dev
-```
-
-Then open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## Vision
-
-This project bridges data, storytelling, and interactivity — turning climate perception into an explorable world.  
-It’s not just a survey; it’s a participatory landscape that visualizes how people feel about the planet.
-
----
-
-## Development Philosophy
-
-The app was designed as both a **tool and a canvas**, merging data visualization with emotion.  
-Every architectural choice aims to keep the system procedural, reactive, and human.
-
-### Guiding Principles
-
-- **Reactive systems > scripted animations**  
-  The world doesn’t play back; it responds to live data.
-
-- **Minimal dependencies, maximal flexibility**  
-  The rendering engine was built from scratch for precision and control.
-
-- **Extensible rule-level architecture**  
-  Adding new conditions or city elements requires no structural rewrites.
-
----
-
-The result is a living interface — part visualization, part expression, driven entirely by human input.
-
-> “Instead of showing charts about climate, I built a world that feels it.”
