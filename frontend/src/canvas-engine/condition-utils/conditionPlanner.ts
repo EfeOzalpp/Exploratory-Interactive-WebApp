@@ -1,45 +1,17 @@
-// conditionPlanner.ts
+// src/canvas/condition/conditionPlanner.ts
+import type { ConditionKind, ShapeKind, ShapeName, Size, CurveSet } from './types.ts';
+import { CONDITIONS, type ConditionSpec } from './conditions.ts';
+import { hash32 } from '../shared/hash32.ts';
+
 import {
-  type ConditionKind,
-  type ConditionSpec,
-  type ShapeKind,
-  CONDITIONS,
-} from './conditions.ts';
+  type Quota,
+  type Limits,
+  type Anchor,
+  QUOTA_CURVES_DEFAULT,
+  QUOTA_CURVES_OVERLAY,
+} from './quotaCurves.ts';
 
-export type ShapeName = ShapeKind;
-export type Size = { w: number; h: number };
 export type PoolItem = { id: number; cond: ConditionKind };
-export type CurveSet = 'default' | 'overlay';
-
-const DEFAULT_FOOTPRINTS: Record<ShapeName, Size> = {
-  clouds: { w: 2, h: 3 },
-  bus: { w: 2, h: 1 },
-  snow: { w: 1, h: 3 },
-  house: { w: 1, h: 3 },
-  power: { w: 1, h: 3 },
-  sun: { w: 2, h: 2 },
-  villa: { w: 2, h: 2 },
-  car: { w: 1, h: 1 },
-  sea: { w: 2, h: 1 },
-  carFactory: { w: 2, h: 2 },
-  trees: { w: 1, h: 1 },
-};
-
-function footprintFor(kind: ConditionKind, shape: ShapeName): Size {
-  const spec = CONDITIONS[kind];
-  const hit = spec?.variants.find((v) => v.shape === shape);
-  if (hit?.footprint) return hit.footprint;
-  const def = DEFAULT_FOOTPRINTS[shape];
-  if (def) {
-    if (typeof console !== 'undefined') {
-      console.warn(
-        `[planner] Using default footprint for "${shape}" in kind "${kind}"`
-      );
-    }
-    return def;
-  }
-  throw new Error(`No footprint for "${shape}" in kind "${kind}"`);
-}
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
@@ -48,96 +20,73 @@ function entries<V>(obj: Partial<Record<ShapeName, V>>): [ShapeName, V][] {
   return Object.entries(obj) as [ShapeName, V][];
 }
 
-type QuotaValue = number | 'Infinity';
-type Limits = Partial<Record<ShapeName, QuotaValue>>;
-type ResolvedLimits = Record<ShapeName, QuotaValue>;
-type Anchor = { t: number; limits: Limits };
+type ResolvedLimits = Record<ShapeName, Quota>;
 
 function allShapesFor(kind: ConditionKind): ShapeName[] {
   return (CONDITIONS[kind]?.variants ?? []).map((v) => v.shape);
 }
 
-/* ---------- CURVES ---------- */
-const QUOTA_CURVES_DEFAULT: Record<ConditionKind, Anchor[]> = {
-  A: [
-    { t: 0.0, limits: { sun: 1, bus: 0, clouds: 'Infinity' } },
-    { t: 1.0, limits: { sun: 3, bus: 3, clouds: 'Infinity' } },
-  ],
-  B: [
-    { t: 0.0, limits: { snow: 1, trees: 3, villa: 'Infinity' } },
-    { t: 1.0, limits: { snow: 2, trees: 3, villa: 'Infinity' } },
-  ],
-  C: [
-    { t: 0.0, limits: { power: 3, house: 'Infinity' } },
-    { t: 1.0, limits: { power: 2, house: 'Infinity' } },
-  ],
-  D: [
-    { t: 0.0, limits: { sea: 1, carFactory: 2, car: 'Infinity' } },
-    { t: 1.0, limits: { sea: 1, carFactory: 1, car: 'Infinity' } },
-  ],
-};
+function footprintFor(kind: ConditionKind, shape: ShapeName): Size {
+  const spec = CONDITIONS[kind];
+  const hit = spec?.variants.find((v) => v.shape === shape);
+  if (!hit) throw new Error(`Unknown shape "${shape}" for kind "${kind}"`);
+  return hit.footprint;
+}
 
-/* Overlay-tuned: more sky presence, more cars as u grows, factories cap lower, houses/villas fill more on land */
-const QUOTA_CURVES_OVERLAY: Record<ConditionKind, Anchor[]> = {
-  A: [
-    { t: 0.0, limits: { sun: 4, clouds: 4, bus: 'Infinity' } },
-    { t: 1.0, limits: { sun: 6, clouds: 7, bus: 'Infinity' } },
-  ],
-  B: [
-    { t: 0.0, limits: { snow: 1, trees: 4, villa: 'Infinity' } },
-    { t: 1.0, limits: { snow: 5, trees: 10, villa: 'Infinity' } },
-  ],
-  C: [
-    { t: 0.0, limits: { power: 9, house: 'Infinity' } },
-    { t: 1.0, limits: { power: 6, house: 'Infinity' } },
-  ],
-  D: [
-    { t: 0.0, limits: { sea: 5, carFactory: 6, car: 'Infinity' } },
-    { t: 1.0, limits: { sea: 8, carFactory: 3, car: 'Infinity' } },
-  ],
-};
-
-/* ---------- blending & finalization ---------- */
+/**
+ * Blends two limit maps at k in [0..1]. If either side is unbounded, the result is unbounded.
+ */
 function blendLimits(A: Limits, B: Limits, k: number): ResolvedLimits {
   const out: Partial<ResolvedLimits> = {};
   const keys = new Set<ShapeName>([
     ...(Object.keys(A) as ShapeName[]),
     ...(Object.keys(B) as ShapeName[]),
   ]);
+
   for (const key of keys) {
     const a = A[key];
     const b = B[key];
-    if (a === 'Infinity' && b === 'Infinity') out[key] = 'Infinity';
-    else if (a === 'Infinity' || b === 'Infinity') out[key] = 'Infinity';
-    else {
-      const aNum = typeof a === 'number' ? a : 0;
-      const bNum = typeof b === 'number' ? b : 0;
-      out[key] = lerp(aNum, bNum, k);
-    }
+    if (a == null || b == null) out[key] = null;
+    else out[key] = lerp(a, b, k);
   }
+
   return out as ResolvedLimits;
 }
 
+/**
+ * Converts blended limits into integer caps and ensures every shape in the condition spec is present.
+ */
 function finalizeQuotas(kind: ConditionKind, q: ResolvedLimits): ResolvedLimits {
   const out: Partial<ResolvedLimits> = {};
-  for (const [k, v] of entries(q))
-    out[k] = v === 'Infinity' ? 'Infinity' : Math.max(0, Math.floor(v));
-  for (const sh of allShapesFor(kind)) if (!(sh in out)) out[sh] = 0;
+
+  for (const [k, v] of entries(q)) {
+    out[k] = v == null ? null : Math.max(0, Math.floor(v));
+  }
+
+  for (const sh of allShapesFor(kind)) {
+    if (!(sh in out)) out[sh] = 0;
+  }
+
   return out as ResolvedLimits;
 }
 
-function quotasFor(
-  kind: ConditionKind,
-  u: number,
-  curveSet: CurveSet
-): ResolvedLimits {
+function curveAnchorsFor(kind: ConditionKind, curveSet: CurveSet): Anchor[] {
   const map = curveSet === 'overlay' ? QUOTA_CURVES_OVERLAY : QUOTA_CURVES_DEFAULT;
-  const anchors = map[kind] ?? [];
+  return map[kind] ?? [];
+}
+
+/**
+ * Produces per-shape quotas for a condition kind at u in [0..1] by interpolating the curve anchors.
+ */
+function quotasFor(kind: ConditionKind, u: number, curveSet: CurveSet): ResolvedLimits {
+  const anchors = curveAnchorsFor(kind, curveSet);
   if (!anchors.length) return finalizeQuotas(kind, {} as ResolvedLimits);
 
   const t = clamp01(u);
+
   let i = 0;
   while (i < anchors.length - 1 && t > anchors[i + 1].t) i++;
+
   const A = anchors[i];
   const B = anchors[Math.min(i + 1, anchors.length - 1)];
 
@@ -148,65 +97,79 @@ function quotasFor(
     return finalizeQuotas(kind, merged as ResolvedLimits);
   }
 
-  const kk = (t - A.t) / (B.t - A.t);
-  const blended = blendLimits(A.limits, B.limits, kk);
-  return finalizeQuotas(kind, blended);
+  const kk = (t - A.t) / Math.max(1e-6, B.t - A.t);
+  return finalizeQuotas(kind, blendLimits(A.limits, B.limits, kk));
 }
 
-/* ---------- planner ---------- */
+type PlanEntry = { shape: ShapeName; size: Size };
+
+function stableShuffleKey(id: number, salt: number) {
+  return hash32('planForBucket', id, salt) >>> 0;
+}
+
+/**
+ * Plans shape assignment for items of a single condition kind using quota curves and deterministic ordering.
+ * Items are assigned by filling finite caps first, then falling back to the first unbounded fill shape.
+ */
 export function planForBucket(
   kind: ConditionKind,
   items: PoolItem[],
   u: number,
   salt = 0,
   curveSet: CurveSet = 'default'
-): Map<number, { shape: ShapeName; size: Size }> {
-  const m = new Map<number, { shape: ShapeName; size: Size }>();
+): Map<number, PlanEntry> {
+  const m = new Map<number, PlanEntry>();
   if (!items.length) return m;
 
-  const sorted = [...items].sort(
-    (a, b) => a.id - b.id || (((a.id ^ salt) >>> 0) - ((b.id ^ salt) >>> 0))
-  );
+  const sorted = [...items].sort((a, b) => {
+    const ka = stableShuffleKey(a.id, salt);
+    const kb = stableShuffleKey(b.id, salt);
+    return ka - kb || a.id - b.id;
+  });
 
   const raw = quotasFor(kind, u, curveSet);
 
-  const finiteEntries = entries(raw).filter(([, v]) => v !== 'Infinity') as [
+  const finiteEntries = entries(raw).filter(([, v]) => v != null) as [
     ShapeName,
     number
   ][];
-  const fillEntries = entries(raw).filter(([, v]) => v === 'Infinity') as [
+  const fillEntries = entries(raw).filter(([, v]) => v == null) as [
     ShapeName,
-    'Infinity'
+    null
   ][];
 
-  const assignedCounts: Record<ShapeName, number> = Object.fromEntries(
-    finiteEntries.map(([k]) => [k, 0])
-  ) as Record<ShapeName, number>;
-  const finiteOrder = finiteEntries.map(([k]) => k);
+  const assignedCounts: Partial<Record<ShapeName, number>> = {};
+  for (const [sh] of finiteEntries) assignedCounts[sh] = 0;
 
-  const fillShape: ShapeName | null = fillEntries.length ? fillEntries[0][0] : null;
+  const finiteOrder = finiteEntries.map(([sh]) => sh);
+
+  const fillShapes = fillEntries.map(([sh]) => sh);
+  let fillIdx = 0;
 
   for (const it of sorted) {
     let assigned: ShapeName | null = null;
 
     for (const sh of finiteOrder) {
       const cap = raw[sh] as number;
-      if (assignedCounts[sh] < cap) {
-        assignedCounts[sh]++;
+      const cur = assignedCounts[sh] ?? 0;
+      if (cur < cap) {
+        assignedCounts[sh] = cur + 1;
         assigned = sh;
         break;
       }
     }
 
-    if (!assigned && fillShape) assigned = fillShape;
+    if (!assigned && fillShapes.length) {
+      assigned = fillShapes[fillIdx % fillShapes.length];
+      fillIdx += 1;
+    }
 
     if (!assigned) {
       const spec: ConditionSpec | undefined = CONDITIONS[kind];
       assigned = (spec?.variants[0]?.shape ?? 'car') as ShapeName;
     }
 
-    const size = footprintFor(kind, assigned);
-    m.set(it.id, { shape: assigned, size });
+    m.set(it.id, { shape: assigned, size: footprintFor(kind, assigned) });
   }
 
   return m;

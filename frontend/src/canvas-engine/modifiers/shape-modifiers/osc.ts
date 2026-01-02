@@ -1,16 +1,16 @@
-import { phaseFromIndex } from './hash.ts';
+// modifiers/shape-modifiers/osc.ts
+import { phaseFromIndex } from "../../shared/hash32.ts";
 
-// Generic displacement oscillator: small (dx, dy, scale) wobble
 export function displacementOsc(
   tSec: number,
   idx: number,
   opts: {
-    ampX?: number;         // px
-    ampY?: number;         // px
-    ampScale?: number;     // ±fraction
-    freqX?: number;        // Hz
-    freqY?: number;        // Hz
-    freqScale?: number;    // Hz
+    ampX?: number;
+    ampY?: number;
+    ampScale?: number;
+    freqX?: number;
+    freqY?: number;
+    freqScale?: number;
     seed?: number;
   } = {}
 ) {

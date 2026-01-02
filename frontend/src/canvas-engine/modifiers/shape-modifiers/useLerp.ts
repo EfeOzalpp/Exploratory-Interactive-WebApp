@@ -1,6 +1,6 @@
-// src/canvas/shape/utils/useLerp.ts
+// modifiers/shape-modifiers/useLerp.ts
 // Minimal lerp helpers shared across shapes/effects.
-// import the functions directly OR call useLerp() to get them.
+// Import the functions directly, or call useLerp() to get them.
 
 export type Range = [number, number];
 
@@ -17,7 +17,6 @@ export function val(v: number | Range, u: number): number {
   return Array.isArray(v) ? mix(v[0], v[1], clamp01(u)) : v;
 }
 
-// Optional ergonomic hook-style wrapper (handy in React files)
 export default function useLerp() {
   return { clamp01, mix, val };
 }

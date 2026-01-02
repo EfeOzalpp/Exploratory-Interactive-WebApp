@@ -3,8 +3,8 @@ import React from 'react';
 
 import { useCanvasEngine } from '../canvas-engine/hooks/useCanvasEngine.ts';
 import { useViewportKey } from '../canvas-engine/hooks/useViewportKey.ts';
-import { useGridDotField } from '../canvas-engine/hooks/useGridDotField.ts';
-import { useColor } from '../canvas-engine/hooks/color/useColor.ts';
+import { useSceneField } from '../canvas-engine/hooks/useSceneField.ts';
+import { useColor } from '../canvas-engine/modifiers/color-modifiers/color/useColor.ts';
 import { stopCanvasEngine } from '../canvas-engine/canvasEngine.js';
 
 export default function CityOverlay({ open, liveAvg = 0.5, allocAvg }) {
@@ -26,7 +26,7 @@ export default function CityOverlay({ open, liveAvg = 0.5, allocAvg }) {
   const viewportKey = useViewportKey(120);
 
   // Use overlay placement bands + overlay pool sizes
-  useGridDotField(engine, allocAvg ?? liveAvg, viewportKey, { overlay: true });
+  useSceneField(engine, allocAvg ?? liveAvg, viewportKey, { overlay: true });
   useColor(engine, liveAvg);
 
   return (

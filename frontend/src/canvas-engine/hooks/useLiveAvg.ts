@@ -1,24 +1,50 @@
 import { useEffect, useRef } from 'react';
-import { useAvgColor } from '../color/useAvgColor.ts';                    
-import { BRAND_STOPS_VIVID, type Stop } from '../color/colorStops.ts'; 
+import { useAvgColor } from '../modifiers/color-modifiers/color/useAvgColor.ts';
+import { BRAND_STOPS_VIVID, type Stop } from '../modifiers/color-modifiers/color/colorStops.ts';
 
-type LiveAvgDotOpts = { liveAvg?: number; radius?: number; stops?: Stop[]; enableConsole?: boolean };
+type Engine = {
+  ready: React.MutableRefObject<boolean>;
+  controls: React.MutableRefObject<any>;
+};
 
+type LiveAvgDotOpts = {
+  liveAvg?: number;
+  radius?: number;
+  stops?: Stop[];
+  enableConsole?: boolean;
+};
+
+/**
+ * Drives the engine "dot" overlay from a live average value.
+ * Uses the avg→color mapping from useAvgColor and updates only when inputs change.
+ */
 export function useLiveAvgDot(
-{ engine, opts = {} }: { engine: { ready: React.MutableRefObject<boolean>; controls: React.MutableRefObject<any>; }; opts?: LiveAvgDotOpts; }) {
-  const { liveAvg = 0.5, radius = 11, stops = BRAND_STOPS_VIVID, enableConsole = true } = opts;
+  engine: Engine,
+  opts: LiveAvgDotOpts = {}
+) {
+  const {
+    liveAvg = 0.5,
+    radius = 11,
+    stops = BRAND_STOPS_VIVID,
+    enableConsole = true,
+  } = opts;
+
   const { css } = useAvgColor(liveAvg, stops);
 
-  const lastCssRef = useRef<string | null>(null);
-  const lastRRef = useRef<number | null>(null);
+  const lastRef = useRef<{ css: string; radius: number } | null>(null);
 
   useEffect(() => {
     if (!engine.ready.current) return;
-    const changed = css !== lastCssRef.current || radius !== lastRRef.current;
+
+    const last = lastRef.current;
+    const changed = !last || last.css !== css || last.radius !== radius;
     if (!changed) return;
+
     engine.controls.current?.setDot?.({ color: css, r: radius, visible: true });
-    lastCssRef.current = css;
-    lastRRef.current = radius;
-    if (enableConsole) console.log('[Canvas] liveAvg:', liveAvg, '→', css, 'r=', radius);
-  }, [engine, css, radius, liveAvg, enableConsole]);
+    lastRef.current = { css, radius };
+
+    if (enableConsole) {
+      console.log('[Canvas] liveAvg:', liveAvg, '→', css, 'r=', radius);
+    }
+  }, [engine.ready, engine.controls, css, radius, liveAvg, enableConsole]);
 }

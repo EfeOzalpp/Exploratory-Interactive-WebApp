@@ -1,8 +1,5 @@
-// src/canvas/shapes/car.js
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { clampBrightness } from '../color-modifiers/colorUtils.ts';
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
+// src/canvas-engine/shapes/car.js
+import { applyShapeMods, blendRGB, clampBrightness, clamp01, val } from "../modifiers/index.ts";
 
 /* ───────────────── Base Palette */
 export const CAR_BASE_PALETTE = {

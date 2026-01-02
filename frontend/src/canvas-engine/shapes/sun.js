@@ -1,8 +1,11 @@
 // src/canvas-engine/shapes/sun.js
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { oscillateSaturation } from '../color-modifiers/colorUtils.ts';
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
+import {
+  clamp01,
+  val,
+  blendRGB,
+  oscillateSaturation,
+  applyShapeMods,
+} from "../modifiers/index.ts";
 
 /* Exposure/contrast helper */
 function applyExposureContrast(rgb, exposure = 1, contrast = 1) {

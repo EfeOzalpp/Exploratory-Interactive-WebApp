@@ -2,8 +2,8 @@
 import { useEffect, useRef } from 'react';
 
 import { useAvgColor } from './useAvgColor.ts';
-import type { Stop } from '../../modifiers/color-modifiers/colorStops.ts';
-import { BRAND_STOPS_VIVID } from '../../modifiers/color-modifiers/colorStops.ts';
+import type { Stop } from './colorStops.ts';
+import { BRAND_STOPS_VIVID } from './colorStops.ts';
 
 type Engine = {
   ready: React.MutableRefObject<boolean>;

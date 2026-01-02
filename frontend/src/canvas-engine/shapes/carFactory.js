@@ -1,9 +1,13 @@
-// src/canvas/shape/carFactory.js
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { clampBrightness, clampSaturation } from '../color-modifiers/colorUtils.ts';
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
-import { stepAndDrawPuffs } from '../modifiers/particle-systems/particle-2.ts';
+// src/canvas-engine/shape/carFactory.js
+import {
+  clamp01,
+  val,
+  blendRGB,
+  clampBrightness,
+  clampSaturation,
+  applyShapeMods,
+  stepAndDrawPuffs,
+} from "../modifiers/index.ts";
 
 import {
   drawCarAsset,

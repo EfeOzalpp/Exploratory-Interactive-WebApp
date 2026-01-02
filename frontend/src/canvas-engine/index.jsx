@@ -1,8 +1,8 @@
 // canvas-engine/index.jsx
 import { useCanvasEngine } from './hooks/useCanvasEngine.ts';
-import { useGridDotField } from './hooks/useGridDotField.ts';
+import { useSceneField } from './hooks/useSceneField.ts';
 import { useViewportKey } from './hooks/useViewportKey.ts';
-import { useColor } from './hooks/color/useColor.ts';
+import { useColor } from './modifiers/color-modifiers/color/useColor.ts';
 
 /**
  * CanvasEntry
@@ -20,7 +20,7 @@ export default function CanvasEntry({
   const viewportKey = useViewportKey(120);
 
   // Placement (houses/clouds/etc.) — trigger on allocAvg and viewport changes
-  useGridDotField(engine, allocAvg, viewportKey);
+  useSceneField(engine, allocAvg, viewportKey);
 
   // Global palette + per-shape lerps (read continuously during drag)
   useColor(engine, liveAvg);

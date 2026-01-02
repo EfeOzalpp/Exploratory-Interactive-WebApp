@@ -1,8 +1,5 @@
-// src/canvas/shape/bus.js
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { clampBrightness } from '../color-modifiers/colorUtils.ts';
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
+// src/canvas-engine/shape/bus.js
+import { applyShapeMods, blendRGB, clampBrightness, clamp01, val } from "../modifiers/index.ts";
 
 // reuse fit helpers from car.js so behavior matches car exactly
 import {

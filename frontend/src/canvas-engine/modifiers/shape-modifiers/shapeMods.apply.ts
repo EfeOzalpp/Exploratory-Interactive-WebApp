@@ -1,184 +1,7 @@
-// modifiers/shape-modifiers/shapeMods.ts
+// modifiers/shape-modifiers/shapeMods.apply.ts
 import { clamp01 } from "./useLerp.ts";
-
-export type Anchor =
-  | "center"
-  | "top"
-  | "bottom"
-  | "left"
-  | "right"
-  | "top-left"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-right"
-  | "bottom-center"
-  | "top-center";
-
-export interface Scale2D {
-  x?: number;
-  y?: number;
-  anchor?: Anchor;
-}
-
-export interface Scale2DOsc {
-  mode?: "relative" | "absolute";
-  biasX?: number;
-  ampX?: number;
-  biasY?: number;
-  ampY?: number;
-  biasAbsX?: number;
-  ampAbsX?: number;
-  biasAbsY?: number;
-  ampAbsY?: number;
-  speed?: number;
-  phaseX?: number;
-  phaseY?: number;
-  anchor?: Anchor;
-}
-
-export interface AppearMod {
-  scaleFrom?: number;
-  alphaFrom?: number;
-  anchor?: Anchor;
-  ease?: "linear" | "cubic" | "back";
-  backOvershoot?: number;
-}
-
-export interface TranslateClampX {
-  min?: number;
-  max?: number;
-}
-export interface TranslateClampY {
-  min?: number;
-  max?: number;
-}
-
-export interface TranslateOscX {
-  amp?: number;
-  speed?: number;
-  phase?: number;
-}
-export interface TranslateOscY {
-  amp?: number;
-  speed?: number;
-  phase?: number;
-}
-
-export interface ShapeMods {
-  appear?: AppearMod;
-
-  scale?: Scale;
-  scale2D?: Scale2D;
-  sizeOsc?: SizeOsc;
-  scale2DOsc?: Scale2DOsc;
-  opacityOsc?: OpacityOsc;
-  rotation?: Rotation;
-  rotationOsc?: RotationOsc;
-  saturationOsc?: SaturationOsc;
-
-  translateClampX?: TranslateClampX;
-  translateClampY?: TranslateClampY;
-  translateOscX?: TranslateOscX;
-  translateOscY?: TranslateOscY;
-}
-
-export interface Scale {
-  value?: number;
-  anchor?: Anchor;
-}
-
-export interface SizeOsc {
-  speed?: number;
-  phase?: number;
-  anchor?: Anchor;
-  mode?: "relative" | "absolute";
-
-  bias?: number;
-  amp?: number;
-
-  biasAbs?: number;
-  ampAbs?: number;
-}
-
-export interface OpacityOsc {
-  amp?: number;
-  speed?: number;
-  phase?: number;
-}
-
-export interface Rotation {
-  speed?: number;
-}
-
-export interface RotationOsc {
-  amp?: number;
-  speed?: number;
-  phase?: number;
-}
-
-export interface SaturationOsc {
-  amp?: number;
-  speed?: number;
-  phase?: number;
-}
-
-export interface ApplyShapeModsOpts {
-  p: any;
-  x: number;
-  y: number;
-  r: number;
-  opts?: {
-    alpha?: number;
-    timeMs?: number;
-    liveAvg?: number;
-    rootAppearK?: number;
-  };
-  mods?: ShapeMods;
-}
-
-function applyAnchorShiftForScale(
-  anchor: Anchor,
-  dx: number,
-  dy: number
-): { offX: number; offY: number } {
-  switch (anchor) {
-    case "top":
-      return { offX: 0, offY: dy / 2 };
-    case "bottom":
-      return { offX: 0, offY: -dy / 2 };
-    case "left":
-      return { offX: dx / 2, offY: 0 };
-    case "right":
-      return { offX: -dx / 2, offY: 0 };
-    case "top-left":
-      return { offX: dx / 2, offY: dy / 2 };
-    case "top-right":
-      return { offX: -dx / 2, offY: dy / 2 };
-    case "bottom-left":
-      return { offX: dx / 2, offY: -dy / 2 };
-    case "bottom-right":
-      return { offX: -dx / 2, offY: -dy / 2 };
-    case "bottom-center":
-      return { offX: 0, offY: -dy / 2 };
-    case "top-center":
-      return { offX: 0, offY: dy / 2 };
-    default:
-      return { offX: 0, offY: 0 };
-  }
-}
-
-function easeOutCubic(t: number) {
-  t = clamp01(t);
-  const u = 1 - t;
-  return 1 - u * u * u;
-}
-
-function easeOutBack(t: number, s = 1.6) {
-  t = clamp01(t);
-  const invS = s + 1;
-  const x = t - 1;
-  return 1 + invS * x * x * x + s * x * x;
-}
+import type { ApplyShapeModsOpts } from "./shapeMods.types.ts";
+import { applyAnchorShiftForScale, easeOutBack, easeOutCubic } from "./shapeMods.math.ts";
 
 /**
  * Apply modular shape modifiers.
@@ -187,19 +10,17 @@ function easeOutBack(t: number, s = 1.6) {
  * - scaleX/scaleY are anisotropic multipliers (compose with p.scale)
  */
 export function applyShapeMods({ p, x, y, r, opts = {}, mods = {} }: ApplyShapeModsOpts) {
-  const u = clamp01(opts?.liveAvg ?? 0.5);
   const t = (typeof opts?.timeMs === "number" ? opts.timeMs : p.millis()) / 1000;
 
-  let mx = x,
-    my = y;
+  let mx = x;
+  let my = y;
   let mr = r;
-  let alpha =
-    typeof opts.alpha === "number" && Number.isFinite(opts.alpha) ? opts.alpha : 255;
+  let alpha = typeof opts.alpha === "number" && Number.isFinite(opts.alpha) ? opts.alpha : 255;
   let rotation = 0;
   let satFactor = 1;
 
-  let scaleX = 1,
-    scaleY = 1;
+  let scaleX = 1;
+  let scaleY = 1;
 
   if (mods.appear) {
     const {
@@ -285,20 +106,12 @@ export function applyShapeMods({ p, x, y, r, opts = {}, mods = {} }: ApplyShapeM
   }
 
   if (mods.sizeOsc) {
-    const {
-      mode = "relative",
-      speed = 0.3,
-      phase = 0,
-      anchor = "center",
-      bias,
-      amp,
-      biasAbs,
-      ampAbs,
-    } = mods.sizeOsc;
+    const { mode = "relative", speed = 0.3, phase = 0, anchor = "center", bias, amp, biasAbs, ampAbs } =
+      mods.sizeOsc;
 
     const r0 = mr;
-    let biasK = 1,
-      ampK = 0;
+    let biasK = 1;
+    let ampK = 0;
 
     if (mode === "absolute") {
       const bAbs = typeof biasAbs === "number" ? biasAbs : r0;
@@ -398,31 +211,23 @@ export function applyShapeMods({ p, x, y, r, opts = {}, mods = {} }: ApplyShapeM
   }
 
   if (mods.translateOscX) {
-    const amp = Number.isFinite(mods.translateOscX.amp as number)
-      ? (mods.translateOscX.amp as number)
-      : 0;
+    const amp = Number.isFinite(mods.translateOscX.amp as number) ? (mods.translateOscX.amp as number) : 0;
     const speed = Number.isFinite(mods.translateOscX.speed as number)
       ? (mods.translateOscX.speed as number)
       : 0.25;
-    const phase = Number.isFinite(mods.translateOscX.phase as number)
-      ? (mods.translateOscX.phase as number)
-      : 0;
-    const w = speed * 2 * Math.PI;
-    mx += amp * Math.sin(w * t + phase);
+    const phase = Number.isFinite(mods.translateOscX.phase as number) ? (mods.translateOscX.phase as number) : 0;
+    mx += amp * Math.sin(speed * 2 * Math.PI * t + phase);
   }
 
   if (mods.translateOscY) {
-    const amp = Number.isFinite(mods.translateOscY.amp as number)
-      ? (mods.translateOscY.amp as number)
-      : 0;
+    const amp = Number.isFinite(mods.translateOscY.amp as number) ? (mods.translateOscY.amp as number) : 0;
     const speed = Number.isFinite(mods.translateOscY.speed as number)
       ? (mods.translateOscY.speed as number)
       : 0.25;
     const phase = Number.isFinite(mods.translateOscY.phase as number)
       ? (mods.translateOscY.phase as number)
       : Math.PI / 2;
-    const w = speed * 2 * Math.PI;
-    my += amp * Math.sin(w * t + phase);
+    my += amp * Math.sin(speed * 2 * Math.PI * t + phase);
   }
 
   if (mods.translateClampX) {
@@ -441,8 +246,7 @@ export function applyShapeMods({ p, x, y, r, opts = {}, mods = {} }: ApplyShapeM
 
   if (mods.opacityOsc) {
     const { amp = 80, speed = 0.4, phase = 0 } = mods.opacityOsc;
-    const osc = amp * Math.sin(t * speed * Math.PI * 2 + phase);
-    alpha = clamp01((alpha + osc) / 255) * 255;
+    alpha = clamp01((alpha + amp * Math.sin(t * speed * Math.PI * 2 + phase)) / 255) * 255;
   }
 
   if (mods.rotation) {

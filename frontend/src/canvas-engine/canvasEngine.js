@@ -1,10 +1,10 @@
-// canvas/canvas-engine.js
+// canvas-engine/canvasEngine.js
 import {
   drawClouds, drawSnow, drawHouse, drawPower, drawSun,
   drawVilla, drawCarFactory, drawCar, drawSea, drawBus, drawTrees
 } from './shapes/index.js';
-import { getGridSpec } from './grid-layout/config.ts';
-import { makeCenteredSquareGrid } from './grid-layout/layoutCentered.ts';
+import { getGridSpec } from './layout/grid-layout/config.ts';
+import { makeCenteredSquareGrid } from './layout/grid-layout/layoutCentered.ts';
 
 /* ───────────────────────────────────────────────────────────
    Helpers
@@ -22,6 +22,68 @@ function resolvePixelDensity(mode) {
     case 'auto':   return isMobile ? Math.min(2, dpr) : Math.min(3, dpr);
     default:       return Math.min(3, dpr);
   }
+}
+
+function getViewportSize() {
+  const vv = typeof window !== 'undefined' && window.visualViewport;
+  if (vv && vv.width && vv.height) return { w: Math.round(vv.width), h: Math.round(vv.height) };
+  const w = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+  const h = Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+  return { w, h };
+}
+
+/* ───────────────────────────────────────────────────────────
+   Mount + canvas style
+   ─────────────────────────────────────────────────────────── */
+
+function ensureMount(mount, zIndex, layout = 'fixed') {
+  let el = document.querySelector(mount);
+  const existed = !!el;
+
+  if (!el) {
+    el = document.createElement('div');
+    el.id = mount.startsWith('#') ? mount.slice(1) : mount;
+    document.body.appendChild(el);
+  }
+
+  // Layout semantics:
+  // - fixed: engine owns a fullscreen fixed layer (default)
+  // - inherit: engine renders inside an existing container; do not force fullscreen
+  // - auto: fixed if we had to create the mount, otherwise inherit
+  const mode = layout === 'auto' ? (existed ? 'inherit' : 'fixed') : layout;
+
+  if (mode === 'fixed') {
+    el.style.position = 'fixed';
+    el.style.inset = '0';
+    el.style.height = '100dvh';
+    el.style.width = '100vw';
+    el.style.zIndex = String(Number.isFinite(zIndex) ? zIndex : 2);
+  } else {
+    // inherit: don't stomp geometry; just ensure we can absolutely position the canvas
+    const pos = getComputedStyle(el).position;
+    if (pos === 'static' || !pos) el.style.position = 'relative';
+    // zIndex only matters if the container participates in stacking; set only if asked
+    if (Number.isFinite(zIndex)) el.style.zIndex = String(zIndex);
+  }
+
+  el.style.pointerEvents = 'none';
+  el.style.userSelect = 'none';
+  el.style.webkitTapHighlightColor = 'transparent';
+  el.classList.add('be-canvas-layer');
+
+  return el;
+}
+
+function applyCanvasStyle(el) {
+  if (!el?.style) return;
+  el.style.position = 'absolute';
+  el.style.inset = '0';
+  el.style.zIndex = '0';
+  el.style.pointerEvents = 'none';
+  el.style.userSelect = 'none';
+  el.style.transform = 'translateZ(0)';
+  el.style.imageRendering = 'auto';
+  el.setAttribute('tabindex', '-1');
 }
 
 /* ───────────────────────────────────────────────────────────
@@ -60,7 +122,6 @@ function makeP(canvas, ctx) {
     drawingContext: ctx,
     P2D: '2d',
 
-    // compatibility shims
     createCanvas(w, h){ canvas.width = w; canvas.height = h; return canvas; },
     resizeCanvas(w, h){
       const ratio = canvas._dpr || 1;
@@ -92,7 +153,7 @@ function makeP(canvas, ctx) {
     pop(){
       ctx.restore();
       const s = _pStateStack.pop();
-      if (s) _rectMode = s._rectMode; else _rectMode = 'corner';
+      _rectMode = s ? s._rectMode : 'corner';
     },
 
     translate(x,y){ ctx.translate(x,y); },
@@ -102,14 +163,17 @@ function makeP(canvas, ctx) {
     noFill(){ state.doFill = false; },
     fill(r,g,b,a=255){
       state.doFill = true;
-      if (typeof r === 'string') { const c = parseCss(r); ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${a/255})`; }
-      else ctx.fillStyle = `rgba(${r|0},${g|0},${b|0},${(a|0)/255})`;
+      if (typeof r === 'string') {
+        const c = parseCss(r);
+        ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${a/255})`;
+      } else {
+        ctx.fillStyle = `rgba(${r|0},${g|0},${b|0},${(a|0)/255})`;
+      }
     },
     noStroke(){ state.doStroke = false; },
     stroke(r,g,b,a=255){ state.doStroke = true; ctx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${(a|0)/255})`; },
     strokeWeight(w){ state.lineWidth = w; ctx.lineWidth = w; },
 
-    // rectMode API + constants
     CORNER: 'corner',
     CENTER: 'center',
     rectMode(mode){ _rectMode = (mode === this.CENTER) ? 'center' : 'corner'; },
@@ -162,64 +226,17 @@ function makeP(canvas, ctx) {
     },
     CLOSE: 'close',
 
-    // color helpers used in sun.js
     color(css){ return parseCss(css); },
     red(c){ return c.r; }, green(c){ return c.g; }, blue(c){ return c.b; },
 
-    // main loop hook (installed by engine)
     __tick(now){ _delta = now - _last; _last = now; },
   };
   return p;
 }
 
 /* ───────────────────────────────────────────────────────────
-   startCanvasEngine (API-compatible with existing code)
+   background radial
    ─────────────────────────────────────────────────────────── */
-
-const REGISTRY = new Map();
-
-function getViewportSize() {
-  const vv = typeof window !== 'undefined' && window.visualViewport;
-  if (vv && vv.width && vv.height) return { w: Math.round(vv.width), h: Math.round(vv.height) };
-  const w = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
-  const h = Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
-  return { w, h };
-}
-
-function ensureMount(mount, zIndex) {
-  let el = document.querySelector(mount);
-  if (!el) {
-    el = document.createElement('div');
-    el.id = mount.startsWith('#') ? mount.slice(1) : mount;
-    document.body.appendChild(el);
-  }
-  el.style.position = 'fixed';
-  el.style.inset = '0';
-  el.style.height = '100dvh';
-  el.style.width = '100vw';
-  el.style.zIndex = String(Number.isFinite(zIndex) ? zIndex : 2); // ← honor zIndex
-  el.style.pointerEvents = 'none';
-  el.style.touchAction = 'auto';
-  el.style.userSelect = 'none';
-  el.style.webkitTapHighlightColor = 'transparent';
-  el.classList.add('be-canvas-layer');
-  return el;
-}
-
-function applyCanvasNonBlockingStyle(el) {
-  if (!el?.style) return;
-  el.style.position = 'absolute';
-  el.style.inset = '0';
-  el.style.zIndex = '0'; // canvas stays inside the stacking context of the parent mount
-  el.style.pointerEvents = 'none';
-  el.style.touchAction = 'auto';
-  el.style.userSelect = 'none';
-  el.style.transform = 'translateZ(0)';     // force its own layer (mobile crispness)
-  el.style.imageRendering = 'auto';
-  el.setAttribute('tabindex', '-1');
-}
-
-/* background radial */
 function drawBackground(p) {
   const BG = '#b4e4fdff';
   p.background(BG);
@@ -254,14 +271,25 @@ const REG_STYLE_DEFAULT = {
   exitMs: 300,
 };
 
-export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = 'fixed1', zIndex = 2 } = {}) {
+/* ───────────────────────────────────────────────────────────
+   startCanvasEngine
+   ─────────────────────────────────────────────────────────── */
+const REGISTRY = new Map();
+
+export function startCanvasEngine({
+  mount = '#canvas-root',
+  onReady,
+  dprMode = 'fixed1',
+  zIndex = 2,
+  layout = 'fixed', // 'fixed' | 'inherit' | 'auto'
+} = {}) {
   // Guard against double inits on the same mount
   if (REGISTRY.has(mount)) {
     try { REGISTRY.get(mount).controls?.stop?.(); } catch {}
     REGISTRY.delete(mount);
   }
 
-  const parentEl = ensureMount(mount, zIndex);
+  const parentEl = ensureMount(mount, zIndex, layout);
 
   const style = { ...REG_STYLE_DEFAULT };
   const field = { items: [], visible: false, epoch: 0 };
@@ -278,34 +306,39 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
     return `${it.shape}|w${f.w}h${f.h}|r${f.r0}c${f.c0}`;
   }
 
-  // grid cache
-  let cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, q: null };
+  // grid cache (includes usedRows)
+  let cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, usedRows: 0, q: null };
 
   const computeGrid = () => {
-    if (p.width === cachedGrid.w && p.height === cachedGrid.h && cachedGrid.q === questionnaireOpen && cachedGrid.cell > 0) {
+    if (
+      p.width === cachedGrid.w &&
+      p.height === cachedGrid.h &&
+      cachedGrid.q === questionnaireOpen &&
+      cachedGrid.cell > 0
+    ) {
       return cachedGrid;
     }
+
     const spec = getGridSpec(p.width, questionnaireOpen);
     const { cell, rows, cols } = makeCenteredSquareGrid({
-      w: p.width, h: p.height, rows: spec.rows, useTopRatio: spec.useTopRatio ?? 1,
+      w: p.width,
+      h: p.height,
+      rows: spec.rows,
+      useTopRatio: spec.useTopRatio ?? 1,
     });
-    cachedGrid = { w: p.width, h: p.height, cell, rows, cols, q: questionnaireOpen };
+
+    const useTop = Math.max(0.01, Math.min(1, spec.useTopRatio ?? 1));
+    const usedRows = Math.max(1, Math.round(rows * useTop));
+
+    cachedGrid = { w: p.width, h: p.height, cell, rows, cols, usedRows, q: questionnaireOpen };
     return cachedGrid;
   };
 
   /* init canvas */
   const canvas = document.createElement('canvas');
   canvasEl = canvas;
-  applyCanvasNonBlockingStyle(canvasEl);
+  applyCanvasStyle(canvasEl);
   parentEl.appendChild(canvasEl);
-
-  // Context loss guard
-  const onContextLost = (e) => {
-    try { e?.preventDefault?.(); } catch {}
-    try { console.warn('[canvas] context lost'); } catch {}
-    stop();
-  };
-  canvasEl.addEventListener('webglcontextlost', onContextLost, { passive: false });
 
   const ctx = canvasEl.getContext('2d', { alpha: true });
   p = makeP(canvasEl, ctx);
@@ -316,11 +349,14 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
     const { w, h } = getViewportSize();
     p.pixelDensity(resolvePixelDensity(dprMode));
     p.resizeCanvas(w, h);
+
     // Ensure CSS box == logical size so grid math centers correctly
     canvasEl.style.width  = w + 'px';
     canvasEl.style.height = h + 'px';
+
     cachedGrid.w = cachedGrid.h = cachedGrid.cell = 0;
-    applyCanvasNonBlockingStyle(canvasEl);
+    applyCanvasStyle(canvasEl);
+
     if (hero.x == null) hero.x = Math.round(p.width * 0.50);
     if (hero.y == null) hero.y = Math.round(p.height * 0.30);
   }
@@ -329,17 +365,15 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
     resizeRaf = requestAnimationFrame(resizeToViewport);
   };
   resizeToViewport();
-  window.addEventListener('resize', resizeThrottled, { passive: true });
+  window.addEventListener('resize', resizeThrottled);
 
   /* vis pause/resume */
   const visHandler = () => {
-    if (document.visibilityState === 'visible') {
-      resizeThrottled();
-    }
+    if (document.visibilityState === 'visible') resizeThrottled();
   };
   document.addEventListener('visibilitychange', visHandler);
 
-  // draw registry (same as before)
+  // draw registry
   function renderOne(p, it, rEff, sharedOpts, rootAppearK) {
     const opts = { ...sharedOpts, rootAppearK };
     switch (it.shape) {
@@ -348,27 +382,28 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
         const vw = p.width;
         const hideFrac =
           vw < 768  ? 0.32 :
-          vw < 1024 ? 0.4 :
+          vw < 1024 ? 0.4  :
                       0.2;
+
         drawSnow(p, it.x, it.y, rEff, {
           ...opts,
           footprint: it.footprint,
-          usedRows: cachedGrid.rows,
+          usedRows: cachedGrid.usedRows, // was rows; usedRows is what callers actually want
           hideGroundAboveFrac: hideFrac,
           showGround: true,
         });
         break;
       }
-      case 'house':  drawHouse(p, it.x, it.y, rEff, opts); break;
-      case 'power':  drawPower(p, it.x, it.y, rEff, opts); break;
-      case 'villa':  drawVilla(p, it.x, it.y, rEff, opts); break;
-      case 'carFactory': drawCarFactory(p, it.x, it.y, rEff, opts); break;
-      case 'bus':  drawBus(p, it.x, it.y, rEff, opts); break;
-      case 'trees': drawTrees(p, it.x, it.y, rEff, opts); break;
-      case 'car':    drawCar(p, it.x, it.y, rEff, opts); break;
-      case 'sea':    drawSea(p, it.x, it.y, rEff, opts); break;
-      case 'sun':    drawSun(p, it.x, it.y, rEff, opts); break;
-      case 'clouds': drawClouds(p, it.x, it.y, rEff, opts); break;
+      case 'house':     drawHouse(p, it.x, it.y, rEff, opts); break;
+      case 'power':     drawPower(p, it.x, it.y, rEff, opts); break;
+      case 'villa':     drawVilla(p, it.x, it.y, rEff, opts); break;
+      case 'carFactory':drawCarFactory(p, it.x, it.y, rEff, opts); break;
+      case 'bus':       drawBus(p, it.x, it.y, rEff, opts); break;
+      case 'trees':     drawTrees(p, it.x, it.y, rEff, opts); break;
+      case 'car':       drawCar(p, it.x, it.y, rEff, opts); break;
+      case 'sea':       drawSea(p, it.x, it.y, rEff, opts); break;
+      case 'sun':       drawSun(p, it.x, it.y, rEff, opts); break;
+      case 'clouds':    drawClouds(p, it.x, it.y, rEff, opts); break;
     }
   }
 
@@ -405,7 +440,6 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // background
     drawBackground(p);
 
     const { cell } = computeGrid();
@@ -430,17 +464,16 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
 
     const useGhosts = style.exitMs > 0;
 
-    // z-order helper
     const Z = {
       villa: 3,
       house: 2,
       power: 5,
-      car:   8,
+      car: 8,
       carFactory: 6,
-      snow:  9,
-      sea:   10,
+      snow: 9,
+      sea: 10,
       bus: 11,
-      sun:   0,
+      sun: 0,
       trees: 12,
       clouds: 1,
     };
@@ -484,7 +517,6 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
       }
     }
 
-    // optional hero dot
     if (hero.visible && hero.x != null && hero.y != null) {
       p.fill(255,0,0,255);
       p.circle(hero.x, hero.y, style.r * 2);
@@ -494,7 +526,7 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
   }
   rafId = requestAnimationFrame(frame);
 
-  /* controls (API-compatible) */
+  /* controls */
   function setFieldItems(nextItems = []) {
     const now = nowMs();
     field.epoch++;
@@ -544,42 +576,57 @@ export function startCanvasEngine({ mount = '#canvas-root', onReady, dprMode = '
     field.items = Array.isArray(nextItems) ? nextItems : [];
   }
 
-  function setFieldStyle({ r, gradientRGB, blend, liveAvg, perShapeScale, exposure, contrast, appearMs, exitMs } = {}) {
+  function setFieldStyle(args = {}) {
+    const {
+      r, gradientRGB, blend, liveAvg, perShapeScale, exposure, contrast, appearMs, exitMs
+    } = args;
+
     if (Number.isFinite(r) && r > 0) style.r = r;
-    if (gradientRGB) style.gradientRGB = gradientRGB;
+
+    if ('gradientRGB' in args) style.gradientRGB = gradientRGB ?? null;
+
     if (typeof blend === 'number') style.blend = Math.max(0, Math.min(1, blend));
     if (typeof liveAvg === 'number') style.liveAvg = Math.max(0, Math.min(1, liveAvg));
     if (typeof exposure === 'number') style.exposure = Math.max(0.1, Math.min(3, exposure));
     if (typeof contrast === 'number') style.contrast = Math.max(0.5, Math.min(2, contrast));
-    if (perShapeScale && typeof perShapeScale === 'object')
+
+    if (perShapeScale && typeof perShapeScale === 'object') {
       style.perShapeScale = { ...style.perShapeScale, ...perShapeScale };
+    }
+
     if (Number.isFinite(appearMs) && appearMs >= 0) style.appearMs = appearMs|0;
     if (Number.isFinite(exitMs)   && exitMs   >= 0) style.exitMs   = exitMs|0;
   }
+
   function setFieldVisible(v){ field.visible = !!v; }
   function setHeroVisible(v){ hero.visible = !!v; }
   function setVisibleCanvas(v){ if (canvasEl?.style) canvasEl.style.opacity = v ? '1' : '0'; }
+
   function stop(){
     try { running = false; } catch {}
     if (rafId != null) { try { cancelAnimationFrame(rafId); } catch {} }
     document.removeEventListener('visibilitychange', visHandler);
     window.removeEventListener('resize', resizeThrottled);
-    try { canvasEl?.removeEventListener?.('webglcontextlost', onContextLost); } catch {}
     try { canvasEl?.remove?.(); } catch {}
     REGISTRY.delete(mount);
   }
 
   function setQuestionnaireOpen(v){
     questionnaireOpen = !!v;
-    // invalidate cache including the flag
-    cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, q: null };
+    cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, usedRows: 0, q: null };
   }
 
   const controls = {
-    setFieldItems, setFieldStyle, setFieldVisible, setHeroVisible, setVisible: setVisibleCanvas, stop,
+    setFieldItems,
+    setFieldStyle,
+    setFieldVisible,
+    setHeroVisible,
+    setVisible: setVisibleCanvas,
+    stop,
     setQuestionnaireOpen,
     get canvas(){ return canvasEl; },
   };
+
   REGISTRY.set(mount, { controls });
   onReady?.(controls);
   return controls;
@@ -602,7 +649,7 @@ export function stopCanvasEngine(mount = '#canvas-root') {
     if (rec?.controls?.stop) rec.controls.stop();
   } catch {}
   REGISTRY.delete(mount);
-  // If we created a fixed container for this mount, remove it to fully free resources.
+
   try {
     const el = document.querySelector(mount);
     if (el && el.classList?.contains('be-canvas-layer')) {

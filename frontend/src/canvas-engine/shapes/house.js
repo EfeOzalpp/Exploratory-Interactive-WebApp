@@ -1,9 +1,14 @@
-// src/canvas/shapes/house.js
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { clampBrightness, oscillateSaturation, driveSaturation } from '../color-modifiers/colorUtils.ts';
-import { stepAndDrawPuffs } from '../modifiers/particle-systems/particle-2.ts';
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
+// src/canvas-engine/shapes/house.js
+import {
+  clamp01,
+  val,
+  blendRGB,
+  clampBrightness,
+  oscillateSaturation,
+  driveSaturation,
+  stepAndDrawPuffs,
+  applyShapeMods,
+} from "../modifiers/index.ts";
 
 function applyExposureContrast(rgb, exposure = 1, contrast = 1) {
   const e = Math.max(0.1, Math.min(3, exposure));

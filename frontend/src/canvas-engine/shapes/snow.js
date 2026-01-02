@@ -1,9 +1,15 @@
 // src/canvas-engine/shapes/snow.js
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { rgbToHsl, hslToRgb, clampBrightness, oscillateSaturation } from '../color-modifiers/colorUtils.ts';
-import { makeArchLobes } from './shape-modifiers/geom.ts';
-import { stepAndDrawPuffs } from '../modifiers/particle-systems/particle-2.ts';
+import {
+  clamp01,
+  val,
+  blendRGB,
+  rgbToHsl,
+  hslToRgb,
+  clampBrightness,
+  oscillateSaturation,
+  makeArchLobes,
+  stepAndDrawPuffs,
+} from "../modifiers/index.ts";
 
 /* Exposure/contrast helper */
 function applyExposureContrast(rgb, exposure = 1, contrast = 1) {

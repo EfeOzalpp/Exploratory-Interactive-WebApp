@@ -1,13 +1,16 @@
 // src/canvas-engine/shapes/sea.js
-import { clamp01, val, mix } from './shape-modifiers/useLerp.ts';
-import { blendRGB, blendRGBGamma } from './shape-modifiers/colorBlend.ts';
 import {
+  clamp01,
+  val,
+  mix,
+  blendRGB,
+  blendRGBGamma,
   clampSaturation,
   clampBrightness,
   oscillateSaturation,
-} from '../color-modifiers/colorUtils.ts';
-import { stepAndDrawPuffs } from '../modifiers/particle-systems/particle-2.ts';
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
+  stepAndDrawPuffs,
+  applyShapeMods,
+} from "../modifiers/index.ts";
 
 // base palettes
 export const SEA_BASE_PALETTE = {

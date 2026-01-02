@@ -1,12 +1,17 @@
-// src/canvas/shapes/clouds.js
-import { oscillateSaturation, rgbToHsl, hslToRgb } from '../color-modifiers/colorUtils.ts';
-import { cssToRgbViaCanvas } from './shape-modifiers/colorAdapter.ts';
-import { makeArchLobes } from './shape-modifiers/geom.ts';
-import { displacementOsc } from './shape-modifiers/osc.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { stepAndDrawParticles } from '../modifiers/particle-systems/particle-1.ts';
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
+// src/canvas-engine/shapes/clouds.js
+import {
+  oscillateSaturation,
+  rgbToHsl,
+  hslToRgb,
+  cssToRgbViaCanvas,
+  makeArchLobes,
+  displacementOsc,
+  blendRGB,
+  stepAndDrawParticles,
+  clamp01,
+  val,
+  applyShapeMods,
+} from "../modifiers/index.ts";
 
 /* Exposure/contrast helper (channel-space, gentle defaults) */
 function applyExposureContrast(rgb, exposure = 1, contrast = 1) {

@@ -1,5 +1,4 @@
-// src/canvas/utils/appear.ts
-
+// modifiers/shape-modifiers/appear.ts
 import type { ShapeMods, Anchor } from './shapeMods.ts';
 
 type Ease = 'linear' | 'cubic' | 'back';

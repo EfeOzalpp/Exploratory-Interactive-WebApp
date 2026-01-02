@@ -1,17 +1,44 @@
-// src/canvas/grid/config.ts
+// src/canvas/layout/grid-layout/config.ts
 export type BreakBand = 'small' | 'medium' | 'large';
+
+export type GridRectFrac = { top: number; left: number; bottom: number; right: number };
 
 export type GridSpec = {
   rows: number;
+
+  /**
+   * Portion of the grid height that is treated as the “used” region.
+   * This is consumed by layout math and policy layers to bias placement into the top area.
+   */
   useTopRatio?: number;
+
+  /**
+   * Optional soft cap used by callers to limit how many items they attempt to place.
+   */
   cap?: number;
+
+  /**
+   * Optional padding in pixels that callers may use when converting cell rects to draw rects.
+   */
   cellPadding?: number;
+
+  /**
+   * Optional pixel jitter that callers may apply to final point placement.
+   */
   jitter?: number;
-  forbiddenRects?: Array<{ top: number; left: number; bottom: number; right: number }>;
+
+  /**
+   * Rectangles expressed as fractions of the grid area. They are converted to cell ranges by helpers
+   * and treated as forbidden.
+   */
+  forbiddenRects?: GridRectFrac[];
+
+  /**
+   * Custom forbidden predicate at cell granularity.
+   * If provided, it is checked in addition to forbiddenRects.
+   */
   forbidden?: (r: number, c: number, rows: number, cols: number) => boolean;
 };
-
-/* ------------------ Row-sculpting helper ------------------ */
 
 type RowRule = {
   left?: number | `${number}%`;
@@ -21,22 +48,29 @@ type RowRule = {
 
 function toCols(val: RowRule[keyof RowRule] | undefined, cols: number): number {
   if (val == null) return 0;
+
   if (typeof val === 'string' && val.endsWith('%')) {
     const p = Math.max(0, Math.min(100, parseFloat(val)));
     return Math.floor((p / 100) * cols);
   }
+
   if (typeof val === 'number') {
     if (val >= 1) return Math.floor(val);
     return Math.floor(Math.max(0, Math.min(1, val)) * cols);
   }
+
   return 0;
 }
 
+/**
+ * Builds a per-cell forbidden predicate from row-oriented trimming rules.
+ * Each row can specify left/right trims and an optional centered blocked span.
+ */
 export function makeRowForbidden(rules: RowRule[]) {
   return (r: number, c: number, _rows: number, cols: number) => {
     const rule = rules[Math.min(r, rules.length - 1)] || {};
-    const leftCols   = toCols(rule.left, cols);
-    const rightCols  = toCols(rule.right, cols);
+    const leftCols = toCols(rule.left, cols);
+    const rightCols = toCols(rule.right, cols);
     const centerCols = toCols(rule.center, cols);
 
     if (leftCols > 0 && c < leftCols) return true;
@@ -44,22 +78,22 @@ export function makeRowForbidden(rules: RowRule[]) {
 
     if (centerCols > 0) {
       const start = Math.max(0, Math.floor((cols - centerCols) / 2));
-      const end   = Math.min(cols - 1, start + centerCols - 1);
+      const end = Math.min(cols - 1, start + centerCols - 1);
       if (c >= start && c <= end) return true;
     }
+
     return false;
   };
 }
 
-/* ------------------ Breakpoints ------------------ */
-
+/**
+ * Discrete band classification used by presets and policy.
+ */
 export function bandFromWidth(w: number): BreakBand {
   if (w <= 767) return 'small';
   if (w <= 1024) return 'medium';
   return 'large';
 }
-
-/* ------------------ GRID MAP A: start/default ------------------ */
 
 export const GRID_MAP_START: Record<BreakBand, GridSpec> = {
   small: {
@@ -69,22 +103,22 @@ export const GRID_MAP_START: Record<BreakBand, GridSpec> = {
     cellPadding: 0,
     jitter: 6,
     forbidden: makeRowForbidden([
-      { left: '0%', right: '0%' }, // r=0
-      { left: '0%', right: '0%' }, // r=1
-      { left: '0%', right: '0%' }, // r=2
-      { left: '0%', right: '0%' }, // r=3
-      { left: '0%', right: '0%' }, // r=4
-      { left: '0%', right: '0%' }, // r=5
-      { left: '0%', right: '0%' }, // r=6
-      { left: '0%', right: '0%' }, // r=7
-      { center: '100%' },          // r=8
-      { center: '100%' },          // r=9
-      { center: '100%' },          // r=10
-      { center: '100%' },          // r=11
-      { center: '100%' },          // r=12
-      { center: '100%' },          // r=13
-      { center: '100%' },          // r=14
-      { center: '100%' },          // r=15
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { left: '0%', right: '0%' },
+      { center: '100%' },
+      { center: '100%' },
+      { center: '100%' },
+      { center: '100%' },
+      { center: '100%' },
+      { center: '100%' },
+      { center: '100%' },
+      { center: '100%' },
     ]),
   },
 
@@ -95,9 +129,8 @@ export const GRID_MAP_START: Record<BreakBand, GridSpec> = {
     cellPadding: 0,
     jitter: 8,
     forbidden: makeRowForbidden([
-      { center: '100%' },            // r=0
-      { center: '100%' },            // r=1
-      { left: '2%', right: '2%' },  // r=2..10
+      { center: '100%' },
+      { center: '100%' },
       { left: '2%', right: '2%' },
       { left: '2%', right: '2%' },
       { left: '2%', right: '2%' },
@@ -106,7 +139,8 @@ export const GRID_MAP_START: Record<BreakBand, GridSpec> = {
       { left: '2%', right: '2%' },
       { left: '2%', right: '2%' },
       { left: '2%', right: '2%' },
-      { center: '100%' },            // r=11..15
+      { left: '2%', right: '2%' },
+      { center: '100%' },
       { center: '100%' },
       { center: '100%' },
       { center: '100%' },
@@ -121,24 +155,22 @@ export const GRID_MAP_START: Record<BreakBand, GridSpec> = {
     cellPadding: 0,
     jitter: 12,
     forbidden: makeRowForbidden([
-      { center: '100%' },                 // r=0
-      { left: '28%', right: '30%' },      // r=1
-      { left: '14%', right: '22%' },      // r=2
-      { left: '10%', right: '20%' },      // r=3
-      { left: '8%',  right: '15%' },      // r=4..5
-      { left: '8%',  right: '15%' },
-      { left: '8%',  right: '15%', center: '30%' }, // r=6
-      { left: '6%',  right: '12%', center: '50%' }, // r=7
-      { center: '100%' },                 // r=8..11
+      { center: '100%' },
+      { left: '28%', right: '30%' },
+      { left: '14%', right: '22%' },
+      { left: '10%', right: '20%' },
+      { left: '8%', right: '15%' },
+      { left: '8%', right: '15%' },
+      { left: '8%', right: '15%', center: '30%' },
+      { left: '6%', right: '12%', center: '50%' },
       { center: '100%' },
       { center: '100%' },
       { center: '100%' },
-      { center: '100%' },                 // safety
+      { center: '100%' },
+      { center: '100%' },
     ]),
   },
 };
-
-/* ------------------ GRID MAP B: questionnaire-open ------------------ */
 
 export const GRID_MAP_QUESTIONNAIRE: Record<BreakBand, GridSpec> = {
   small: {
@@ -197,22 +229,20 @@ export const GRID_MAP_QUESTIONNAIRE: Record<BreakBand, GridSpec> = {
       { center: '100%' },
       { left: '28%', right: '30%' },
       { left: '28%', right: '30%' },
-      { left: '5%',  right: '5%' },
-      { left: '5%',  right: '5%' },
-      { left: '5%',  right: '5%' },
-      { left: '5%',  right: '5%', center: '40%' },
-      { left: '5%',  right: '5%', center: '50%' },
-      { left: '5%',  right: '5%', center: '60%' },
-      { left: '5%',  right: '5%', center: '65%' },
-      { left: '5%',  right: '5%', center: '65%' },
-      { left: '5%',  right: '5%', center: '65%' },
+      { left: '5%', right: '5%' },
+      { left: '5%', right: '5%' },
+      { left: '5%', right: '5%' },
+      { left: '5%', right: '5%', center: '40%' },
+      { left: '5%', right: '5%', center: '50%' },
+      { left: '5%', right: '5%', center: '60%' },
+      { left: '5%', right: '5%', center: '65%' },
+      { left: '5%', right: '5%', center: '65%' },
+      { left: '5%', right: '5%', center: '65%' },
       { center: '100%' },
       { center: '100%' },
     ]),
   },
 };
-
-/* ------------------ GRID MAP C: overlay (distinct layout, same math) ------------------ */
 
 export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
   small: {
@@ -221,7 +251,6 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
     cap: 2,
     cellPadding: 0,
     jitter: 6,
-    // keep edges a touch wider; open center sooner
     forbidden: makeRowForbidden([
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
@@ -244,7 +273,7 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
-        ]),
+    ]),
   },
 
   medium: {
@@ -253,7 +282,6 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
     cap: 40,
     cellPadding: 0,
     jitter: 2,
-    // more breathing room left/right than questionnaire, but not as strict as start
     forbidden: makeRowForbidden([
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
@@ -276,7 +304,7 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
-        ]),
+    ]),
   },
 
   large: {
@@ -285,7 +313,6 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
     cap: 4,
     cellPadding: 0,
     jitter: 12,
-    // keep the L/R trims, but slightly narrower center block vs start
     forbidden: makeRowForbidden([
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
@@ -308,12 +335,14 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
       { left: '0%', right: '0%' },
-        ]),
+    ]),
   },
 };
 
-/* ------------------ Selector ------------------ */
-
+/**
+ * Selects a grid spec based on width and mode.
+ * Scene-level layout can use the resulting spec to compute forbidden cells, usedRows, and placement bias.
+ */
 export function getGridSpec(
   width: number,
   questionnaireOpen: boolean,

@@ -1,6 +1,6 @@
-// src/canvas/utils/avgToStyle.ts
-import { gradientColor } from '../color-modifiers/colorUtils.ts';
-import { BRAND_STOPS_VIVID } from '../color-modifiers/colorStops.ts';
+// modifiers/color-modifiers/avgToStyle.ts
+import { applyExposureContrast, gradientColor } from "../color-modifiers/colorUtils.ts";
+import { BRAND_STOPS_VIVID } from './color/colorStops.ts';
 
 export function computeVisualStyle(avg: number) {
   const t = Math.max(0, Math.min(1, avg));
@@ -22,13 +22,3 @@ export function computeVisualStyle(avg: number) {
   };
 }
 
-function applyExposureContrast(base, exposure, contrast) {
-  const clamp = (v: number) => Math.max(0, Math.min(255, v));
-  const scale = (v: number) =>
-    Math.pow(v / 255, Math.max(0, contrast)) * Math.max(0, exposure);
-  return {
-    r: clamp(scale(base.r) * 255),
-    g: clamp(scale(base.g) * 255),
-    b: clamp(scale(base.b) * 255),
-  };
-}

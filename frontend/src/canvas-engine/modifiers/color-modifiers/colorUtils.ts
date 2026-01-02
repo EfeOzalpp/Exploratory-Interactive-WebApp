@@ -1,11 +1,11 @@
-import type { RGB, Stop } from './colorStops';
+// modifiers/color-modifiers/colorUtils.ts
+import type { RGB, Stop } from "./color/colorStops.ts";
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Core utils
-   ────────────────────────────────────────────────────────────────────────── */
-
+/**
+ * Core utils
+ */
 export const clamp01 = (v: number | undefined) =>
-  typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5;
+  typeof v === "number" ? Math.max(0, Math.min(1, v)) : 0.5;
 
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -15,10 +15,9 @@ export const lerpRGB = (c1: RGB, c2: RGB, t: number): RGB => ({
   b: Math.round(lerp(c1.b, c2.b, t)),
 });
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Gamma-correct blending (sRGB <-> linear)
-   ────────────────────────────────────────────────────────────────────────── */
-
+/**
+ * Gamma-correct blending helpers (sRGB <-> linear)
+ */
 const srgbToLin = (u: number) => {
   const x = u / 255;
   return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
@@ -29,7 +28,7 @@ const linToSrgb = (u: number) => {
   return Math.round(Math.max(0, Math.min(1, y)) * 255);
 };
 
-/** Gamma-correct RGB mix: linearize → lerp → encode */
+/** Gamma-correct RGB mix: linearize -> lerp -> encode */
 export function mixRGBGamma(a: RGB, b: RGB, t: number): RGB {
   const k = Math.max(0, Math.min(1, t));
   const A = [srgbToLin(a.r), srgbToLin(a.g), srgbToLin(a.b)];
@@ -42,22 +41,22 @@ export function mixRGBGamma(a: RGB, b: RGB, t: number): RGB {
   return { r: linToSrgb(L[0]), g: linToSrgb(L[1]), b: linToSrgb(L[2]) };
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Gradient sampling — now gamma-correct by default
-   ────────────────────────────────────────────────────────────────────────── */
-
+/**
+ * Gradient sampling (gamma-correct by default)
+ */
 export function gradientColor(stops: Stop[], tRaw: number) {
   const t = clamp01(tRaw);
+
   if (!stops?.length) {
     const rgb = { r: 127, g: 127, b: 127 };
     return { rgb, css: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`, t };
   }
 
   for (let i = 0; i < stops.length - 1; i++) {
-    const s1 = stops[i], s2 = stops[i + 1];
+    const s1 = stops[i],
+      s2 = stops[i + 1];
     if (t >= s1.stop && t <= s2.stop) {
       const lt = (t - s1.stop) / (s2.stop - s1.stop);
-      // switched to gamma-correct mixing
       const rgb = mixRGBGamma(s1.color, s2.color, lt);
       return { rgb, css: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`, t };
     }
@@ -79,23 +78,34 @@ export function mixRGB(a: RGB, b: RGB, k: number): RGB {
   };
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   HSL helpers & animation utilities
-   ────────────────────────────────────────────────────────────────────────── */
-
+/**
+ * HSL helpers & animation utilities
+ */
 export function rgbToHsl({ r, g, b }: RGB): { h: number; s: number; l: number } {
-  const R = r / 255, G = g / 255, B = b / 255;
-  const max = Math.max(R, G, B), min = Math.min(R, G, B);
+  const R = r / 255,
+    G = g / 255,
+    B = b / 255;
+
+  const max = Math.max(R, G, B),
+    min = Math.min(R, G, B);
   const d = max - min;
+
   let h = 0;
   if (d !== 0) {
     switch (max) {
-      case R: h = (G - B) / d + (G < B ? 6 : 0); break;
-      case G: h = (B - R) / d + 2; break;
-      case B: h = (R - G) / d + 4; break;
+      case R:
+        h = (G - B) / d + (G < B ? 6 : 0);
+        break;
+      case G:
+        h = (B - R) / d + 2;
+        break;
+      case B:
+        h = (R - G) / d + 4;
+        break;
     }
     h /= 6;
   }
+
   const l = (max + min) / 2;
   const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
   return { h, s, l };
@@ -110,8 +120,10 @@ export function hslToRgb({ h, s, l }: { h: number; s: number; l: number }): RGB 
     if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
     return p;
   };
+
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
   const p = 2 * l - q;
+
   const r = Math.round(hue2rgb(p, q, h + 1 / 3) * 255);
   const g = Math.round(hue2rgb(p, q, h) * 255);
   const b = Math.round(hue2rgb(p, q, h - 1 / 3) * 255);
@@ -167,27 +179,21 @@ export function driveBrightness(base: RGB, t: number, l0: number, l1: number): R
   const lTarget = clamp01(l0 + (l1 - l0) * clamp01(t));
   return hslToRgb({ h, s, l: lTarget });
 }
-// Simple perceptual exposure / contrast adjustment
-export function applyExposureContrast(
-  base: RGB,
-  exposure: number = 1.0,
-  contrast: number = 1.0
-): RGB {
-  // normalize inputs
+
+/** Simple perceptual exposure / contrast adjustment */
+export function applyExposureContrast(base: RGB, exposure: number = 1.0, contrast: number = 1.0): RGB {
   const e = Math.max(0.01, Math.min(5, exposure));
   const c = Math.max(0.0, Math.min(3, contrast));
 
-  // apply exposure in linear space
   const lin = {
     r: srgbToLin(base.r),
     g: srgbToLin(base.g),
     b: srgbToLin(base.b),
   };
 
-  let r = linToSrgb(Math.pow(lin.r * e, c));
-  let g = linToSrgb(Math.pow(lin.g * e, c));
-  let b = linToSrgb(Math.pow(lin.b * e, c));
+  const r = linToSrgb(Math.pow(lin.r * e, c));
+  const g = linToSrgb(Math.pow(lin.g * e, c));
+  const b = linToSrgb(Math.pow(lin.b * e, c));
 
   return { r, g, b };
 }
-

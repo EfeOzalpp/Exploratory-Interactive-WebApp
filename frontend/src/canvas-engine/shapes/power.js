@@ -1,9 +1,13 @@
 // src/canvas-engine/shapes/power.js
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { stepAndDrawPuffs } from '../modifiers/particle-systems/particle-2.ts';
-import { clampBrightness, oscillateSaturation } from '../color-modifiers/colorUtils.ts';
+import {
+  applyShapeMods,
+  clamp01,
+  val,
+  blendRGB,
+  stepAndDrawPuffs,
+  clampBrightness,
+  oscillateSaturation,
+} from "../modifiers/index.ts";
 
 /* Exposure/contrast helper (channel-space, gentle defaults) */
 function applyExposureContrast(rgb, exposure = 1, contrast = 1) {

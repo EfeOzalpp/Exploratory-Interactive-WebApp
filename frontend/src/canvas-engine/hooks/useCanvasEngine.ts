@@ -1,28 +1,50 @@
-// components/canvas/hooks/useCanvasEngine.ts
+// src/canvas-engine/hooks/useCanvasEngine.ts
 import { useEffect, useRef, useState } from 'react';
-
-import { startCanvasEngine, stopCanvasEngine, type CanvasEngineControls } from '../canvasEngine.js';
-
-function disposeTexturesIfAny() {
-  try { (window as any).__GP_DISPOSE_TEX?.(); } catch {}
-  try { (window as any).__GP_BUMP_GEN?.(); } catch {}
-  try { (window as any).__GP_RESET_QUEUE?.(); } catch {}
-}
+import {
+  startCanvasEngine,
+  stopCanvasEngine,
+  type CanvasEngineControls,
+} from '../canvasEngine.js';
 
 type EngineOpts = {
   visible?: boolean;
   dprMode?: 'fixed1' | 'cap2' | 'cap1_5' | 'auto';
-  mount?: string;          // where to mount
-  layout?: 'fixed' | 'inherit' | 'auto'; // see ensureMount semantics
-  zIndex?: number;         // override z-index safely
+  mount?: string;
+  zIndex?: number;
 };
+
+function safeCall(fn: unknown) {
+  try {
+    if (typeof fn === 'function') fn();
+  } catch {}
+}
+
+function disposeGlobalEngineResources() {
+  safeCall((window as any).__GP_DISPOSE_TEX);
+  safeCall((window as any).__GP_BUMP_GEN);
+  safeCall((window as any).__GP_RESET_QUEUE);
+}
+
+function shutdownControls(controls: CanvasEngineControls | null, mount: string) {
+  if (!controls) {
+    // Still ensure the mount is torn down, in case a partial init happened.
+    safeCall(() => stopCanvasEngine(mount));
+    return;
+  }
+
+  // First hide, then stop. Hiding first reduces visible flash during teardown.
+  safeCall(() => controls.setVisible?.(false));
+  safeCall(() => controls.stop?.());
+
+  // Ensure the mount node and any engine-owned listeners are detached.
+  safeCall(() => stopCanvasEngine(mount));
+}
 
 export function useCanvasEngine(opts: EngineOpts = {}) {
   const {
     visible = true,
     dprMode = 'cap2',
     mount = '#canvas-root',
-    layout = 'fixed',
     zIndex = 2,
   } = opts;
 
@@ -31,11 +53,12 @@ export function useCanvasEngine(opts: EngineOpts = {}) {
   const [readyTick, setReadyTick] = useState(0);
 
   useEffect(() => {
-    // init
+    readyRef.current = false;
+
     controlsRef.current = startCanvasEngine({
       mount,
-      dprMode,       
-      zIndex,       
+      dprMode,
+      zIndex,
       onReady: () => {
         readyRef.current = true;
         setReadyTick((t) => t + 1);
@@ -44,17 +67,17 @@ export function useCanvasEngine(opts: EngineOpts = {}) {
 
     return () => {
       readyRef.current = false;
-      try { controlsRef.current?.setVisible?.(false); } catch {}
-      try { controlsRef.current?.stop?.(); } catch {}
+
+      const controls = controlsRef.current;
       controlsRef.current = null;
-      disposeTexturesIfAny();
-      // Make sure the specific mount is fully torn down
-      try { stopCanvasEngine(mount); } catch {}
+
+      shutdownControls(controls, mount);
+      disposeGlobalEngineResources();
     };
-  }, [dprMode, mount, layout, zIndex]);
+  }, [dprMode, mount, zIndex]);
 
   useEffect(() => {
-    controlsRef.current?.setVisible?.(Boolean(visible));
+    safeCall(() => controlsRef.current?.setVisible?.(Boolean(visible)));
   }, [visible]);
 
   return {

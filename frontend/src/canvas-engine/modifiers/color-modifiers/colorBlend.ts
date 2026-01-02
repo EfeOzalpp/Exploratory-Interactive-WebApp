@@ -1,22 +1,22 @@
-// src/canvas/shape/utils/colorBlend.ts
-import { mixRGB, mixRGBGamma } from '../../color-modifiers/colorUtils.ts';
-import type { RGB } from '../../color-modifiers/colorStops.ts';
+// modifiers/color-modifiers/colorBlend.ts
+import { mixRGB, mixRGBGamma } from "./colorUtils.ts";
+import type { RGB } from "./color/colorStops.ts";
 
-/** Existing API — keep linear for backward compatibility */
+/** Existing API: keep linear for backward compatibility */
 export function blendRGB(base: RGB, gradientRGB?: RGB, blend: number = 0.5): RGB {
   if (!gradientRGB) return base;
   const k = Math.max(0, Math.min(1, blend));
-  return mixRGB(base, gradientRGB, k); // linear (unchanged)
+  return mixRGB(base, gradientRGB, k);
 }
 
-/** New: gamma-correct mix for nicer gradients & lighting */
+/** Gamma-correct mix for nicer gradients & lighting */
 export function blendRGBGamma(base: RGB, gradientRGB?: RGB, blend: number = 0.5): RGB {
   if (!gradientRGB) return base;
   const k = Math.max(0, Math.min(1, blend));
-  return mixRGBGamma(base, gradientRGB, k); // perceptual
+  return mixRGBGamma(base, gradientRGB, k);
 }
 
-/** Optional convenience: choose mode via flag (default gamma) */
+/** Convenience: choose mode via flag (default gamma) */
 export function blendRGBSmart(
   base: RGB,
   gradientRGB?: RGB,

@@ -1,8 +1,13 @@
-// src/canvas/shapes/trees.js
-import { clamp01, val } from './shape-modifiers/useLerp.ts';
-import { blendRGB } from './shape-modifiers/colorBlend.ts';
-import { clampBrightness, clampSaturation, oscillateSaturation } from '../color-modifiers/colorUtils.ts';
-import { applyShapeMods } from './shape-modifiers/shapeMods.ts';
+// src/canvas-engine/shapes/trees.js
+import {
+  clamp01,
+  val,
+  blendRGB,
+  clampBrightness,
+  clampSaturation,
+  oscillateSaturation,
+  applyShapeMods,
+} from "../modifiers/index.ts";
 
 /* ───────────────────────────────────────────────────────────
    Exposure/contrast helper
