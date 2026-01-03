@@ -6,8 +6,8 @@ import type { Stop } from './colorStops.ts';
 import { BRAND_STOPS_VIVID } from './colorStops.ts';
 
 type Engine = {
-  ready: React.MutableRefObject<boolean>;
-  controls: React.MutableRefObject<{
+  ready: React.RefObject<boolean>;
+  controls: React.RefObject<{
     setFieldStyle?: (s: {
       gradientRGB?: { r:number; g:number; b:number } | null;
       blend?: number;

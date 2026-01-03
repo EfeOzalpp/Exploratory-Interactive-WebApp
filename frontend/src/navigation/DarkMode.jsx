@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppState } from '../../../app-context/appStateContext.tsx';
+import { useAppState } from '../app-context/appStateContext.tsx';
 
 const ROOT_ID = 'gp-darkmode-root';
 

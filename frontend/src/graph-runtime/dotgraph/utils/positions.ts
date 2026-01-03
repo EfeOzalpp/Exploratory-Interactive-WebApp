@@ -1,22 +1,49 @@
-// src/components/dotGraph/utils/positions.js
+// src/components/dotgraph/utils/positions.ts
 // Product-ready 3D point layout (1 .. 5000+):
 // - Even angular coverage via Spherical Fibonacci
 // - Uniform-in-ball radial ramp, with extra inward bias for small N
 // - Fast local relaxation using a spatial grid (O(n))
 // - Deterministic (seed), no console logs
 
+export type Vec3 = [number, number, number];
+
+export type Rotation = {
+  yaw?: number;
+  pitch?: number;
+  roll?: number;
+};
+
+export type GeneratePositionsOptions = Rotation & {
+  baseRadius?: number;
+  densityK?: number;
+  maxRadiusCap?: number;
+  jitterAmp?: number;      // 0..1 of minDistance
+  relaxPasses?: number;    // default: 1 (auto-disable at huge N)
+  relaxStrength?: number;  // 0..1
+  seed?: number;
+
+  // Small-N tightness knobs
+  tightRefN?: number;
+  baseRadiusTight?: number;
+  tightMaxAlpha?: number;
+  tightCurve?: number;
+};
+
 const TAU = Math.PI * 2;
 
 // ----------------- helpers -----------------
-const clamp01 = (v) => Math.max(0, Math.min(1, v));
-const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-const rotateVec = (v, rot) => {
+const rotateVec = (v: Vec3, rot?: Rotation): Vec3 => {
   const [x0, y0, z0] = v;
-  const { yaw = 0, pitch = 0, roll = 0 } = rot || {};
-  const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+  const yaw = rot?.yaw ?? 0;
+  const pitch = rot?.pitch ?? 0;
+  const roll = rot?.roll ?? 0;
+
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
-  const cr = Math.cos(roll),  sr = Math.sin(roll);
+  const cr = Math.cos(roll), sr = Math.sin(roll);
 
   // ZYX (yaw, pitch, roll)
   // roll (X)
@@ -35,7 +62,7 @@ const rotateVec = (v, rot) => {
   return [x3, y3, z3];
 };
 
-const makePermutation = (n, rand) => {
+const makePermutation = (n: number, rand: () => number): number[] => {
   const a = Array.from({ length: n }, (_, i) => i);
   for (let i = n - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
@@ -44,9 +71,9 @@ const makePermutation = (n, rand) => {
   return a;
 };
 
-const sphericalFibonacci = (n, rot) => {
+const sphericalFibonacci = (n: number, rot?: Rotation): Vec3[] => {
   if (n <= 0) return [];
-  const dirs = new Array(n);
+  const dirs: Vec3[] = new Array(n);
   const golden = (1 + Math.sqrt(5)) / 2;
   const ga = TAU / (golden * golden);
 
@@ -59,12 +86,13 @@ const sphericalFibonacci = (n, rot) => {
     const x = r * Math.cos(theta);
     const z = r * Math.sin(theta);
 
-    dirs[i] = rot ? rotateVec([x, y, z], rot) : [x, y, z];
+    const v: Vec3 = [x, y, z];
+    dirs[i] = rot ? rotateVec(v, rot) : v;
   }
   return dirs;
 };
 
-const mulberry32 = (seed) => {
+const mulberry32 = (seed: number): (() => number) => {
   let t = seed >>> 0;
   return () => {
     t += 0x6D2B79F5;
@@ -74,24 +102,25 @@ const mulberry32 = (seed) => {
   };
 };
 
-const tangentBasis = (n) => {
+const tangentBasis = (n: Vec3): [Vec3, Vec3] => {
   const [nx, ny, nz] = n;
-  const up = Math.abs(nz) < 0.9 ? [0, 0, 1] : [0, 1, 0];
+  const up: Vec3 = Math.abs(nz) < 0.9 ? [0, 0, 1] : [0, 1, 0];
   // u = normalize(up × n)
-  let ux = up[1]*nz - up[2]*ny;
-  let uy = up[2]*nx - up[0]*nz;
-  let uz = up[0]*ny - up[1]*nx;
+  let ux = up[1] * nz - up[2] * ny;
+  let uy = up[2] * nx - up[0] * nz;
+  let uz = up[0] * ny - up[1] * nx;
   let len = Math.hypot(ux, uy, uz) || 1;
-  ux/=len; uy/=len; uz/=len;
+  ux /= len; uy /= len; uz /= len;
   // v = n × u
-  const vx = ny*uz - nz*uy;
-  const vy = nz*ux - nx*uz;
-  const vz = nx*uy - ny*ux;
-  return [[ux,uy,uz],[vx,vy,vz]];
+  const vx = ny * uz - nz * uy;
+  const vy = nz * ux - nx * uz;
+  const vz = nx * uy - ny * ux;
+  return [[ux, uy, uz], [vx, vy, vz]];
 };
 
-const gridKey = (i,j,k) => `${i},${j},${k}`;
-const cellIndex = (p, cs) => [
+const gridKey = (i: number, j: number, k: number): string => `${i},${j},${k}`;
+
+const cellIndex = (p: Vec3, cs: number): [number, number, number] => [
   Math.floor(p[0] / cs),
   Math.floor(p[1] / cs),
   Math.floor(p[2] / cs),
@@ -100,30 +129,13 @@ const cellIndex = (p, cs) => [
 // ----------------- main API -----------------
 /**
  * Generate near-uniform 3D positions centered at the origin.
- *
- * @param {number} numPoints
- * @param {number} minDistance  minimal spacing to enforce (world units)
- * @param {number|undefined} spreadOverride optional max radius; if omitted, adapts with N
- * @param {object} opts
- *  - baseRadius?: number    baseline radius for larger N (default 10)
- *  - densityK?: number      growth factor with N (default 6.0)
- *  - maxRadiusCap?: number  hard cap for max radius (default 180)
- *  - yaw/pitch/roll?: number orientation in radians
- *  - jitterAmp?: number     0..1 of minDistance for tiny tangent jitter (default 0.25)
- *  - relaxPasses?: number   neighbor-nudge passes (default 1; auto-disable at huge N)
- *  - relaxStrength?: number 0..1 per-pass strength (default 0.7)
- *  - seed?: number          RNG seed for jitter/permutation
- *  - tightRefN?: number     counts <= this stay tighter near center (default 24)
- *  - baseRadiusTight?: number base radius when tight (default ~0.5 * minDistance)
- *  - tightMaxAlpha?: number radial exponent when tight (default 0.85; >1/3 pulls inward)
- *  - tightCurve?: number    1=linear fade of tightness; >1 keeps tightness longer (default 1.25)
  */
 export const generatePositions = (
-  numPoints,
-  minDistance = 2.5,
-  spreadOverride,
-  opts = {}
-) => {
+  numPoints: number,
+  minDistance: number = 2.5,
+  spreadOverride?: number,
+  opts: GeneratePositionsOptions = {}
+): Vec3[] => {
   const n = Math.max(0, numPoints | 0);
   if (n === 0) return [];
 
@@ -158,15 +170,15 @@ export const generatePositions = (
   const dirs = sphericalFibonacci(n, { yaw, pitch, roll });
 
   // 2) Radii: uniform-in-ball when N is large; extra inward bias when N is small
-  const baseAlpha = 1 / 3;                      // uniform in ball exponent
-  const alpha     = lerp(baseAlpha, tightMaxAlpha, tightT);
+  const baseAlpha = 1 / 3; // uniform in ball exponent
+  const alpha = lerp(baseAlpha, tightMaxAlpha, tightT);
 
   const rand = mulberry32(seed);
   const perm = makePermutation(n, rand);
 
-  const pts = new Array(n);
+  const pts: Vec3[] = new Array(n);
   for (let i = 0; i < n; i++) {
-    const u = (perm[i] + 0.5) / n;              // stratified & shuffled
+    const u = (perm[i] + 0.5) / n; // stratified & shuffled
     const r = maxR * Math.pow(u, alpha);
     const d = dirs[i];
 
@@ -176,21 +188,21 @@ export const generatePositions = (
     const j2 = (rand() - 0.5) * 2;
     const jScale = jitterAmp * minDistance;
 
-    const jx = t1[0]*j1*jScale + t2[0]*j2*jScale;
-    const jy = t1[1]*j1*jScale + t2[1]*j2*jScale;
-    const jz = t1[2]*j1*jScale + t2[2]*j2*jScale;
+    const jx = t1[0] * j1 * jScale + t2[0] * j2 * jScale;
+    const jy = t1[1] * j1 * jScale + t2[1] * j2 * jScale;
+    const jz = t1[2] * j1 * jScale + t2[2] * j2 * jScale;
 
-    pts[i] = [d[0]*r + jx, d[1]*r + jy, d[2]*r + jz];
+    pts[i] = [d[0] * r + jx, d[1] * r + jy, d[2] * r + jz];
   }
 
   if (relaxPasses <= 0 || minDistance <= 0) return pts;
 
   // 3) Fast local relaxation with a spatial grid
   const cellSize = Math.max(1e-6, minDistance);
-  const nbr = [-1, 0, 1];
+  const nbr: readonly number[] = [-1, 0, 1];
 
   for (let pass = 0; pass < relaxPasses; pass++) {
-    const grid = new Map();
+    const grid = new Map<string, number[]>();
     for (let i = 0; i < n; i++) {
       const c = cellIndex(pts[i], cellSize);
       const k = gridKey(c[0], c[1], c[2]);
@@ -204,16 +216,19 @@ export const generatePositions = (
       const ci = cellIndex(pi, cellSize);
       let px = 0, py = 0, pz = 0, cnt = 0;
 
-      for (let dx of nbr) for (let dy of nbr) for (let dz of nbr) {
-        const k = gridKey(ci[0]+dx, ci[1]+dy, ci[2]+dz);
+      for (const dx of nbr) for (const dy of nbr) for (const dz of nbr) {
+        const k = gridKey(ci[0] + dx, ci[1] + dy, ci[2] + dz);
         const bucket = grid.get(k);
         if (!bucket) continue;
-        for (let j of bucket) {
+
+        for (const j of bucket) {
           if (j === i) continue;
           const pj = pts[j];
+
           const rx = pi[0] - pj[0], ry = pi[1] - pj[1], rz = pi[2] - pj[2];
-          const d2 = rx*rx + ry*ry + rz*rz;
-          if (d2 > 1e-12 && d2 < minDistance*minDistance) {
+          const d2 = rx * rx + ry * ry + rz * rz;
+
+          if (d2 > 1e-12 && d2 < minDistance * minDistance) {
             const d = Math.sqrt(d2);
             const overlap = (minDistance - d);
             if (overlap > 0) {

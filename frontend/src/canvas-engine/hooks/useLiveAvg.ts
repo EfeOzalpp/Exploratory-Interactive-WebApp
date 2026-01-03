@@ -3,8 +3,8 @@ import { useAvgColor } from '../modifiers/color-modifiers/color/useAvgColor.ts';
 import { BRAND_STOPS_VIVID, type Stop } from '../modifiers/color-modifiers/color/colorStops.ts';
 
 type Engine = {
-  ready: React.MutableRefObject<boolean>;
-  controls: React.MutableRefObject<any>;
+  ready: React.RefObject<boolean>;
+  controls: React.RefObject<any>;
 };
 
 type LiveAvgDotOpts = {

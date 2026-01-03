@@ -1,10 +1,14 @@
-// src/components/dotGraph/graph.jsx
+// ─────────────────────────────────────────────────────────────
+// src/components/dotGraph/graph.tsx
+// WebGL Canvas wrapper for DotGraph (mount/unmount + perf guards)
+// ─────────────────────────────────────────────────────────────
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AdaptiveDpr, AdaptiveEvents, Preload } from '@react-three/drei';
 import * as THREE from 'three';
 
-import DotGraph from './DotGraph.jsx';
+import DotGraph from './DotGraph.tsx';
 
 import { useAppState } from '../../app-context/appStateContext.tsx';
 import { useRealMobileViewport } from '../../utils-hooks/real-mobile.ts';
@@ -22,36 +26,58 @@ const isIOS = (() => {
 })();
 
 // Debounce timings
-const REOPEN_FUSE_MS = isIOS ? 420 : 240;     // min delay between close → open
-const DESTROY_SETTLE_MS = isIOS ? 260 : 120;  // let iOS free VRAM
+const REOPEN_FUSE_MS = isIOS ? 420 : 240; // min delay between close → open
+const DESTROY_SETTLE_MS = isIOS ? 260 : 120; // let iOS free VRAM
+void DESTROY_SETTLE_MS; // (kept for parity; not used)
+
+// Minimal props typing (tighten later)
+type WebGLCanvasProps = {
+  data: any[];
+  isDragging?: boolean;
+  lowFidelity: boolean;
+  dpr: number | [number, number];
+};
 
 /* ------------------------------ WebGL Canvas ------------------------------ */
-function WebGLCanvas({ data, isDragging, lowFidelity, dpr }) {
-  const rendererRef = useRef(null);
+function WebGLCanvas({ data, isDragging, lowFidelity, dpr }: WebGLCanvasProps) {
+  const rendererRef = useRef<any>(null);
 
   // New generation cancels any stale queued texture jobs
   useEffect(() => {
     bumpGeneration();
     return () => {
-      try { bumpGeneration(); } catch {}
+      try {
+        bumpGeneration();
+      } catch {}
     };
   }, []);
 
   // Unmount cleanup: stop jobs, dispose textures, lose the context
   useEffect(() => {
     return () => {
-      try { resetQueue(); } catch {}
-      try { disposeAllSpriteTextures(); } catch {}
+      try {
+        resetQueue();
+      } catch {}
+      try {
+        disposeAllSpriteTextures();
+      } catch {}
 
       const renderer = rendererRef.current;
       if (!renderer) return;
 
       try {
-        const el = renderer.domElement;
+        const el = renderer.domElement as any;
         if (el) {
-          if (el.__gp_onLost) { el.removeEventListener('webglcontextlost', el.__gp_onLost, false); el.__gp_onLost = null; }
-          if (el.__gp_onRestored) { el.removeEventListener('webglcontextrestored', el.__gp_onRestored, false); el.__gp_onRestored = null; }
+          if (el.__gp_onLost) {
+            el.removeEventListener('webglcontextlost', el.__gp_onLost, false);
+            el.__gp_onLost = null;
+          }
+          if (el.__gp_onRestored) {
+            el.removeEventListener('webglcontextrestored', el.__gp_onRestored, false);
+            el.__gp_onRestored = null;
+          }
         }
+
         renderer.dispose?.();
 
         // Force-lose the underlying WebGL context (iPad VRAM actually frees)
@@ -59,7 +85,9 @@ function WebGLCanvas({ data, isDragging, lowFidelity, dpr }) {
         const loseExt = realCtx?.getExtension?.('WEBGL_lose_context');
         loseExt?.loseContext?.();
 
-        try { (window).__GP_CTX_LOST = true; } catch {}
+        try {
+          (window as any).__GP_CTX_LOST = true;
+        } catch {}
       } catch {}
     };
   }, []);
@@ -86,21 +114,28 @@ function WebGLCanvas({ data, isDragging, lowFidelity, dpr }) {
         rendererRef.current = gl;
 
         // Context loss visibility (hooks into your Debug HUD if present)
-        const el = gl.domElement;
-        const onLost = (e) => {
-          try { e.preventDefault?.(); } catch {}
+        const el = (gl as any).domElement as any;
+
+        const onLost = (e: any) => {
           try {
-            (window).__GP_CTX_LOST = true;
+            e.preventDefault?.();
+          } catch {}
+          try {
+            (window as any).__GP_CTX_LOST = true;
             window.dispatchEvent(new CustomEvent('gp:webgl-lost'));
           } catch {}
           // eslint-disable-next-line no-console
           console.warn('WebGL context lost');
         };
+
         const onRestored = () => {
-          try { (window).__GP_CTX_LOST = false; } catch {}
+          try {
+            (window as any).__GP_CTX_LOST = false;
+          } catch {}
           // eslint-disable-next-line no-console
           console.warn('WebGL context restored');
         };
+
         el.__gp_onLost = onLost;
         el.__gp_onRestored = onRestored;
         el.addEventListener('webglcontextlost', onLost, false);
@@ -138,11 +173,15 @@ function WebGLCanvas({ data, isDragging, lowFidelity, dpr }) {
 }
 
 /* --------------------------------- Wrapper -------------------------------- */
-const Graph = ({ isDragging }) => {
-  const { data: surveyData, loading, section, vizVisible } = useAppState();
+type GraphProps = {
+  isDragging?: boolean;
+};
+
+const Graph = ({ isDragging }: GraphProps) => {
+  const { data: surveyData, loading, section, vizVisible } = useAppState() as any;
   const isRealMobile = useRealMobileViewport();
 
-  const safeData = Array.isArray(surveyData) ? surveyData : [];
+  const safeData: any[] = Array.isArray(surveyData) ? surveyData : [];
 
   const isNarrow = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   const lowFidelity = isRealMobile || isNarrow;
@@ -151,7 +190,7 @@ const Graph = ({ isDragging }) => {
   const dpr = useMemo(() => {
     const max = typeof window !== 'undefined' ? window.devicePixelRatio || 1.5 : 1.5;
     const hi = isIOS ? Math.min(1.5, max) : Math.min(2, max);
-    return lowFidelity ? [1, 1.25] : [1, hi];
+    return lowFidelity ? ([1, 1.25] as [number, number]) : ([1, hi] as [number, number]);
   }, [lowFidelity]);
 
   // Fresh Canvas per open (new WebGL context every time)
@@ -160,7 +199,7 @@ const Graph = ({ isDragging }) => {
   // Debounced open gate
   const [canMount, setCanMount] = useState(false);
   const lastCloseAtRef = useRef(0);
-  const openTimerRef = useRef(null);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // clear any pending gate timers
@@ -179,6 +218,7 @@ const Graph = ({ isDragging }) => {
     // opening: honor reopen fuse since last close
     const elapsed = performance.now() - lastCloseAtRef.current;
     const wait = Math.max(0, REOPEN_FUSE_MS - Math.max(0, elapsed));
+
     openTimerRef.current = setTimeout(() => {
       setMountVersion((v) => v + 1);
       setCanMount(true);

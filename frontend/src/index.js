@@ -1,5 +1,5 @@
 // src/index.js
-import App from './entry/App';
+import App from './app-entry/App';
 import ReactDOM from 'react-dom/client'; // Import the createRoot method
 import './static-assets/fonts/fonts1.css';
 

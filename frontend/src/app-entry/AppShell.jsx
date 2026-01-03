@@ -9,7 +9,7 @@ import RadialBackground from '../static-assets/static/radialBackground.jsx';
 import Survey from '../weighted-survey/Survey.tsx';
 import Navigation from '../navigation/Navigation.jsx';
 import CityButton from '../navigation/CityButton.tsx';
-import DataVisualization from '../graph-runtime/index.jsx';
+import DataVisualization from '../graph-runtime/index.tsx';
 import { useDynamicMargin } from '../utils-hooks/dynamicMargin.ts';
 import { AppProvider, useAppState } from '../app-context/appStateContext.tsx';
 import GamificationCopyPreloader from '../utils-hooks/gamificationCopyPreloader.tsx';
@@ -24,7 +24,7 @@ const CityOverlay = React.lazy(() =>
 );
 
 const EdgeCue = React.lazy(() =>
-  import('../graph-runtime/hooks/utils/DarkMode.jsx')
+  import('../navigation/DarkMode.jsx')
 );
 
 const ModeToggle = React.lazy(() =>

@@ -8,8 +8,8 @@ import type { PoolItem as ScenePoolItem } from '../layout/scene-composition/type
 import { targetPoolSize } from '../layout/scene-composition/poolSizing.ts';
 
 type Engine = {
-  ready: React.MutableRefObject<boolean>;
-  controls: React.MutableRefObject<any>;
+  ready: React.RefObject<boolean>;
+  controls: React.RefObject<any>;
 };
 
 const clamp01 = (v?: number) =>
@@ -42,7 +42,7 @@ function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
   return { w: Math.round(w), h: Math.round(h) };
 }
 
-function ensurePoolSize(poolRef: React.MutableRefObject<ScenePoolItem[] | null>, desired: number) {
+function ensurePoolSize(poolRef: React.RefObject<ScenePoolItem[] | null>, desired: number) {
   if (desired <= 0) {
     poolRef.current = [];
     return;

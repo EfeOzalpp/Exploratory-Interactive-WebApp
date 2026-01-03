@@ -1,52 +1,82 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, Suspense } from 'react';
+// ─────────────────────────────────────────────────────────────
+// src/graph-runtime/VisualizationPage.tsx
+// Graph page: loads DotGraph + draggable BarGraph overlay
+// ─────────────────────────────────────────────────────────────
+
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from 'react';
+
 import { useAppState } from '../app-context/appStateContext.tsx';
+
 import '../static-assets/styles/graph.css';
 
-const Graph = React.lazy(() =>
-  import(/* webpackChunkName: "graph" */ './dotgraph/index.jsx')
+const Graph = React.lazy(() => import(/* webpackChunkName: "graph" */ './dotgraph/index.tsx'));
+
+const BarGraph = React.lazy(
+  () => import(/* webpackChunkName: "bar-graph" */ './bargraph/BarGraph.tsx')
 );
 
-const BarGraph = React.lazy(() =>
-  import(/* webpackChunkName: "bar-graph" */ './bargraph/BarGraph.jsx')
-);
+type XY = { x: number; y: number };
 
-
-const getPositionByViewport = (customX = null, customY = null) => {
+function getPositionByViewport(customX: number | null = null, customY: number | null = null): XY {
   const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
   const h = typeof window !== 'undefined' ? window.innerHeight : 768;
 
-  let bar1Position = { x: 0, y: 0 };
+  let base: XY = { x: 0, y: 0 };
   if (w < 768) {
-    bar1Position = { x: w * 0.02, y: h * 0.17 };
+    base = { x: w * 0.02, y: h * 0.17 };
   } else if (w >= 768 && w <= 1024) {
-    bar1Position = { x: w * 0.05, y: h * 0.17 };
+    base = { x: w * 0.05, y: h * 0.17 };
   } else {
-    bar1Position = { x: w * 0.03, y: h * 0.14 };
+    base = { x: w * 0.03, y: h * 0.14 };
   }
 
   return {
-    x: customX !== null ? customX : bar1Position.x,
-    y: customY !== null ? customY : bar1Position.y,
+    x: customX !== null ? customX : base.x,
+    y: customY !== null ? customY : base.y,
   };
-};
+}
 
-const VisualizationPage = () => {
-  const { darkMode, observerMode } = useAppState();
+type Pointerish =
+  | React.MouseEvent<HTMLDivElement>
+  | React.TouchEvent<HTMLDivElement>
+  | MouseEvent
+  | TouchEvent;
+
+function getClientXY(e: Pointerish): XY {
+  // React synthetic events keep the native event shape for touches.
+  const anyE = e as any;
+
+  if (anyE?.touches && anyE.touches.length) {
+    return { x: anyE.touches[0].clientX, y: anyE.touches[0].clientY };
+  }
+  if (anyE?.changedTouches && anyE.changedTouches.length) {
+    return { x: anyE.changedTouches[0].clientX, y: anyE.changedTouches[0].clientY };
+  }
+  return { x: anyE.clientX as number, y: anyE.clientY as number };
+}
+
+export default function VisualizationPage() {
+  const { darkMode, observerMode } = useAppState() as any;
 
   const [isBarGraphVisible, setIsBarGraphVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
 
   // Seed a sensible initial pos immediately to avoid (0,0) during SSR/hydration.
-  const seedPos =
-    typeof window !== 'undefined' ? getPositionByViewport() : { x: 160, y: 120 };
-  const [position, setPosition] = useState(seedPos);
+  const seedPos: XY = typeof window !== 'undefined' ? getPositionByViewport() : { x: 160, y: 120 };
+  const [position, setPosition] = useState<XY>(seedPos);
 
   // Hide draggable until we do our pre-paint init (prevents any flash)
-  const [ready, setReady] = useState(typeof window === 'undefined' ? false : true);
+  const [ready, setReady] = useState<boolean>(typeof window === 'undefined' ? false : true);
 
   // Remember if the user explicitly toggled (don’t auto-flip after that)
   const userToggledRef = useRef(false);
-  const didInitRef = useRef(false);
+
+  // Drag state
+  const dragRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLDivElement | null>(null);
+  const dragOffsetRef = useRef<XY>({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
+  const dragAnimationRef = useRef<number | null>(null);
 
   // Pre-paint init: compute position and visibility atomically before first paint,
   // and also when observerMode flips on (so mobile can auto-open without flashing).
@@ -66,7 +96,6 @@ const VisualizationPage = () => {
       setIsBarGraphVisible(observerMode ? true : false);
     }
 
-    didInitRef.current = true;
     setReady(true);
   }, [observerMode]);
 
@@ -85,42 +114,43 @@ const VisualizationPage = () => {
     }
   }, [observerMode, ready]);
 
-  const dragRef = useRef(null);
-  const buttonRef = useRef(null);
-  const dragOffset = useRef({ x: 0, y: 0 });
-  const hasMoved = useRef(false);
-  const dragAnimationRef = useRef(null);
-
-  const handleDragStart = (e) => {
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
-    const rect = dragRef.current.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-    dragOffset.current = { x: clientX - rect.left, y: clientY - rect.top };
-    hasMoved.current = false;
+    const rect = dragRef.current.getBoundingClientRect();
+    const { x: clientX, y: clientY } = getClientXY(e);
+
+    dragOffsetRef.current = { x: clientX - rect.left, y: clientY - rect.top };
+    hasMovedRef.current = false;
     setIsDragging(true);
   };
 
-  const handleDrag = (e) => {
+  const handleDrag = (e: MouseEvent | TouchEvent) => {
     if (!isDragging || !buttonRef.current) return;
 
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    // Important: touchmove listener is { passive:false } so we can prevent scrolling.
+    try {
+      (e as TouchEvent).preventDefault?.();
+    } catch {}
+
+    const { x: clientX, y: clientY } = getClientXY(e as any);
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const buttonRect = buttonRef.current.getBoundingClientRect();
 
-    let newX = clientX - dragOffset.current.x;
-    let newY = clientY - dragOffset.current.y;
+    let newX = clientX - dragOffsetRef.current.x;
+    let newY = clientY - dragOffsetRef.current.y;
 
     if (Math.abs(newX - position.x) > 5 || Math.abs(newY - position.y) > 5) {
-      hasMoved.current = true;
+      hasMovedRef.current = true;
     }
 
     const horizontalOffset = 24;
-    newX = Math.max(-horizontalOffset, Math.min(newX, viewportWidth - buttonRect.width - horizontalOffset));
+    newX = Math.max(
+      -horizontalOffset,
+      Math.min(newX, viewportWidth - buttonRect.width - horizontalOffset)
+    );
     newY = Math.max(0, Math.min(newY, viewportHeight - buttonRect.height));
 
     if (dragAnimationRef.current) cancelAnimationFrame(dragAnimationRef.current);
@@ -131,16 +161,19 @@ const VisualizationPage = () => {
 
   const handleDragEnd = () => setIsDragging(false);
 
+  // Global listeners while dragging
   useEffect(() => {
     if (!isDragging) return;
-    const handleMove = (e) => handleDrag(e);
+
+    const handleMove = (e: MouseEvent | TouchEvent) => handleDrag(e);
     const handleUp = () => handleDragEnd();
-    const preventTextSelection = (event) => event.preventDefault();
+    const preventTextSelection = (event: Event) => event.preventDefault();
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('touchmove', handleMove, { passive: false });
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchend', handleUp);
+
     document.addEventListener('selectstart', preventTextSelection);
     document.body.style.userSelect = 'none';
 
@@ -149,33 +182,60 @@ const VisualizationPage = () => {
       window.removeEventListener('touchmove', handleMove);
       window.removeEventListener('mouseup', handleUp);
       window.removeEventListener('touchend', handleUp);
+
       document.removeEventListener('selectstart', preventTextSelection);
       document.body.style.userSelect = 'auto';
     };
-  }, [isDragging, handleDrag]);
+    // NOTE: handleDrag is stable enough here because it only depends on isDragging/position,
+    // and we're already gated by isDragging. If you see stale position while dragging, move
+    // position into a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging]);
+
+  const pageLoadingFallback = useMemo(
+    () => (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 5,
+          pointerEvents: 'none',
+          height: '100vh',
+        }}
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <h4 style={{ opacity: 0.85 }}>Loading…</h4>
+      </div>
+    ),
+    []
+  );
+
+  const barLoadingFallback = useMemo(
+    () => (
+      <div
+        style={{
+          width: 240,
+          height: 120,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <h4 style={{ opacity: 0.85 }}>Loading…</h4>
+      </div>
+    ),
+    []
+  );
 
   return (
     <div>
-      <Suspense
-        fallback={
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 5,
-              pointerEvents: 'none',
-              height: '100vh',
-            }}
-            aria-busy="true"
-            aria-live="polite"
-          >
-            <h4 style={{ opacity: 0.85 }}>Loading…</h4>
-          </div>
-        }
-      >
+      <Suspense fallback={pageLoadingFallback}>
         <Graph isDragging={isDragging} />
       </Suspense>
 
@@ -203,26 +263,37 @@ const VisualizationPage = () => {
             position: 'relative',
           }}
           onClick={(e) => {
-            if (hasMoved.current) {
+            if (hasMovedRef.current) {
               e.preventDefault();
               e.stopPropagation();
-              hasMoved.current = false;
+              hasMovedRef.current = false;
               return;
             }
             userToggledRef.current = true; // remember user intent
             setIsBarGraphVisible((prev) => !prev);
           }}
         >
-          <span
-            className={`toggle-icon ${isBarGraphVisible ? 'open' : 'closed'}`}
-            aria-hidden
-          >
+          <span className={`toggle-icon ${isBarGraphVisible ? 'open' : 'closed'}`} aria-hidden>
             {isBarGraphVisible ? (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style={{ transition: 'transform 0.15s ease-out' }}>
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                style={{ transition: 'transform 0.15s ease-out' }}
+              >
                 <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
               </svg>
             ) : (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style={{ transition: 'transform 0.15s ease-out' }}>
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                style={{ transition: 'transform 0.15s ease-out' }}
+              >
                 <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2.5" />
                 <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2.5" />
               </svg>
@@ -240,30 +311,13 @@ const VisualizationPage = () => {
               transition: 'background 200ms ease',
             }}
           >
-          <Suspense
-            fallback={
-              <div
-                style={{
-                  width: 240,
-                  height: 120,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                aria-busy="true"
-                aria-live="polite"
-              >
-                <h4 style={{ opacity: 0.85 }}>Loading…</h4>
-              </div>
-            }
-          >
-            <BarGraph isVisible />
-          </Suspense>
+            <Suspense fallback={barLoadingFallback}>
+              {/* Preserve existing prop even if unused */}
+              <BarGraph isVisible />
+            </Suspense>
           </div>
         )}
       </div>
     </div>
   );
-};
-
-export default VisualizationPage;
+}
