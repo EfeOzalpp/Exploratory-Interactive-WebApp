@@ -9,8 +9,7 @@ import DotGraph from './DotGraph.jsx';
 import { useAppState } from '../../app-context/appStateContext.tsx';
 import { useRealMobileViewport } from '../../utils-hooks/real-mobile.ts';
 
-import { bumpGeneration, resetQueue } from '../sprites/textureQueue.ts';
-import { disposeAllSpriteTextures } from '../sprites/ShapeSpriteFactory.tsx';
+import { bumpGeneration, resetQueue, disposeAllSpriteTextures } from '../sprites/entry.ts';
 
 import '../../static-assets/styles/graph.css';
 

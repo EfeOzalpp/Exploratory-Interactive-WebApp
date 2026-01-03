@@ -1,8 +1,8 @@
-// src/components/dotGraph/canvas/particleCache.ts
+// graph-runtime/sprites/cache/particleLRU.ts
 import * as THREE from 'three';
 
 type Entry = { key: string; tex: THREE.CanvasTexture };
-const MAX_CAP = 48; // tune for mobile
+const MAX_CAP = 48;
 
 const getGlobals = () => {
   const w = window as any;
@@ -19,18 +19,15 @@ class ParticleLRU {
   get(key: string) {
     const e = this.map.get(key);
     if (!e) return null;
-    // bump to MRU
     this.order = this.order.filter(k => k !== key);
     this.order.push(key);
     return e.tex;
-    }
+  }
 
   set(key: string, tex: THREE.CanvasTexture) {
     const g = getGlobals();
-    // track for Debug HUD
     try { g.__GP_TEX_REGISTRY.add(tex); } catch {}
     if (this.map.has(key)) {
-      // replace existing (dispose old)
       const old = this.map.get(key)!.tex;
       if (old !== tex) {
         try { old.dispose(); } catch {}

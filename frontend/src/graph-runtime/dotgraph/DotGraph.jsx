@@ -22,12 +22,12 @@ import useObserverDelay from '../hooks/useObserverDelay.js';
 
 import { getTieStats, classifyPosition } from '../gamification/rankLogic.js';
 
-import { SpriteShape, prewarmSpriteTextures } from '../sprites/ShapeSpriteFactory.tsx';
+import { SpriteShape, prewarmSpriteTextures } from '../sprites/entry.ts';
 
-import { shapeForAvg } from '../sprites/shapeForAvg.ts';
-import { SHAPE_FOOTPRINT } from '../sprites/shapeFootprints.ts';
+import { shapeForAvg } from '../sprites/selection/shapeForAvg.ts';
+import { FOOTPRINTS as SHAPE_FOOTPRINT } from '../sprites/selection/footprints.ts';
 
-import useTextureQueueProgress from '../sprites/textureQueueProgress.ts';
+import { useTextureQueueProgress } from '../sprites/entry.ts';
 
 import { ROLE_SECTIONS } from '../../weighted-survey/section-picker/sections.js';
 
@@ -262,7 +262,6 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
       avg: Number.isFinite(p.averageWeight) ? p.averageWeight : 0.5,
       orderIndex: i,
       seed: 'dotgraph-bag-v1',
-      cacheTag: p._id,
     }));
     prewarmSpriteTextures(items, { tileSize: 128, alpha: 215, blend: 0.6 });
   }, [points]);
@@ -709,15 +708,13 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                 position={[0, 0, 0]}
                 scale={spriteScale}
                 tileSize={128}
-                minTileSize={128}   // lock LOD — no swaps on zoom
                 alpha={215}
                 blend={0.6}
-                cacheTag={point._id}
                 seed={bagSeed}
                 orderIndex={i}
                 freezeParticles={true}
-                particleSimulateMs={Math.ceil(3 * 2.4 * 1000)}
                 particleStepMs={33}
+                particleFrames={219}
               />
             </group>
           );
@@ -746,15 +743,13 @@ const DotGraph = ({ isDragging = false, data = [] }) => {
                   position={[0,0,0]}
                   scale={spriteScale}
                   tileSize={128}
-                  minTileSize={128}   // lock LOD here too
                   alpha={215}
                   blend={0.6}
-                  cacheTag={effectiveMyEntry?._id}
                   seed={bagSeed}
                   orderIndex={0}
                   freezeParticles={true}
-                  particleSimulateMs={Math.ceil(3 * 2.4 * 1000)}
                   particleStepMs={33}
+                  particleFrames={219}
                 />
               </group>
             )}

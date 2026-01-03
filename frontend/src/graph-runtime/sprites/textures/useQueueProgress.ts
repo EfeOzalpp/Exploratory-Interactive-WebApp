@@ -1,5 +1,6 @@
+// graph-runtime/sprites/textures/useQueueProgress.ts
 import { useEffect, useState } from 'react';
-import { getQueueCounts } from './textureQueue.ts';
+import { getQueueCounts } from './queue.ts';
 
 type Counts = {
   pending: number;

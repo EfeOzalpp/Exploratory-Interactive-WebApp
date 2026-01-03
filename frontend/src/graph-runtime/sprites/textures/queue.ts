@@ -1,4 +1,4 @@
-// src/components/dotGraph/canvas/textureQueue.ts
+// graph-runtime/sprites/textures/queue.ts
 type Job = { run: () => void; prio: number; gen: number };
 
 let Q: Job[] = [];
@@ -6,7 +6,6 @@ let pumping = false;
 let paused = false;
 let inflight = 0;
 
-// NEW: generation fence
 let GEN = 0;
 
 const RIC =
@@ -20,12 +19,10 @@ function step(deadline?: IdleDeadline) {
 
   while (Q.length && (done < 3 || hasTime())) {
     const job = Q.shift()!;
-    // Skip jobs from old generations
-    if (job.gen !== GEN) {
-      continue;
-    }
+    if (job.gen !== GEN) continue;
+
     inflight++;
-    try { job.run(); } catch { /* keep pump alive */ }
+    try { job.run(); } catch { }
     finally { inflight--; }
     done++;
   }
@@ -38,7 +35,6 @@ function step(deadline?: IdleDeadline) {
 }
 
 export function enqueueTexture(run: () => void, prio = 0) {
-  // capture current generation at enqueue time
   const gen = GEN;
   Q.push({ run, prio, gen });
   Q.sort((a, b) => b.prio - a.prio);
@@ -73,16 +69,13 @@ export function resetQueue() {
   paused = false;
 }
 
-// NEW: bump generation — invalidates all queued work so far
 export function bumpGeneration() {
   GEN++;
-  // also drop queued work immediately
   cancelAllJobs();
 }
 
 export function getGeneration() { return GEN; }
 
-/* ── Expose minimal globals for HUD / panic buttons ─────────────────────── */
 if (typeof window !== 'undefined') {
   const w = window as any;
   w.__GP_GET_QUEUE_COUNTS = getQueueCounts;

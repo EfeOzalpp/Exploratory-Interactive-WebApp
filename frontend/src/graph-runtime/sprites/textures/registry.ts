@@ -1,7 +1,7 @@
-// src/components/dotGraph/canvas/textureRegistry.ts
+// graph-runtime/sprites/textures/registry.ts
 import * as THREE from 'three';
-import { makeTextureFromDrawer } from './CanvasTextureBridge.ts';
-import { enqueueTexture } from './textureQueue.ts';
+import { makeTextureFromDrawer } from './makeTextureFromDrawer.ts';
+import { enqueueTexture } from './queue.ts';
 
 export type DrawerFn = (p: any, x: number, y: number, r: number, opts?: any) => void;
 
@@ -63,7 +63,6 @@ class TextureRegistry {
         this.cache.set(key, tex);
         for (const l of this.listeners) l(key, tex);
       } catch (err) {
-        // Don’t leave the key “in flight” forever if the drawer throws.
         if ((window as any).__GP_LOG_LOAD_ERRORS) {
           console.warn('[SPRITE:STATIC] build failed', key, err);
         }
@@ -90,7 +89,6 @@ class TextureRegistry {
 
 export const textureRegistry = new TextureRegistry();
 
-// Debug/cleanup global (used by HUD / Graph unmount)
 if (typeof window !== 'undefined') {
   (window as any).__GP_DISPOSE_TEX_STATIC = () => textureRegistry.clear();
 }

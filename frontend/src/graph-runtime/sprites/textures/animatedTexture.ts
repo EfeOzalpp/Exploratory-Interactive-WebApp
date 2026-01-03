@@ -1,6 +1,6 @@
-// src/components/dotGraph/canvas/CanvasAnimatedTexture.ts
+// graph-runtime/sprites/textures/animatedTexture.ts
 import * as THREE from 'three';
-import { makePFromCanvas } from '../../canvas-engine/canvasEngine.js';
+import { makeCanvasFacade } from './canvasFacade.ts';
 
 type Drawer = (p: any, x: number, y: number, r: number, opts?: any) => void;
 
@@ -16,14 +16,11 @@ export type AnimatedTextureParams = {
   bleed?: { top?: number; right?: number; bottom?: number; left?: number };
   seedKey?: string | number;
 
-  /** Target paint FPS (animated only). */
-  fps?: number; // default 15
-
-  /** Texture quality knobs */
-  generateMipmaps?: boolean; // default false for animated, true is OK for frozen
-  anisotropy?: number;       // default 1
-  minFilter?: THREE.TextureFilter; // default THREE.LinearFilter
-  magFilter?: THREE.TextureFilter; // default THREE.LinearFilter
+  fps?: number;
+  generateMipmaps?: boolean;
+  anisotropy?: number;
+  minFilter?: THREE.TextureFilter;
+  magFilter?: THREE.TextureFilter;
 };
 
 function resolveCanvasSize(
@@ -60,13 +57,12 @@ function makePainter(
     seedKey?: string | number;
   }
 ) {
-  const p = makePFromCanvas(cnv, { dpr });
+  const p = makeCanvasFacade(cnv, { dpr });
   const ctx = p.drawingContext as CanvasRenderingContext2D;
   const centerX = cnv.width  / (2 * dpr);
   const centerY = cnv.height / (2 * dpr);
   const r = Math.min(cnv.width / dpr, cnv.height / dpr) * 0.8;
 
-  // Sprite-only pixel/world scale relative to ~192px tuning
   const pixelScale = Math.max(1, tileSize / 128);
 
   const baseOpts = {
@@ -77,11 +73,9 @@ function makePainter(
     cell: tileSize,
     footprint: { r0: bTop, c0: bLeft, w: wTiles, h: hTiles },
     seedKey,
-    // lock out heavy “shapeMods” on the animated/frozen path
     fitToFootprint: true,
-    /** Tell drawers how “big” this sprite texture is vs the ~192px baseline */
     coreScaleMult: pixelScale,
-    pixelScale, // alias for clarity
+    pixelScale,
     oscAmp: 0,
     oscSpeed: 0,
     opacityOsc: { amp: 0 },
@@ -127,7 +121,7 @@ function makeCanvasTexture(
   }
 ) {
   const tex = new THREE.CanvasTexture(cnv);
-  tex.colorSpace = THREE.SRGBColorSpace; // r152+
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.generateMipmaps = generateMipmaps;
   tex.minFilter = minFilter;
   tex.magFilter = magFilter;
@@ -138,7 +132,6 @@ function makeCanvasTexture(
   return tex;
 }
 
-/** Runtime-animated texture (budgeted by fps) */
 export function makeAnimatedTextureFromDrawer({
   drawer,
   tileSize = 192,
@@ -150,9 +143,7 @@ export function makeAnimatedTextureFromDrawer({
   footprint = { w: 1, h: 1 },
   bleed = {},
   seedKey,
-
   fps = 15,
-
   generateMipmaps = false,
   anisotropy = 1,
   minFilter = THREE.LinearFilter,
@@ -162,7 +153,6 @@ export function makeAnimatedTextureFromDrawer({
     resolveCanvasSize(tileSize, footprint, bleed);
 
   const cnv = document.createElement('canvas');
-  // Style sizes are purely cosmetic; q5-lite will set backing store by DPR
   cnv.style.width = `${logicalW}px`;
   cnv.style.height = `${logicalH}px`;
 
@@ -171,14 +161,12 @@ export function makeAnimatedTextureFromDrawer({
     wTiles, hTiles, bTop, bLeft, seedKey
   });
 
-  // initial paint
   paint(typeof performance !== 'undefined' ? performance.now() : 0);
 
   const texture = makeCanvasTexture(cnv, {
     generateMipmaps, anisotropy, minFilter, magFilter,
   });
 
-  // throttle paints to target fps
   const frameInterval = 1000 / Math.max(1, fps);
   let lastTickMs = -Infinity;
 
@@ -192,7 +180,6 @@ export function makeAnimatedTextureFromDrawer({
   return { texture, redraw };
 }
 
-/** One-time simulated “frozen” texture (advance particles, then freeze last frame) */
 export function makeFrozenTextureFromDrawer({
   drawer,
   tileSize = 192,
@@ -204,13 +191,8 @@ export function makeFrozenTextureFromDrawer({
   footprint = { w: 1, h: 1 },
   bleed = {},
   seedKey,
-
-  // simulate a short warm-up so particles are clearly visible
-  // (e.g., 1200ms total in 33ms steps ≈ 36 frames)
   simulateMs = 1200,
   stepMs = 33,
-
-  // higher quality is fine because we won’t repaint
   generateMipmaps = false,
   anisotropy = 2,
   minFilter = THREE.LinearMipmapLinearFilter,
@@ -228,18 +210,14 @@ export function makeFrozenTextureFromDrawer({
     wTiles, hTiles, bTop, bLeft, seedKey
   });
 
-  // Simulate several frames ahead so particles are “in motion” on the frozen frame.
   const start = typeof performance !== 'undefined' ? performance.now() : 0;
   const total = Math.max(0, simulateMs | 0);
   const step  = Math.max(1, stepMs | 0);
-  let t = start;
 
-  // Paint initial
-  paint(t);
+  paint(start);
 
-  // Advance in fixed steps; last paint wins
   const end = start + total;
-  for (t = start + step; t <= end; t += step) {
+  for (let t = start + step; t <= end; t += step) {
     paint(t);
   }
 
@@ -247,7 +225,6 @@ export function makeFrozenTextureFromDrawer({
     generateMipmaps, anisotropy, minFilter, magFilter,
   });
 
-  // No redraw function needed for frozen; provide a stub
   function redraw() { return false; }
 
   return { texture, redraw };

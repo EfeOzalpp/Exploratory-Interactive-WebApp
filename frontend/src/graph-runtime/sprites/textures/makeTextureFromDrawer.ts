@@ -1,21 +1,12 @@
-// src/components/dotGraph/canvas/CanvasTextureBridge.ts
+// graph-runtime/sprites/textures/makeTextureFromDrawer.ts
 import * as THREE from 'three';
-import { makePFromCanvas } from '../../canvas-engine/canvasEngine.js';
+import { makeCanvasFacade } from './canvasFacade.ts';
 
 type Drawer = (p: any, x: number, y: number, r: number, opts?: any) => void;
 
 export type Footprint = { w: number; h: number };
 export type BleedFrac = { top?: number; right?: number; bottom?: number; left?: number };
 
-/**
- * Make a CanvasTexture by rendering a shape drawer on an offscreen canvas,
- * with support for tile footprints (w×h) and per-side BLEED padding
- * so overflow (like tree tops) never gets clipped.
- *
- * - `tileSize` is the pixel size of ONE TILE (the "cell").
- * - Canvas size = (w + left + right) * tileSize by (h + top + bottom) * tileSize.
- * - The shape footprint is placed at (c0 = leftBleed, r0 = topBleed).
- */
 export function makeTextureFromDrawer({
   drawer,
   tileSize = 192,
@@ -51,26 +42,19 @@ export function makeTextureFromDrawer({
   const bBottom = Math.max(0, bleed.bottom ?? 0);
   const bLeft   = Math.max(0, bleed.left   ?? 0);
 
-  // Canvas size in tiles
   const totalTilesW = wTiles + bLeft + bRight;
   const totalTilesH = hTiles + bTop  + bBottom;
 
-  // Canvas size in CSS pixels (logical)
   const logicalW = Math.max(2, Math.round(totalTilesW * tileSize));
   const logicalH = Math.max(2, Math.round(totalTilesH * tileSize));
 
-  // offscreen canvas
   const cnv = document.createElement('canvas');
-  // Set CSS size so makePFromCanvas can compute backing store with DPR
   cnv.style.width = `${logicalW}px`;
   cnv.style.height = `${logicalH}px`;
 
-  // build p facade with DPR; this sets intrinsic width/height and transform
-  const p = makePFromCanvas(cnv, { dpr });
+  const p = makeCanvasFacade(cnv, { dpr });
   const ctx = p.drawingContext as CanvasRenderingContext2D;
 
-  // IMPORTANT: makePFromCanvas already handled DPR transform.
-  // Do NOT re-apply setTransform(dpr, …) here; just clear safely.
   {
     const prev = (ctx as any).getTransform?.();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -78,14 +62,11 @@ export function makeTextureFromDrawer({
     if (prev) (ctx as any).setTransform?.(prev);
   }
 
-  // logical center (the p facade already maps logical coords → device)
   const centerX = logicalW / 2;
   const centerY = logicalH / 2;
 
-  // tile cell size (logical)
   const cell = tileSize;
 
-  // place the footprint INSIDE the padded canvas
   const footprintForDrawer = {
     r0: bTop,
     c0: bLeft,
@@ -112,7 +93,6 @@ export function makeTextureFromDrawer({
 
   let failed = false;
   try {
-    // many drawers rely entirely on footprint/cell; pass x/y/r anyway
     const r = Math.min(logicalW, logicalH) * 0.8;
     drawer(p, centerX, centerY, r, opts);
   } catch (err) {
@@ -120,10 +100,8 @@ export function makeTextureFromDrawer({
     failed = true;
   }
 
-  // Only show fallback if the drawer actually errored
   if (failed) {
     ctx.save();
-    // clear with current transform intact
     const prev = (ctx as any).getTransform?.();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cnv.width, cnv.height);
@@ -137,7 +115,6 @@ export function makeTextureFromDrawer({
     ctx.restore();
   }
 
-  // build the THREE texture
   const tex = new THREE.CanvasTexture(cnv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.generateMipmaps = true;

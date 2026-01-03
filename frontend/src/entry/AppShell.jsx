@@ -5,30 +5,30 @@ import React, {
   useMemo,
   Suspense,
 } from "react";
-import RadialBackground from './static-assets/static/radialBackground.jsx';
-import Survey from './weighted-survey/Survey.tsx';
-import Navigation from './navigation/Navigation.jsx';
-import CityButton from './navigation/CityButton.tsx';
-import DataVisualization from './graph-runtime/index.jsx';
-import { useDynamicMargin } from './utils-hooks/dynamicMargin.ts';
-import { AppProvider, useAppState } from './app-context/appStateContext.tsx';
-import GamificationCopyPreloader from './utils-hooks/gamificationCopyPreloader.tsx';
-import './static-assets/styles/global-styles.css';
+import RadialBackground from '../static-assets/static/radialBackground.jsx';
+import Survey from '../weighted-survey/Survey.tsx';
+import Navigation from '../navigation/Navigation.jsx';
+import CityButton from '../navigation/CityButton.tsx';
+import DataVisualization from '../graph-runtime/index.jsx';
+import { useDynamicMargin } from '../utils-hooks/dynamicMargin.ts';
+import { AppProvider, useAppState } from '../app-context/appStateContext.tsx';
+import GamificationCopyPreloader from '../utils-hooks/gamificationCopyPreloader.tsx';
+import '../static-assets/styles/global-styles.css';
 
 const CanvasEntry = React.lazy(() =>
-  import(/* webpackChunkName: "canvas-entry" */ './canvas-engine/index.jsx')
+  import(/* webpackChunkName: "canvas-entry" */ '../canvas-engine/index.jsx')
 );
 
 const CityOverlay = React.lazy(() =>
-  import(/* webpackChunkName: "city-overlay" */ './navigation/CityOverlay.jsx')
+  import(/* webpackChunkName: "city-overlay" */ '../navigation/CityOverlay.jsx')
 );
 
 const EdgeCue = React.lazy(() =>
-  import('./graph-runtime/hooks/utils/DarkMode.jsx')
+  import('../graph-runtime/hooks/utils/DarkMode.jsx')
 );
 
 const ModeToggle = React.lazy(() =>
-  import(/* webpackChunkName: "mode-toggle" */ './navigation/nav-bottom/ModeToggle.jsx')
+  import(/* webpackChunkName: "mode-toggle" */ '../navigation/nav-bottom/ModeToggle.jsx')
 );
 
 
@@ -83,7 +83,7 @@ const AppInner = () => {
     if (typeof window === 'undefined') return;
     if (readyForViz) return;
     const prefetch = () => {
-      import(/* webpackPrefetch: true, webpackChunkName: "canvas-entry" */ './canvas-engine/index.jsx');
+      import(/* webpackPrefetch: true, webpackChunkName: "canvas-entry" */ '../canvas-engine/index.jsx');
     };
     if ('requestIdleCallback' in window) {
       window.requestIdleCallback(prefetch, { timeout: 1500 });
