@@ -5,7 +5,7 @@ import { useAppState } from '../../app-context/appStateContext.tsx';
 import { composeField, makeDefaultPoolItem } from '../layout/scene-composition/composeField.ts';
 import type { PoolItem as ScenePoolItem } from '../layout/scene-composition/types.ts';
 
-import { targetPoolSize } from '../layout/scene-composition/poolSizing.ts';
+import { targetPoolSize } from '../layout/scene-composition/poolSize.ts'; // Number of shapes cap (configurable per canvas instance)
 
 type Engine = {
   ready: React.RefObject<boolean>;

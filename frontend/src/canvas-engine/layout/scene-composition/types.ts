@@ -6,7 +6,7 @@ import type {
   CurveSet,
   ShapeName,
   Size,
-} from '../../condition-utils/types.ts';
+} from '../../condition/types.ts';
 
 export type FootRect = Place;
 

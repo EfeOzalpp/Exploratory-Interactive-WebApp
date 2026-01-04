@@ -8,7 +8,7 @@ import { placePoolItems } from './place.ts';
 import { ensureAtLeastOneSunAtLowAvg } from './post.ts';
 import { retargetKindsStable, assignShapesByPlanner } from './plan.ts';
 
-import type { ConditionKind, CurveSet } from '../../condition-utils/types.ts';
+import type { ConditionKind, CurveSet } from '../../condition/types.ts';
 
 export function composeField(opts: ComposeOpts): ComposeResult {
   const questionnaireOpen = !!opts.questionnaireOpen;

@@ -1,6 +1,6 @@
 // src/canvas/layout/scene-composition/scoringGround.ts
 import { hash32String } from '../../shared/hash32.ts';
-import type { ShapeName } from '../../condition-utils/types.ts';
+import type { ShapeName } from '../../condition/types.ts';
 
 export function rowOrderFromBand(top: number, bot: number) {
   if (top > bot) return [];

@@ -35,13 +35,11 @@ export default function Survey({
   setGraphVisible,
   setSurveyWrapperClass,
   onAnswersUpdate,
-  onLiveAverageChange,
 }: {
   setAnimationVisible: (v: boolean) => void;
   setGraphVisible: (v: boolean) => void;
   setSurveyWrapperClass: (cls: string) => void;
   onAnswersUpdate?: (answers: Record<string, number | null>) => void;
-  onLiveAverageChange?: (avg: number | undefined, meta?: { dragging?: boolean; committed?: boolean }) => void;
 }) {
   const [stage, setStage] = useState<'role' | 'section' | 'questions'>('role');
   const [audience, setAudience] = useState<Audience>('');
@@ -319,7 +317,6 @@ export default function Survey({
               onAnswersUpdate={onAnswersUpdate}
               onSubmit={handleSubmitFromQuestions}
               submitting={submitting}
-              onLiveAverageChange={onLiveAverageChange}
             />
           )}
         </Suspense>

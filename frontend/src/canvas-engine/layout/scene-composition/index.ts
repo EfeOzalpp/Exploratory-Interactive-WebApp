@@ -9,4 +9,4 @@ export type {
 } from './types.ts';
 
 export { composeField, makeDefaultPoolItem } from './composeField.ts';
-export { targetPoolSize, ensurePoolSize } from './poolSizing.ts';
+export { targetPoolSize, ensurePoolSize } from './poolSize.ts';

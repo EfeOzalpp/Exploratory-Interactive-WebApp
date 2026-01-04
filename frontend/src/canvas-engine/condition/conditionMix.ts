@@ -1,17 +1,20 @@
 // src/canvas/condition/conditionMix.ts
-export type ConditionKind = 'A' | 'B' | 'C' | 'D';
+import type { ConditionKind } from './types.ts';
 
 export type Mix4 = readonly [number, number, number, number];
 export type Mix4Int = [number, number, number, number];
 
-export type Anchor = { t: number; mix20: Mix4 };
+export type Anchor = { t: number; weights: Mix4 };
 
+// Default distribution curve for conditions A/B/C/D.
+// Each anchor gives RELATIVE weights at normalized control t ∈ [0..1].
+// These weights are scaled to the current pool size N via Largest Remainder.
 const DEFAULT_ANCHORS: readonly Anchor[] = [
-  { t: 0.0, mix20: [2, 4, 10, 8] },
-  { t: 0.25, mix20: [4, 6, 10, 4] },
-  { t: 0.5, mix20: [5, 7, 7, 5] },
-  { t: 0.75, mix20: [4, 10, 6, 4] },
-  { t: 1.0, mix20: [10, 9, 3, 4] },
+  { t: 0.0, weights: [2, 4, 10, 8] },
+  { t: 0.25, weights: [4, 6, 10, 4] },
+  { t: 0.5, weights: [5, 7, 7, 5] },
+  { t: 0.75, weights: [4, 10, 6, 4] },
+  { t: 1.0, weights: [10, 9, 3, 4] },
 ];
 
 const clamp01 = (v?: number) =>
@@ -21,10 +24,6 @@ const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
 export type TMapper = (t: number) => number;
 
-/**
- * Builds a piecewise-linear mapper from checkpoints in slider space (x) to logical space (y).
- * Input and output are clamped to [0..1].
- */
 export function makeTMapper(
   checkpoints: Array<{ x: number; y: number }>
 ): TMapper {
@@ -48,19 +47,24 @@ export function makeTMapper(
   };
 }
 
-/**
- * Identity mapper for cases where the slider is already in logical space.
- */
 export const identityTMapper: TMapper = (t) => clamp01(t);
 
+const KINDS: readonly ConditionKind[] = ['A', 'B', 'C', 'D'] as const;
+
+function argMax4(v: readonly number[]) {
+  let best = 0;
+  for (let i = 1; i < 4; i++) if (v[i] > v[best]) best = i;
+  return best;
+}
+
 /**
- * Interpolates the 4-way mix at a given slider value, after applying the optional mapper.
- * Anchors are a set of keyed mixes along t in [0..1] and are interpolated linearly.
+ * Interpolates the 4-way weight vector at a given slider value.
+ * NOTE: returns floats (weights), not counts.
  */
-export function interpolateConditionMix20(
+export function interpolateConditionWeights(
   avgSlider: number | undefined,
   opts?: { anchors?: readonly Anchor[]; tMapper?: TMapper }
-): Mix4Int {
+): Mix4 {
   const anchors = (opts?.anchors?.length ? opts.anchors : DEFAULT_ANCHORS)
     .slice()
     .sort((a, b) => a.t - b.t);
@@ -74,20 +78,20 @@ export function interpolateConditionMix20(
   const A = anchors[i];
   const B = anchors[Math.min(i + 1, anchors.length - 1)];
 
-  if (A.t === B.t) return [...A.mix20] as Mix4Int;
+  if (A.t === B.t) return A.weights;
 
   const k = (t - A.t) / Math.max(1e-6, B.t - A.t);
   return [
-    lerp(A.mix20[0], B.mix20[0], k),
-    lerp(A.mix20[1], B.mix20[1], k),
-    lerp(A.mix20[2], B.mix20[2], k),
-    lerp(A.mix20[3], B.mix20[3], k),
+    lerp(A.weights[0], B.weights[0], k),
+    lerp(A.weights[1], B.weights[1], k),
+    lerp(A.weights[2], B.weights[2], k),
+    lerp(A.weights[3], B.weights[3], k),
   ];
 }
 
 /**
- * Scales an array of non-negative floats into 4 integer buckets that sum exactly to K.
- * Uses the Largest Remainder method, which preserves the overall proportions closely.
+ * Scales non-negative floats into 4 integer buckets that sum exactly to K.
+ * Largest Remainder method.
  */
 export function scaleMixToCount(floatMix: readonly number[], K: number): Mix4Int {
   if (K <= 0) return [0, 0, 0, 0];
@@ -95,7 +99,7 @@ export function scaleMixToCount(floatMix: readonly number[], K: number): Mix4Int
   const sum = floatMix.reduce((a, b) => a + b, 0);
   const factor = K / (sum || 1);
 
-  const scaled = floatMix.map((v) => v * factor);
+  const scaled = floatMix.map((v) => Math.max(0, v) * factor);
   const floors = scaled.map((v) => Math.floor(v));
   let used = floors.reduce((a, b) => a + b, 0);
 
@@ -115,21 +119,50 @@ export function scaleMixToCount(floatMix: readonly number[], K: number): Mix4Int
 }
 
 /**
- * Convenience helper to go from slider value to exact integer counts for a given total.
+ * Pool-size-aware counts:
+ * (liveAvg, total N) -> integer counts summing to N.
+ *
+ * Adds one policy guard for small N:
+ * - Ensure the currently dominant weight kind is present when N>0 (if possible).
  */
 export function countsFromSlider(
   sliderT: number | undefined,
   total: number,
-  opts?: { anchors?: readonly Anchor[]; tMapper?: TMapper }
+  opts?: { anchors?: readonly Anchor[]; tMapper?: TMapper; ensureDominant?: boolean }
 ): Mix4Int {
-  return scaleMixToCount(interpolateConditionMix20(sliderT, opts), total);
-}
+  if (total <= 0) return [0, 0, 0, 0];
 
-const KINDS: readonly ConditionKind[] = ['A', 'B', 'C', 'D'];
+  const weights = interpolateConditionWeights(sliderT, opts);
+  let counts = scaleMixToCount(weights, total);
+
+  if (opts?.ensureDominant !== false && total > 0) {
+    const dom = argMax4(weights);
+    if (counts[dom] === 0) {
+      // steal 1 from the largest donor (prefer donors with >1)
+      let donor = -1;
+      let best = 0;
+      for (let i = 0; i < 4; i++) {
+        if (i === dom) continue;
+        if (counts[i] > best) {
+          best = counts[i];
+          donor = i;
+        }
+      }
+      if (donor !== -1 && counts[donor] > 0) {
+        const out = [...counts] as Mix4Int;
+        out[donor] -= 1;
+        out[dom] += 1;
+        counts = out;
+      }
+    }
+  }
+
+  return counts;
+}
 
 /**
  * Retargets an existing list of condition kinds to match new target counts with minimal churn.
- * It only changes as many positions as necessary, pulling from the most overrepresented kind.
+ * IMPORTANT: targetCounts are COUNTS (already sum to N). Do NOT rescale them like weights.
  */
 export function adjustConditionsStable(
   current: ConditionKind[],
@@ -138,7 +171,15 @@ export function adjustConditionsStable(
   const N = current.length;
   if (N === 0) return [];
 
-  const target = scaleMixToCount(targetCounts, N);
+  const sum =
+    (targetCounts[0] | 0) +
+    (targetCounts[1] | 0) +
+    (targetCounts[2] | 0) +
+    (targetCounts[3] | 0);
+
+  // Normalize only if caller gave a vector that doesn't sum to N.
+  const target: Mix4Int =
+    sum === N ? [...targetCounts] as Mix4Int : scaleMixToCount(targetCounts, N);
 
   const idxBy: Record<ConditionKind, number[]> = { A: [], B: [], C: [], D: [] };
   current.forEach((k, i) => idxBy[k].push(i));

@@ -4,7 +4,7 @@ import {
   startCanvasEngine,
   stopCanvasEngine,
   type CanvasEngineControls,
-} from '../canvasEngine.js';
+} from '../runtime/index.ts';
 
 type EngineOpts = {
   visible?: boolean;

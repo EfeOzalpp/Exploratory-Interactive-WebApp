@@ -1,14 +1,21 @@
 // src/context/appStateContext.tsx
-import React, { createContext, useContext, useEffect, useState } from "react";
-
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { unstable_batchedUpdates as batched } from "react-dom";
+
 import { subscribeSurveyData } from "../utils-hooks/sanityAPI.js";
 import useSectionCounts from "../utils-hooks/useSectionCounts.ts";
 
 export type Mode = "relative" | "absolute";
 
-export type AppState = {
+export type AvgController = {
+  live: number;              // continuous signal
+  committed: number;         // structural / commit-only value
+  setLive: (avg?: number) => void;
+  commit: (avg?: number) => void;
+  commitFromLive: () => void;
+};
 
+export type AppState = {
   // data collecting and personalization
   section: string;
   setSection: (s: string) => void;
@@ -60,22 +67,39 @@ export type AppState = {
   navVisible: boolean;
   setNavVisible: (v: boolean) => void;
 
+  // avg controller (signal vs commit)
+  avg: AvgController;
+
   // reset
   resetToStart: () => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
 
+// Single baseline used everywhere
+export const DEFAULT_AVG = 0.5;
+
+function normalizeAvg(avg: unknown) {
+  return typeof avg === "number" && Number.isFinite(avg) ? avg : DEFAULT_AVG;
+}
+
+function clamp01(x: number) {
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+}
+
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [section, setSection] = useState<string>("all");
+
   const [mySection, setMySection] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.mySection");
   });
+
   const [myEntryId, setMyEntryId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.myEntryId");
   });
+
   const [myRole, setMyRole] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return sessionStorage.getItem("gp.myRole");
@@ -101,6 +125,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const saved = sessionStorage.getItem("gp.mode") as Mode | null;
     return saved === "absolute" || saved === "relative" ? saved : "relative";
   });
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("gp.mode", mode);
@@ -112,6 +137,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const saved = sessionStorage.getItem("gp.darkMode");
     return saved === "true";
   });
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("gp.darkMode", String(darkMode));
@@ -120,6 +146,37 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [navPanelOpen, setNavPanelOpen] = useState<boolean>(false);
   const [navVisible, setNavVisible] = useState<boolean>(true);
+
+  // Two averages on purpose:
+  // - avg.live: continuous updates for visuals
+  // - avg.committed: commit-only updates for layout/allocation
+  const [liveAvgState, _setLiveAvgState] = useState<number>(DEFAULT_AVG);
+  const [committedAvgState, _setCommittedAvgState] = useState<number>(DEFAULT_AVG);
+
+  // Keep setters stable and semantics clear
+  const avg = useMemo<AvgController>(() => {
+    const setLive = (v?: number) => {
+      const n = clamp01(normalizeAvg(v));
+      _setLiveAvgState(n);
+    };
+
+    const commit = (v?: number) => {
+      const n = clamp01(normalizeAvg(v));
+      _setCommittedAvgState(n);
+    };
+
+    const commitFromLive = () => {
+      _setCommittedAvgState(liveAvgState);
+    };
+
+    return {
+      live: liveAvgState,
+      committed: committedAvgState,
+      setLive,
+      commit,
+      commitFromLive,
+    };
+  }, [liveAvgState, committedAvgState]);
 
   useEffect(() => {
     setLoading(true);
@@ -133,7 +190,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsub();
   }, [section]);
 
+  // Identity sync (custom event + storage changes)
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const onIdentityUpdated = () => {
       try {
         const id = sessionStorage.getItem("gp.myEntryId");
@@ -144,8 +204,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         setMyRole(role);
       } catch {}
     };
+
     window.addEventListener("gp:identity-updated", onIdentityUpdated);
     window.addEventListener("storage", onIdentityUpdated);
+
     return () => {
       window.removeEventListener("gp:identity-updated", onIdentityUpdated);
       window.removeEventListener("storage", onIdentityUpdated);
@@ -154,12 +216,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const justSubmitted = sessionStorage.getItem("gp.justSubmitted") === "1";
     if (!justSubmitted) return;
     if (!counts) return;
 
-    const effectiveMySection =
-      mySection || sessionStorage.getItem("gp.mySection") || "";
+    const effectiveMySection = mySection || sessionStorage.getItem("gp.mySection") || "";
     if (!effectiveMySection) return;
 
     if (effectiveMySection === "visitor") {
@@ -169,6 +231,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
     const n = counts[effectiveMySection] ?? 0;
     const SMALL_SECTION_THRESHOLD = 5;
+
     if (n < SMALL_SECTION_THRESHOLD) {
       setSection("all-massart");
       try {
@@ -189,8 +252,13 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       setMySection(null);
       setMyRole(null);
       setSection("all");
-      setQuestionnaireOpen(false); 
+      setQuestionnaireOpen(false);
+
+      // reset averages too
+      _setLiveAvgState(DEFAULT_AVG);
+      _setCommittedAvgState(DEFAULT_AVG);
     });
+
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("gp.myEntryId");
       sessionStorage.removeItem("gp.mySection");
@@ -199,50 +267,65 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  return (
-    <AppCtx.Provider
-      value={{
-        section,
-        setSection,
-        mySection,
-        setMySection,
-        myEntryId,
-        setMyEntryId,
-        myRole,
-        setMyRole,
-        data,
-        loading,
-        isSurveyActive,
-        setSurveyActive,
-        hasCompletedSurvey,
-        setHasCompletedSurvey,
-        questionnaireOpen,            
-        setQuestionnaireOpen,         
-        observerMode,
-        setObserverMode,
-        vizVisible,
-        openGraph,
-        closeGraph,
-        mode,
-        setMode,
-        darkMode,
-        setDarkMode,
-        navPanelOpen,
-        setNavPanelOpen,
-        navVisible,
-        setNavVisible,
-        resetToStart,
-      }}
-    >
-      {children}
-    </AppCtx.Provider>
+  const value = useMemo<AppState>(
+    () => ({
+      section,
+      setSection,
+      mySection,
+      setMySection,
+      myEntryId,
+      setMyEntryId,
+      myRole,
+      setMyRole,
+      data,
+      loading,
+      isSurveyActive,
+      setSurveyActive,
+      hasCompletedSurvey,
+      setHasCompletedSurvey,
+      questionnaireOpen,
+      setQuestionnaireOpen,
+      observerMode,
+      setObserverMode,
+      vizVisible,
+      openGraph,
+      closeGraph,
+      mode,
+      setMode,
+      darkMode,
+      setDarkMode,
+      navPanelOpen,
+      setNavPanelOpen,
+      navVisible,
+      setNavVisible,
+      avg,
+      resetToStart,
+    }),
+    [
+      section,
+      mySection,
+      myEntryId,
+      myRole,
+      data,
+      loading,
+      isSurveyActive,
+      hasCompletedSurvey,
+      questionnaireOpen,
+      observerMode,
+      vizVisible,
+      mode,
+      darkMode,
+      navPanelOpen,
+      navVisible,
+      avg,
+    ]
   );
+
+  return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 };
 
 export const useAppState = () => {
   const ctx = useContext(AppCtx);
-  if (!ctx) {
-    throw new Error("useAppState must be used within an AppProvider");
-  }
+  if (!ctx) throw new Error("useAppState must be used within an AppProvider");
   return ctx;
 };

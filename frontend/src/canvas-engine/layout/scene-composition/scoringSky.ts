@@ -1,5 +1,5 @@
 // src/canvas/layout/scene-composition/scoringSky.ts
-import type { ShapeName } from '../../condition-utils/types.ts';
+import type { ShapeName } from '../../condition/types.ts';
 import { rand01Keyed } from '../../shared/hash32.ts';
 
 export function isSky(shape?: ShapeName) {

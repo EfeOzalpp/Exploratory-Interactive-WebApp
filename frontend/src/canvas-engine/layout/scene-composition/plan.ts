@@ -1,13 +1,15 @@
-// src/canvas/layout/scene-composition/plan.ts
-import type { ConditionKind, CurveSet, ShapeName, Size } from '../../condition-utils/types.ts';
+// src/canvas-engine/layout/scene-composition/plan.ts
+import type { ConditionKind, CurveSet, ShapeName, Size } from '../../condition/types.ts';
 
 import {
-  interpolateConditionMix20,
-  scaleMixToCount,
+  countsFromSlider,
   adjustConditionsStable,
-} from '../../condition-utils/conditionMix.ts';
+} from '../../condition/conditionMix.ts';
 
-import { planForBucket, type PoolItem as PlannerPoolItem } from '../../condition-utils/conditionPlanner.ts';
+import {
+  planForBucket,
+  type PoolItem as PlannerPoolItem,
+} from '../../condition/conditionPlanner.ts';
 
 export type PlannedPoolItem = PlannerPoolItem & {
   shape?: ShapeName;
@@ -19,8 +21,8 @@ export function retargetKindsStable(
   u: number,
   desiredSize: number
 ) {
-  const float20 = interpolateConditionMix20(u);
-  const targetCounts = scaleMixToCount(float20, desiredSize);
+  // pool-size-aware counts (already sums to desiredSize)
+  const targetCounts = countsFromSlider(u, desiredSize);
 
   const currentKinds = pool.map((p) => p.cond);
   const newKinds = adjustConditionsStable(currentKinds, targetCounts);
@@ -36,7 +38,13 @@ export function assignShapesByPlanner(
   salt: number,
   curveSet: CurveSet
 ) {
-  const byKind: Record<ConditionKind, PlannedPoolItem[]> = { A: [], B: [], C: [], D: [] };
+  const byKind: Record<ConditionKind, PlannedPoolItem[]> = {
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+  };
+
   for (const it of pool) byKind[it.cond].push(it);
 
   (['A', 'B', 'C', 'D'] as ConditionKind[]).forEach((kind) => {
@@ -44,8 +52,9 @@ export function assignShapesByPlanner(
     if (!items.length) return;
 
     const map = planForBucket(kind, items, u, salt, curveSet);
-    for (const p of pool) {
-      if (p.cond !== kind) continue;
+
+    // Only touch items of this kind; keep churn low.
+    for (const p of items) {
       const asn = map.get(p.id);
       if (asn) {
         p.shape = asn.shape;

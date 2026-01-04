@@ -1,11 +1,16 @@
 // src/canvas/condition/quotaCurves.ts
-import type { ConditionKind, ShapeKind } from './conditions.ts';
+import type { ConditionKind, ShapeName } from './types.ts';
 
 export type CurveSet = 'default' | 'overlay';
 
+/**
+ * Quota value:
+ * - number: a finite cap for that shape
+ * - null: unbounded "fill" candidate (used when finite caps are exhausted)
+ */
 export type Quota = number | null;
 
-export type Limits = Partial<Record<ShapeKind, Quota>>;
+export type Limits = Partial<Record<ShapeName, Quota>>;
 
 export type Anchor = { t: number; limits: Limits };
 

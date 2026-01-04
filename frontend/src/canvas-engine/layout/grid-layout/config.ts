@@ -95,6 +95,9 @@ export function bandFromWidth(w: number): BreakBand {
   return 'large';
 }
 
+// Here are multiple row rules where we add forbidden spaces 
+// to not overlap with other UI elements
+
 export const GRID_MAP_START: Record<BreakBand, GridSpec> = {
   small: {
     rows: 18,

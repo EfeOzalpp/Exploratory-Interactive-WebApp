@@ -1,9 +1,9 @@
 import React from 'react';
-import AppShell from './AppShell';
+import Frontpage from './Frontpage.tsx';
 
 function App() {
   return (
-      <AppShell />
+      <Frontpage />
   );
 }
 

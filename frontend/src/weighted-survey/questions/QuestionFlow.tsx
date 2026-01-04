@@ -1,10 +1,11 @@
-// src/components/survey/questions/questionFlow.tsx
-import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import type { Question } from '../types.ts';
-import SelectionMap from './SelectionMap.tsx';
-import AnswersList, { ShapeKey } from './AnswersList.tsx';
+// src/components/survey/questions/QuestionFlow.tsx
+import React, { useMemo, useRef, useState, useCallback, useEffect } from "react";
+import type { Question } from "../types.ts";
+import SelectionMap from "./SelectionMap.tsx";
+import AnswersList, { ShapeKey } from "./AnswersList.tsx";
+import { useAppState, DEFAULT_AVG } from "../../app-context/appStateContext.tsx";
 
-const SHAPE_ORDER: ShapeKey[] = ['circle', 'square', 'triangle', 'diamond'];
+const SHAPE_ORDER: ShapeKey[] = ["circle", "square", "triangle", "diamond"];
 const shapeForIndex = (idx: number): ShapeKey => SHAPE_ORDER[idx % SHAPE_ORDER.length];
 
 // Matches the SelectionMap's initial target weights: BASE_BUCKET_CAP / 4 = 0.5 each.
@@ -23,17 +24,17 @@ export default function QuestionFlow({
   onAnswersUpdate,
   onSubmit,
   submitting,
-  onLiveAverageChange, // ← restored
 }: {
   questions: Question[];
   onAnswersUpdate?: (answers: Record<string, number | null>) => void;
   onSubmit?: (answers: Record<string, number | null>) => void;
   submitting?: boolean;
-  onLiveAverageChange?: (avg: number | undefined, meta?: { dragging?: boolean; committed?: boolean }) => void;
 }) {
+  const { setLiveAvg, commitAllocAvg } = useAppState();
+
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | null>>({});
-  const [slabState, setSlabState] = useState<'idle' | 'leaving' | 'entering'>('idle');
+  const [slabState, setSlabState] = useState<"idle" | "leaving" | "entering">("idle");
 
   const q = questions[current];
 
@@ -50,39 +51,40 @@ export default function QuestionFlow({
   void baseAverages;
 
   // All four shape "importances" from the map (0..1; sum typically ~2)
-  // Seed to 0.5 each so we don't start with null.
   const [mapFactors, setMapFactors] = useState<Record<ShapeKey, number>>({ ...INITIAL_FACTORS });
 
   // Weighted-average by importances (not scaling the intrinsic weights)
-  const recomputeCurrent = useCallback((factors: Record<ShapeKey, number>) => {
-    const EPS = 1e-9;
+  const recomputeCurrent = useCallback(
+    (factors: Record<ShapeKey, number>) => {
+      const EPS = 1e-9;
 
-    const parts = q.options.map((o, i) => {
-      const shape = shapeForIndex(i);
-      const importance = Math.max(0, Number(factors[shape] ?? 0)); // 0..1
-      const weight = Math.max(0, Math.min(1, Number(o.weight ?? 0))); // clamp 0..1
-      return { weight, importance };
-    });
+      const parts = q.options.map((o, i) => {
+        const shape = shapeForIndex(i);
+        const importance = Math.max(0, Number(factors[shape] ?? 0)); // 0..1
+        const weight = Math.max(0, Math.min(1, Number(o.weight ?? 0))); // clamp 0..1
+        return { weight, importance };
+      });
 
-    const denom = parts.reduce((a, p) => a + p.importance, 0);
-    const agg =
-      denom <= EPS
-        ? null
-        : parts.reduce((a, p) => a + p.weight * p.importance, 0) / denom;
+      const denom = parts.reduce((a, p) => a + p.importance, 0);
+      const agg =
+        denom <= EPS ? null : parts.reduce((a, p) => a + p.weight * p.importance, 0) / denom;
 
-    setAnswers((prev) => ({ ...prev, [q.id]: agg }));
-  }, [q]);
+      setAnswers((prev) => ({ ...prev, [q.id]: agg }));
+    },
+    [q]
+  );
 
   // Expose latest recompute via ref
   const recomputeRef = useRef(recomputeCurrent);
-  useEffect(() => { recomputeRef.current = recomputeCurrent; }, [recomputeCurrent]);
+  useEffect(() => {
+    recomputeRef.current = recomputeCurrent;
+  }, [recomputeCurrent]);
 
-  // Keep latest callbacks in refs (avoid stale closures)
+  // Keep latest onAnswersUpdate in a ref
   const onAnswersUpdateRef = useRef(onAnswersUpdate);
-  useEffect(() => { onAnswersUpdateRef.current = onAnswersUpdate; }, [onAnswersUpdate]);
-
-  const onLiveAverageChangeRef = useRef(onLiveAverageChange);
-  useEffect(() => { onLiveAverageChangeRef.current = onLiveAverageChange; }, [onLiveAverageChange]);
+  useEffect(() => {
+    onAnswersUpdateRef.current = onAnswersUpdate;
+  }, [onAnswersUpdate]);
 
   // STABLE callback for SelectionMap -> normalize + recompute
   const onMapStable = useCallback((factors: Record<string, number>) => {
@@ -93,7 +95,6 @@ export default function QuestionFlow({
       diamond: Number(factors.diamond ?? 0),
     };
     setMapFactors(normalized);
-    // Recompute current question’s aggregate immediately
     recomputeRef.current(normalized);
   }, []);
 
@@ -109,75 +110,46 @@ export default function QuestionFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions]);
 
-  // Emit to parent + dispatch to canvas as 'gp:live-avg' (continuous, non-committing)
-  useEffect(() => {
-    // notify parent with the full answers map
-    onAnswersUpdateRef.current?.(answers);
-
-    // compute live average over non-null answers
+  // Helper: compute current live average (no side effects)
+  const computeCurrentAvg = useCallback(() => {
     const vals = Object.values(answers).filter(
-      (x): x is number => typeof x === 'number' && Number.isFinite(x)
-    );
-
-    if (vals.length > 0) {
-      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-      const avg2 = Math.round(avg * 100) / 100;
-
-      // → Canvas bridge (window event)
-      try {
-        window.dispatchEvent(new CustomEvent('gp:live-avg', { detail: { avg: avg2 } }));
-      } catch {}
-
-      // → Parent bridge (realtime updates for FrontPage liveAvg)
-      try {
-        onLiveAverageChangeRef.current?.(avg2, { dragging: true, committed: false });
-      } catch {}
-    } else {
-      try {
-        window.dispatchEvent(new CustomEvent('gp:live-avg', { detail: { avg: undefined } }));
-      } catch {}
-      try {
-        onLiveAverageChangeRef.current?.(undefined, { dragging: true, committed: false });
-      } catch {}
-    }
-  }, [answers]);
-
-  // Helper: compute current live average (same as above, no side effects)
-  const computeCurrentAvg = () => {
-    const vals = Object.values(answers).filter(
-      (x): x is number => typeof x === 'number' && Number.isFinite(x)
+      (x): x is number => typeof x === "number" && Number.isFinite(x)
     );
     if (!vals.length) return undefined;
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     return Math.round(avg * 100) / 100;
-  };
+  }, [answers]);
+
+  // Emit answers to parent + update context liveAvg continuously
+  useEffect(() => {
+    onAnswersUpdateRef.current?.(answers);
+
+    const avg = computeCurrentAvg();
+    // Context owns the live average. If undefined, fall back to DEFAULT_AVG.
+    setLiveAvg(typeof avg === "number" ? avg : DEFAULT_AVG);
+  }, [answers, computeCurrentAvg, setLiveAvg]);
 
   // Treat drag-release as a "commit": SelectionMap should fire 'gp:weights-commit'
   useEffect(() => {
     const onCommit = () => {
-      const avg2 = computeCurrentAvg();
-      try {
-        onLiveAverageChangeRef.current?.(avg2, { dragging: false, committed: true });
-      } catch {}
+      const avg = computeCurrentAvg();
+      commitAllocAvg(typeof avg === "number" ? avg : DEFAULT_AVG);
     };
-    window.addEventListener('gp:weights-commit', onCommit);
-    return () => window.removeEventListener('gp:weights-commit', onCommit);
-  }, [answers]); // depends on latest answers so commit uses current numbers
+    window.addEventListener("gp:weights-commit", onCommit);
+    return () => window.removeEventListener("gp:weights-commit", onCommit);
+  }, [computeCurrentAvg, commitAllocAvg]);
 
   const next = () => {
-    // emit a "commit" so FrontPage can set allocAvg on step advance
-    const avg2 = computeCurrentAvg();
-    try {
-      onLiveAverageChangeRef.current?.(avg2, { dragging: false, committed: true });
-    } catch {}
+    // Commit on step advance so placement can update
+    const avg = computeCurrentAvg();
+    commitAllocAvg(typeof avg === "number" ? avg : DEFAULT_AVG);
 
     if (current < questions.length - 1) {
-      // slab transition without touching the button area
-      setSlabState('leaving');
+      setSlabState("leaving");
       setTimeout(() => {
         setCurrent((c) => c + 1);
-        setSlabState('entering');
-        setTimeout(() => setSlabState('idle'), D);
+        setSlabState("entering");
+        setTimeout(() => setSlabState("idle"), D);
       }, D);
     } else {
       onSubmit?.(answers);
@@ -186,36 +158,33 @@ export default function QuestionFlow({
 
   const currentShape = shapeForIndex(current);
   const slabClass =
-    slabState === 'leaving' ? 'q-slab is-leaving'
-    : slabState === 'entering' ? 'q-slab is-entering'
-    : 'q-slab';
+    slabState === "leaving" ? "q-slab is-leaving" : slabState === "entering" ? "q-slab is-entering" : "q-slab";
 
   return (
     <div className="questionnaire">
       <div className="answer-question">
-       <div className={`questions ${slabClass}`}>
-        <div className="q-count">
-          {current + 1}/{questions.length}
+        <div className={`questions ${slabClass}`}>
+          <div className="q-count">
+            {current + 1}/{questions.length}
+          </div>
+          <h3 className="q-title">
+            {q.prompt}
+            <span className={`q-shape-badge q-shape--${currentShape}`} aria-label={`Shape: ${currentShape}`} />
+          </h3>
         </div>
-        <h3 className="q-title">
-          {q.prompt}
-          <span className={`q-shape-badge q-shape--${currentShape}`} aria-label={`Shape: ${currentShape}`} />
-        </h3>
-       </div>
 
         <div className={`survey-flow ${slabClass}`}>
-        <div className="selection-part">
-          {/* STABLE callback prevents map re-renders while dragging */}
-          <SelectionMap onWeightsChange={onMapStable} />
-        </div>
+          <div className="selection-part">
+            <SelectionMap onWeightsChange={onMapStable} />
+          </div>
 
-        {/* Each option is tied to its own shape (circle, square, triangle, diamond) */}
-        <AnswersList question={q} factors={mapFactors} />
-       </div>
+          <AnswersList question={q} factors={mapFactors} />
+        </div>
       </div>
+
       <div className="survey-actions">
         <button type="button" className="begin-button2" onClick={next} disabled={!!submitting}>
-          <span>{current < questions.length - 1 ? 'Next' : 'Finish'}</span>
+          <span>{current < questions.length - 1 ? "Next" : "Finish"}</span>
         </button>
       </div>
     </div>

@@ -3,7 +3,7 @@ import type { BreakBand } from '../grid-layout/config.ts';
 import { bandFromWidth } from '../grid-layout/config.ts';
 import { RowRules } from '../grid-layout/rowRules.ts';
 import type { FootRect } from './types.ts';
-import type { ShapeName } from '../../condition-utils/types.ts';
+import type { ShapeName } from '../../condition/types.ts';
 
 export function ensureAtLeastOneSunAtLowAvg(
   items: Array<{ shape?: ShapeName; footprint: FootRect }>,
