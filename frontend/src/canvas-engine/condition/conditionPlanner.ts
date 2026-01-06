@@ -1,7 +1,8 @@
-// src/canvas/condition/conditionPlanner.ts
-import type { ConditionKind, ShapeKind, ShapeName, Size, CurveSet } from './types.ts';
-import { CONDITIONS, type ConditionSpec } from './conditions.ts';
-import { hash32 } from '../shared/hash32.ts';
+// src/canvas-engine/condition/conditionPlanner.ts
+import type { ConditionKind, ShapeName, Size, CurveSet } from "./types.ts";
+import { CONDITIONS } from "./conditions.ts";
+import type { ConditionSpec } from "./types.ts";
+import { hash32 } from "../shared/hash32.ts";
 
 import {
   type Quota,
@@ -9,7 +10,7 @@ import {
   type Anchor,
   QUOTA_CURVES_DEFAULT,
   QUOTA_CURVES_OVERLAY,
-} from './quotaCurves.ts';
+} from "./quotaCurves.ts";
 
 export type PoolItem = { id: number; cond: ConditionKind };
 

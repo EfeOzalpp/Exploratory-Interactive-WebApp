@@ -1,18 +1,19 @@
-// modifiers/color-modifiers/colorBlend.ts
-import { mixRGB, mixRGBGamma } from "./colorUtils.ts";
-import type { RGB } from "./color/colorStops.ts";
+// canvas-engine/modifiers/color-modifiers/blend.ts
+import type { RGB } from "./types.ts";
+import { clamp01 } from "./math.ts";
+import { mixRGB, mixRGBGamma } from "./colorspace.ts";
 
 /** Existing API: keep linear for backward compatibility */
 export function blendRGB(base: RGB, gradientRGB?: RGB, blend: number = 0.5): RGB {
   if (!gradientRGB) return base;
-  const k = Math.max(0, Math.min(1, blend));
+  const k = clamp01(blend);
   return mixRGB(base, gradientRGB, k);
 }
 
 /** Gamma-correct mix for nicer gradients & lighting */
 export function blendRGBGamma(base: RGB, gradientRGB?: RGB, blend: number = 0.5): RGB {
   if (!gradientRGB) return base;
-  const k = Math.max(0, Math.min(1, blend));
+  const k = clamp01(blend);
   return mixRGBGamma(base, gradientRGB, k);
 }
 

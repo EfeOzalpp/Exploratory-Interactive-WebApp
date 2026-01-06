@@ -1,45 +1,9 @@
-// src/canvas/condition-utils/conditions.ts
-import { hash32 } from '../shared/hash32.ts';
-import type { ConditionKind, ShapeKind, Size } from './types.ts';
+// src/canvas-engine/condition/conditions.ts
+import { hash32 } from "../shared/hash32.ts";
+import type { ConditionKind, Variant } from "./types.ts";
+import { CONDITIONS } from "./specification.ts";
 
-export type Variant = {
-  shape: ShapeKind;
-  footprint: Size;
-};
-
-export type ConditionSpec = {
-  variants: Variant[];
-};
-
-export const CONDITIONS: Record<ConditionKind, ConditionSpec> = {
-  A: {
-    variants: [
-      { shape: 'clouds', footprint: { w: 2, h: 3 } },
-      { shape: 'sun', footprint: { w: 2, h: 2 } },
-      { shape: 'bus', footprint: { w: 2, h: 1 } },
-    ],
-  },
-  B: {
-    variants: [
-      { shape: 'snow', footprint: { w: 1, h: 3 } },
-      { shape: 'villa', footprint: { w: 2, h: 2 } },
-      { shape: 'trees', footprint: { w: 1, h: 1 } },
-    ],
-  },
-  C: {
-    variants: [
-      { shape: 'house', footprint: { w: 1, h: 3 } },
-      { shape: 'power', footprint: { w: 1, h: 3 } },
-    ],
-  },
-  D: {
-    variants: [
-      { shape: 'car', footprint: { w: 1, h: 1 } },
-      { shape: 'sea', footprint: { w: 2, h: 1 } },
-      { shape: 'carFactory', footprint: { w: 2, h: 2 } },
-    ],
-  },
-};
+export { CONDITIONS };
 
 /**
  * Deterministic variant picker by (kind, id, salt).

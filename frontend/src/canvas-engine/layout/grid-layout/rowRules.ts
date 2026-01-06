@@ -89,12 +89,12 @@ const SHAPE_BANDS_Q: Partial<Record<BreakBand, Partial<Record<ShapeName, Band>>>
   },
   large: {
     sun: { topK: 0, botK: 0.2 },
-    clouds: { topK: 0.2, botK: 0.6 },
+    clouds: { topK: 0.3, botK: 1 },
     snow: { topK: 0.4, botK: 0.6 },
 
-    house: { topK: 0.3, botK: 1 },
-    villa: { topK: 0.25, botK: 1 },
-    power: { topK: 0.4, botK: 1 },
+    house: { topK: 0.4, botK: 1 },
+    villa: { topK: 0.2, botK: 1 },
+    power: { topK: 0.3, botK: 1 },
     carFactory: { topK: 0.4, botK: 1 },
     car: { topK: 0.4, botK: 1 },
     bus: { topK: 0.4, botK: 1 },

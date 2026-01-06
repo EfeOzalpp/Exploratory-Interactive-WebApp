@@ -1,21 +1,18 @@
-// src/canvas/condition-utils/types.ts
-export type ConditionKind = 'A' | 'B' | 'C' | 'D';
+// src/canvas-engine/condition/types.ts
+export {
+  CONDITION_KINDS,
+  SHAPES,
+} from "./specification.ts";
 
-export type ShapeKind =
-  | 'clouds'
-  | 'snow'
-  | 'house'
-  | 'power'
-  | 'sun'
-  | 'villa'
-  | 'car'
-  | 'sea'
-  | 'carFactory'
-  | 'bus'
-  | 'trees';
-
-export type Size = { w: number; h: number };
-
-export type ShapeName = ShapeKind;
-
-export type CurveSet = 'default' | 'overlay';
+export type {
+  ConditionKind,
+  ShapeName,
+  ShapeKind,
+  Size,
+  Variant,
+  ConditionSpec,
+  CurveSet,
+  Quota,
+  Limits,
+  QuotaAnchor,
+} from "./specification.ts";

@@ -2,7 +2,7 @@
 import * as React from 'react';
 import * as THREE from 'three';
 
-import { computeVisualStyle } from '../../../canvas-engine/modifiers/color-modifiers/avgToStyle.ts';
+import { computeVisualStyle } from "../../../canvas-engine/modifiers/color-modifiers/style.ts";
 
 import type { ShapeKey } from '../selection/types.ts';
 import { chooseShape, quantizeAvgWithDownshift, pickVariantSlot, makeStaticKey, makeFrozenKey, resolveDpr, DEFAULT_VARIANT_SLOTS } from '../internal/spritePolicy.ts';

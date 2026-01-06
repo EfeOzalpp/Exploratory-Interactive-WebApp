@@ -1,4 +1,4 @@
-// canvas-engine/canvas/index.ts
+// canvas-engine/runtime/index.ts
 
 import {
   drawClouds,
@@ -22,8 +22,8 @@ import { getViewportSize, resolvePixelDensity, type DprMode } from "./viewport.t
 import { makeP, type PLike } from "./p/makeP.ts";
 
 // derive palette in the render loop (same layer as shape mods)
-import { getAvgColor } from "../modifiers/color-modifiers/color/getAvgColor.ts";
-import { BRAND_STOPS_VIVID } from "../modifiers/color-modifiers/color/colorStops.ts";
+import { gradientColor } from "../modifiers/color-modifiers/gradient.ts";
+import { BRAND_STOPS_VIVID } from "../modifiers/color-modifiers/stops.ts";
 
 function clamp01(t: number) {
   return t < 0 ? 0 : t > 1 ? 1 : t;
@@ -337,12 +337,12 @@ export function startCanvasEngine({
     const transport = { tSec, bpm, beatPhase };
 
     // liveAvg is a signal, shared by color + shape mods
-    const u = inputs.liveAvg;
+    const signal1 = inputs.liveAvg;
 
     // palette and shape mods are both derived in render loop
-    if (u !== lastU) {
-      lastU = u;
-      cachedGradient = getAvgColor(u, BRAND_STOPS_VIVID).rgb;
+    const uq = Math.round(signal1 * 1000) / 1000;
+    if (uq !== lastU) { lastU = uq; 
+      cachedGradient = gradientColor(BRAND_STOPS_VIVID, uq).rgb; 
     }
     const gradientRGB = style.gradientRGBOverride ?? cachedGradient;
 
@@ -350,7 +350,7 @@ export function startCanvasEngine({
       cell,
       gradientRGB,
       blend: style.blend,
-      liveAvg: u,
+      liveAvg: signal1,
       alpha: 235,
       timeMs: tMs,
       exposure: style.exposure,

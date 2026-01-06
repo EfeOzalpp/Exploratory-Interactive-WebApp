@@ -223,15 +223,15 @@ export const GRID_MAP_QUESTIONNAIRE: Record<BreakBand, GridSpec> = {
   },
 
   large: {
-    rows: 16,
+    rows: 14,
     useTopRatio: 0.85,
     cap: 128,
     cellPadding: 0,
     jitter: 12,
     forbidden: makeRowForbidden([
       { center: '100%' },
-      { left: '28%', right: '30%' },
-      { left: '28%', right: '30%' },
+      { center: '100%' },
+      { left: '5%', right: '5%' },
       { left: '5%', right: '5%' },
       { left: '5%', right: '5%' },
       { left: '5%', right: '5%' },
@@ -312,7 +312,7 @@ export const GRID_MAP_OVERLAY: Record<BreakBand, GridSpec> = {
 
   large: {
     rows: 18,
-    useTopRatio: 1,
+    useTopRatio: 0.9,
     cap: 4,
     cellPadding: 0,
     jitter: 12,

@@ -1,7 +1,7 @@
 // graph-runtime/sprites/internal/spriteRuntime.ts
 import * as THREE from 'three';
 
-import { computeVisualStyle } from '../../../canvas-engine/modifiers/color-modifiers/avgToStyle.ts';
+import { computeVisualStyle } from "../../../canvas-engine/modifiers/color-modifiers/style.ts";
 
 import type { ShapeKey } from '../selection/types.ts';
 import { DRAWERS } from '../selection/drawers.ts';

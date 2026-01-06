@@ -1,22 +1,45 @@
 // modifiers/index.ts
+
+/* =========================
+ * COLOR
+ * ========================= */
+
+export { clamp01 } from "./color-modifiers/math.ts";
+
+export { rgbToHsl, hslToRgb } from "./color-modifiers/colorspace.ts";
+
+export { blendRGB, blendRGBGamma } from "./color-modifiers/blend.ts";
+
+export { cssToRgbViaCanvas } from "./color-modifiers/adapter.ts";
+
 export {
   oscillateSaturation,
-  driveSaturation,
   clampBrightness,
   clampSaturation,
-  rgbToHsl,
-  hslToRgb,
-} from "./color-modifiers/colorUtils.ts";
+  driveSaturation,
+} from "./color-modifiers/effects.ts";
 
-export { blendRGB, blendRGBGamma } from "./color-modifiers/colorBlend.ts";
+
+/* =========================
+ * SHAPE MODIFIERS
+ * ========================= */
+
 export { displacementOsc } from "./shape-modifiers/osc.ts";
-export { cssToRgbViaCanvas } from "./color-modifiers/colorAdapter.ts";
-
-export { stepAndDrawParticles } from "./particle-systems/particle-1.ts";
-export { stepAndDrawPuffs } from "./particle-systems/particle-2.ts";
-
 export { makeArchLobes } from "./shape-modifiers/geom.ts";
-export { clamp01, mix, val } from "./shape-modifiers/useLerp.ts";
+
+// legacy surface expects clamp01/val/mix to come from here.
+// clamp01 would collide with color clamp01, so keep the old names:
+// - clamp01 from color
+// - val/mix from useLerp
+export { val, mix } from "./shape-modifiers/useLerp.ts";
 
 export { applyShapeMods } from "./shape-modifiers/shapeMods.apply.ts";
 export type { Anchor, ShapeMods, ApplyShapeModsOpts } from "./shape-modifiers/shapeMods.types.ts";
+
+
+/* =========================
+ * PARTICLES 
+ * ========================= */
+
+export { stepAndDrawParticles } from "./particle-systems/particle-1.ts";
+export { stepAndDrawPuffs } from "./particle-systems/particle-2.ts";

@@ -13,18 +13,6 @@ import {
   applyShapeMods,
 } from "../modifiers/index.ts";
 
-/* Exposure/contrast helper (channel-space, gentle defaults) */
-function applyExposureContrast(rgb, exposure = 1, contrast = 1) {
-  const e = Math.max(0.1, Math.min(3, exposure));
-  const k = Math.max(0.5, Math.min(2, contrast));
-  const adj = (v) => {
-    let x = (v / 255) * e;
-    x = (x - 0.5) * k + 0.5;
-    return Math.max(0, Math.min(1, x)) * 255;
-  };
-  return { r: Math.round(adj(rgb.r)), g: Math.round(adj(rgb.g)), b: Math.round(adj(rgb.b)) };
-}
-
 /* ───────────────── Palettes ───────────────── */
 export const CLOUDS_BASE_PALETTE = {
   default: { r: 236, g: 238, b: 242 },
@@ -156,8 +144,6 @@ export function drawClouds(p, _cx, _cy, _r, opts) {
     phase: opts?.oscPhase ?? 0,
   });
 
-  cloudRgb = applyExposureContrast(cloudRgb, ex, ct);
-
   /* ── Wobble ── */
   const wobbleK = val(CLOUDS.wobbleAmp, u) * val(WOBBLE.ampScale, u);
   const ampX = (opts?.dispAmp ?? Math.min(12, Math.max(6, Math.round(hTop * 0.12)))) * wobbleK;
@@ -214,8 +200,6 @@ export function drawClouds(p, _cx, _cy, _r, opts) {
       (typeof opts?.rainCss === 'string' && opts.rainCss.trim().length > 0)
         ? cssToRgbViaCanvas(p, opts.rainCss)
         : blendRGB(CLOUDS_BASE_PALETTE.rain, opts?.gradientRGB, rainBlend);
-
-    rainTint = applyExposureContrast(rainTint, ex, ct);
 
     const rainColor = { r: rainTint.r, g: rainTint.g, b: rainTint.b, a: syncedAlpha };
 

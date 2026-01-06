@@ -8,8 +8,8 @@ export const WEIGHTED_QUESTIONS: Question[] = [
     required: true,
     options: [
       { key: 'A', label: 'Use sidewalks or bicycle', weight: 0.95 },
-      { key: 'B', label: 'Use a solely gas-powered vehicle for short trips & errands', weight: 0.05 },
-      { key: 'C', label: 'Take public transit and shared rides', weight: 0.7 },
+      { key: 'B', label: 'Take public transit and shared rides', weight: 0.7 },
+      { key: 'C', label: 'Use a solely gas-powered vehicle for short trips & errands', weight: 0.05 },
       { key: 'D', label: 'Use an electric or hybrid car or truck', weight: 0.4 },
     ],
   },
