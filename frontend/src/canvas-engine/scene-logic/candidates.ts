@@ -1,5 +1,6 @@
-// src/canvas/layout/scene-composition/candidates.ts
-import type { GridSpec } from '../grid-layout/config.ts';
+// src/canvas/scene-logic/candidates.ts
+
+import type { CanvasPaddingSpec } from '../shared/scene-schema/canvasPadding.ts';
 
 /**
  * Produces an ordered list of candidate (r,c) cells for fallback placement.
@@ -8,7 +9,7 @@ import type { GridSpec } from '../grid-layout/config.ts';
 export function buildFallbackCells(
   rows: number,
   cols: number,
-  spec: GridSpec,
+  spec: CanvasPaddingSpec, 
   opts?: { overlay?: boolean }
 ) {
   const useTop = Math.max(0.01, Math.min(1, spec.useTopRatio ?? 1));

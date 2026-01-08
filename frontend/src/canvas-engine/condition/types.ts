@@ -1,4 +1,5 @@
 // src/canvas-engine/condition/types.ts
+
 export {
   CONDITION_KINDS,
   SHAPES,

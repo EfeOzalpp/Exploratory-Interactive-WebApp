@@ -1,11 +1,12 @@
-// src/canvas/layout/scene-composition/constraints.ts
-import type { GridSpec } from '../grid-layout/config.ts';
+// src/canvas/scene-logic/constraints.ts
+
+import type { CanvasPaddingSpec } from '../shared/scene-schema/canvasPadding.ts';
 import { makeCellForbidden } from '../grid-layout/forbidden.ts';
 
 /**
  * Combines grid spec forbidden rules into a single cell-level predicate.
  */
-export function cellForbiddenFromSpec(spec: GridSpec, rows: number, cols: number) {
+export function cellForbiddenFromSpec(spec: CanvasPaddingSpec, rows: number, cols: number) {
   return makeCellForbidden(spec, rows, cols);
 }
 

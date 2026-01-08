@@ -1,4 +1,5 @@
-// src/canvas/layout/scene-composition/index.ts
+// src/canvas/scene-logic/index.ts
+
 export type {
   PoolItem,
   PlacedItem,

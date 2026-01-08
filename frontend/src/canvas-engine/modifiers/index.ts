@@ -19,6 +19,10 @@ export {
   driveSaturation,
 } from "./color-modifiers/effects.ts";
 
+// Runtime uses these
+export { gradientColor } from "./color-modifiers/gradient.ts";
+export { BRAND_STOPS_VIVID } from "./color-modifiers/stops.ts";
+
 
 /* =========================
  * SHAPE MODIFIERS

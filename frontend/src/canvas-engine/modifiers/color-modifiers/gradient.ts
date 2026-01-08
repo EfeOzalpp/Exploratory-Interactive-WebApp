@@ -25,7 +25,7 @@ export function gradientColor(stops: Stop[], tRaw: number): { rgb: RGB; css: str
     if (t >= s1.stop && t <= s2.stop) {
       const span = Math.max(1e-6, s2.stop - s1.stop);
       const lt = (t - s1.stop) / span;
-      const rgb = mixRGB(s1.color, s2.color, lt); // ✅ linear
+      const rgb = mixRGB(s1.color, s2.color, lt); // linear
       return { rgb, css: rgbToCss(rgb), t };
     }
   }

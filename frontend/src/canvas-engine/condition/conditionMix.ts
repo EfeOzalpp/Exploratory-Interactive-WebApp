@@ -1,4 +1,5 @@
 // src/canvas/condition/conditionMix.ts
+
 import type { ConditionKind } from './types.ts';
 
 export type Mix4 = readonly [number, number, number, number];

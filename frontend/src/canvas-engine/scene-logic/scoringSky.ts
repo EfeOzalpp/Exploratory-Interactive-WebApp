@@ -1,6 +1,7 @@
-// src/canvas/layout/scene-composition/scoringSky.ts
-import type { ShapeName } from '../../condition/types.ts';
-import { rand01Keyed } from '../../shared/hash32.ts';
+// src/canvas/scene-logic/scoringSky.ts
+
+import type { ShapeName } from '../condition/types.ts';
+import { rand01Keyed } from '../shared/utils/hash32.ts';
 
 export function isSky(shape?: ShapeName) {
   return shape === 'clouds' || shape === 'snow' || shape === 'sun';

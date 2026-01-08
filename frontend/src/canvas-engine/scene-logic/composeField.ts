@@ -1,5 +1,9 @@
-// src/canvas/layout/scene-composition/composeField.ts
-import { bandFromWidth, getGridSpec } from '../grid-layout/config.ts';
+// src/canvas/scene-logic/composeField.ts
+
+import { deviceType } from '../shared/utils/responsiveness.ts';
+
+import { resolveCanvasPaddingSpec } from '../grid-layout/resolveCanvasPadding.ts';
+
 import { makeCenteredSquareGrid } from '../grid-layout/layoutCentered.ts';
 
 import type { ComposeOpts, ComposeResult, PoolItem } from './types.ts';
@@ -8,7 +12,7 @@ import { placePoolItems } from './place.ts';
 import { ensureAtLeastOneSunAtLowAvg } from './post.ts';
 import { retargetKindsStable, assignShapesByPlanner } from './plan.ts';
 
-import type { ConditionKind, CurveSet } from '../../condition/types.ts';
+import type { ConditionKind, CurveSet } from '../condition/types.ts';
 
 export function composeField(opts: ComposeOpts): ComposeResult {
   const questionnaireOpen = !!opts.questionnaireOpen;
@@ -19,8 +23,8 @@ export function composeField(opts: ComposeOpts): ComposeResult {
 
   const u = clamp01(opts.allocAvg);
 
-  const band = bandFromWidth(w);
-  const spec = getGridSpec(w, questionnaireOpen, { overlay });
+  const device = deviceType(w);
+  const spec = resolveCanvasPaddingSpec(w, questionnaireOpen, { overlay });
 
   const { cell, rows, cols } = makeCenteredSquareGrid({
     w,
@@ -31,7 +35,7 @@ export function composeField(opts: ComposeOpts): ComposeResult {
 
   const usedRows = usedRowsFromSpec(rows, spec.useTopRatio);
 
-  const meta = { band, spec, rows, cols, cell, usedRows };
+  const meta = { device, spec, rows, cols, cell, usedRows };
 
   if (!rows || !cols || !cell) {
     return { placed: [], nextPool: opts.pool.slice(), meta };
@@ -57,9 +61,9 @@ export function composeField(opts: ComposeOpts): ComposeResult {
   assignShapesByPlanner(pool as any, u, salt, curveSet);
 
   const { placed, nextPool } = placePoolItems({
+    device,
     pool,
     spec,
-    band,
     rows,
     cols,
     cell,
@@ -73,7 +77,7 @@ export function composeField(opts: ComposeOpts): ComposeResult {
     placed.map((p) => ({ shape: p.shape, footprint: p.footprint })),
     u,
     usedRows,
-    band
+    device
   );
 
   return { placed, nextPool, meta };

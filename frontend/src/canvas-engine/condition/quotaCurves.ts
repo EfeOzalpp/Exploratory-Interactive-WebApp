@@ -1,4 +1,5 @@
 // src/canvas-engine/condition/quotaCurves.ts
+
 export type {
   CurveSet,
   Quota,

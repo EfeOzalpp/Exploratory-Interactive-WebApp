@@ -19,10 +19,6 @@ export function ensureMount(mount: string, zIndex?: number, layout: EngineLayout
   const mode: EngineLayoutMode = layout === "auto" ? (existed ? "inherit" : "fixed") : layout;
 
   if (mode === "fixed") {
-    el.style.position = "fixed";
-    el.style.inset = "0";
-    el.style.height = "100dvh";
-    el.style.width = "100vw";
     el.style.zIndex = String(Number.isFinite(zIndex as number) ? zIndex : 2);
   } else {
     // inherit: don't stomp geometry; just ensure we can absolutely position the canvas

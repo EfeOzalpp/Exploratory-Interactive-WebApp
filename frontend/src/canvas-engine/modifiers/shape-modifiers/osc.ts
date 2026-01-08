@@ -1,5 +1,5 @@
 // modifiers/shape-modifiers/osc.ts
-import { phaseFromIndex } from "../../shared/hash32.ts";
+import { phaseFromIndex } from "../../shared/utils/hash32.ts";
 
 export function displacementOsc(
   tSec: number,

@@ -1,4 +1,5 @@
 // pages/Frontpage.tsx
+
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import RadialBackground from "../static-assets/static/radialBackground.jsx";
 import Survey from "../weighted-survey/Survey.tsx";
@@ -140,13 +141,13 @@ const AppInner: React.FC = () => {
       {/* Intro canvas UNMOUNTED while city overlay is open or while animation overlay is on */}
       {!readyForViz && !animationVisible && !cityPanelOpen && (
         <Suspense fallback={null}>
-          <CanvasEntry
-            // kept for compatibility with existing CanvasEntry signature
-            answers={answers as any}
-            liveAvg={liveAvg}
-            allocAvg={allocAvg}
-            visible={true}
-          />
+        <CanvasEntry
+          answers={answers as any}
+          liveAvg={liveAvg}
+          allocAvg={allocAvg}
+          questionnaireOpen={questionnaireOpen}
+          visible={true}
+        />
         </Suspense>
       )}
 

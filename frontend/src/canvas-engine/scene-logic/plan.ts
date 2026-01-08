@@ -1,15 +1,16 @@
-// src/canvas-engine/layout/scene-composition/plan.ts
-import type { ConditionKind, CurveSet, ShapeName, Size } from '../../condition/types.ts';
+// src/canvas-engine/scene-logic/plan.ts
+
+import type { ConditionKind, CurveSet, ShapeName, Size } from '../condition/types.ts';
 
 import {
   countsFromSlider,
   adjustConditionsStable,
-} from '../../condition/conditionMix.ts';
+} from '../condition/conditionMix.ts';
 
 import {
   planForBucket,
   type PoolItem as PlannerPoolItem,
-} from '../../condition/conditionPlanner.ts';
+} from '../condition/conditionPlanner.ts';
 
 export type PlannedPoolItem = PlannerPoolItem & {
   shape?: ShapeName;

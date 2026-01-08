@@ -1,11 +1,16 @@
 // src/canvas-engine/hooks/useSceneField.ts
+
 import { useEffect, useRef } from 'react';
-import { useAppState } from '../../app-context/appStateContext.tsx';
+import { composeField, makeDefaultPoolItem } from '../scene-logic/composeField.ts';
+import type { PoolItem as ScenePoolItem } from '../scene-logic/types.ts';
+import { targetPoolSize } from '../scene-logic/poolSize.ts';
 
-import { composeField, makeDefaultPoolItem } from '../layout/scene-composition/composeField.ts';
-import type { PoolItem as ScenePoolItem } from '../layout/scene-composition/types.ts';
+import type { HostId } from '../multi-canvas-setup/ids.ts';
 
-import { targetPoolSize } from '../layout/scene-composition/poolSize.ts'; // Number of shapes cap (configurable per canvas instance)
+// scene-key resolver (you add this file)
+import { resolveSceneKey } from '../shared/scene-schema/resolveSceneKey.ts';
+// profiles registry (you add this file)
+import { SCENE_PROFILES } from '../shared/scene-schema/sceneProfiles.ts';
 
 type Engine = {
   ready: React.RefObject<boolean>;
@@ -42,7 +47,10 @@ function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
   return { w: Math.round(w), h: Math.round(h) };
 }
 
-function ensurePoolSize(poolRef: React.RefObject<ScenePoolItem[] | null>, desired: number) {
+function ensurePoolSize(
+  poolRef: React.RefObject<ScenePoolItem[] | null>,
+  desired: number
+) {
   if (desired <= 0) {
     poolRef.current = [];
     return;
@@ -51,7 +59,9 @@ function ensurePoolSize(poolRef: React.RefObject<ScenePoolItem[] | null>, desire
   const cur = poolRef.current;
 
   if (!cur) {
-    poolRef.current = Array.from({ length: desired }, (_, i) => makeDefaultPoolItem(i + 1));
+    poolRef.current = Array.from({ length: desired }, (_, i) =>
+      makeDefaultPoolItem(i + 1)
+    );
     return;
   }
 
@@ -65,22 +75,39 @@ function ensurePoolSize(poolRef: React.RefObject<ScenePoolItem[] | null>, desire
   const maxId = cur.reduce((m, p) => Math.max(m, p.id), 0);
   const toAdd = desired - cur.length;
 
-  const extra = Array.from({ length: toAdd }, (_, k) => makeDefaultPoolItem(maxId + k + 1));
+  const extra = Array.from({ length: toAdd }, (_, k) =>
+    makeDefaultPoolItem(maxId + k + 1)
+  );
   poolRef.current = cur.concat(extra);
 }
 
-/**
- * React hook that keeps the engine field in sync with app state and allocAvg.
- * It owns lifecycle, sizing, and control writes; composition lives in scene-composition.
- */
+export type SceneSignals = {
+  questionnaireOpen: boolean;
+};
+
+// keep this minimal for now; later you can pass a mode string instead of overlay boolean
+export type SceneHostOpts = {
+  baseMode?: 'start' | 'overlay';
+};
+
+
 export function useSceneField(
   engine: Engine,
+  hostId: HostId,
   allocAvg: number | undefined,
+  signals: SceneSignals,
   viewportKey?: number | string,
-  opts?: { overlay?: boolean }
+  opts?: SceneHostOpts
 ) {
-  const { questionnaireOpen } = useAppState();
-  const overlay = !!opts?.overlay;
+
+  const { questionnaireOpen } = signals;
+
+  // baseMode lets city default to overlay without sprinkling booleans everywhere
+  const sceneKey = resolveSceneKey(hostId, { questionnaireOpen }, { baseMode: opts?.baseMode });
+  const overlay = sceneKey.endsWith(':overlay');
+  
+  // get profile (even if you don't use it everywhere yet)
+  const profile = SCENE_PROFILES[sceneKey];
 
   const uRef = useRef(0.5);
   uRef.current = clamp01(allocAvg);
@@ -92,9 +119,14 @@ export function useSceneField(
 
     engine.controls.current?.setQuestionnaireOpen?.(questionnaireOpen);
 
-    const canvas = engine.controls.current?.canvas as HTMLCanvasElement | null | undefined;
+    const canvas = engine.controls.current?.canvas as
+      | HTMLCanvasElement
+      | null
+      | undefined;
+
     const { w, h } = getCanvasLogicalSize(canvas);
 
+    // still using old API (questionnaireOpen/overlay) for now
     const desired = targetPoolSize({
       questionnaireOpen,
       overlay,
@@ -105,6 +137,8 @@ export function useSceneField(
 
     const pool = poolRef.current ?? [];
 
+    // still using old composeField API for now
+    // later: pass sceneKey or profile down and stop passing overlay/questionnaireOpen separately
     const result = composeField({
       questionnaireOpen,
       overlay,
@@ -112,11 +146,15 @@ export function useSceneField(
       viewportKey,
       canvas: { w, h },
       pool,
-    });
+
+      // optional: pass through for future migration (composeField can ignore for now)
+      sceneKey,
+      profile,
+    } as any);
 
     poolRef.current = result.nextPool;
 
     engine.controls.current?.setFieldItems?.(result.placed);
     engine.controls.current?.setFieldVisible?.(result.placed.length > 0);
-  }, [engine, allocAvg, questionnaireOpen, viewportKey, overlay]);
+  }, [engine, allocAvg, questionnaireOpen, viewportKey, overlay, hostId, sceneKey, profile]);
 }

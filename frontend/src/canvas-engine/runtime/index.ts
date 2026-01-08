@@ -14,16 +14,14 @@ import {
   drawTrees,
 } from "../shapes/index.js";
 
-import { getGridSpec } from "../layout/grid-layout/config.ts";
-import { makeCenteredSquareGrid } from "../layout/grid-layout/layoutCentered.ts";
+import { resolveCanvasPaddingSpec } from '../grid-layout/resolveCanvasPadding.ts';
+import { makeCenteredSquareGrid } from "../grid-layout/layoutCentered.ts";
 
 import { ensureMount, applyCanvasStyle, type EngineLayoutMode } from "./mount.ts";
 import { getViewportSize, resolvePixelDensity, type DprMode } from "./viewport.ts";
 import { makeP, type PLike } from "./p/makeP.ts";
 
-// derive palette in the render loop (same layer as shape mods)
-import { gradientColor } from "../modifiers/color-modifiers/gradient.ts";
-import { BRAND_STOPS_VIVID } from "../modifiers/color-modifiers/stops.ts";
+import { gradientColor, BRAND_STOPS_VIVID } from "../modifiers/index.ts";
 
 function clamp01(t: number) {
   return t < 0 ? 0 : t > 1 ? 1 : t;
@@ -177,7 +175,7 @@ export function startCanvasEngine({
 
     if (!p) return cachedGrid;
 
-    const spec = getGridSpec(p.width, questionnaireOpen);
+    const spec = resolveCanvasPaddingSpec(p.width, questionnaireOpen);
     const { cell, rows, cols } = makeCenteredSquareGrid({
       w: p.width,
       h: p.height,
@@ -284,6 +282,11 @@ export function startCanvasEngine({
       case "clouds":
         drawClouds(p2 as any, it.x, it.y, rEff, opts);
         break;
+        
+      default:
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Unknown shape:", it.shape, it);
+      }
     }
   }
 
@@ -509,7 +512,7 @@ export function startCanvasEngine({
 
     if (Number.isFinite(r) && r > 0) style.r = r;
 
-    if ("gradientRGBOverride" in args) style.gradientRGBOverride = gradientRGBOverride ?? null;
+    if ("gradientRGBOverride" in args) style.gradientRGBOverride = gradientRGBOverride ?? { r: 255, g: 255, b: 255 };
 
     if (typeof blend === "number") style.blend = Math.max(0, Math.min(1, blend));
     if (typeof exposure === "number") style.exposure = Math.max(0.1, Math.min(3, exposure));

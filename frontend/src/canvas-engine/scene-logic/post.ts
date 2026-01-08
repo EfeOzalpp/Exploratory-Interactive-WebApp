@@ -1,20 +1,25 @@
-// src/canvas/layout/scene-composition/post.ts
-import type { BreakBand } from '../grid-layout/config.ts';
-import { bandFromWidth } from '../grid-layout/config.ts';
-import { RowRules } from '../grid-layout/rowRules.ts';
+// src/canvas-engine/scene-logic/post.ts
+
+import type { DeviceType } from '../shared/utils/responsiveness.ts';
+import { PlacementBands } from '../grid-layout/placementBands.ts';
 import type { FootRect } from './types.ts';
-import type { ShapeName } from '../../condition/types.ts';
+import type { ShapeName } from '../condition/types.ts';
 
 export function ensureAtLeastOneSunAtLowAvg(
   items: Array<{ shape?: ShapeName; footprint: FootRect }>,
   u: number,
   usedRows: number,
-  band: BreakBand
+  device: DeviceType
 ) {
   if (u > 0.02) return;
   if (items.some((it) => it.shape === 'sun')) return;
 
-  const { rMin, rMax } = RowRules.skyBand('sun', usedRows, band);
+  const { top: rMin, bot: rMax } = PlacementBands.band(
+    'sun',
+    usedRows,
+    device,
+    1
+  );
 
   let idx = items.findIndex(
     (it) =>
@@ -37,8 +42,7 @@ export function ensureAtLeastOneSunAtLowAvg(
 
   if (idx === -1) {
     idx = items.findIndex(
-      (it) =>
-        it.shape !== 'clouds' && it.footprint.w === 1 && it.footprint.h === 1
+      (it) => it.shape !== 'clouds' && it.footprint.w === 1 && it.footprint.h === 1
     );
   }
 
@@ -50,8 +54,4 @@ export function ensureAtLeastOneSunAtLowAvg(
     items[idx].shape = 'sun';
     items[idx].footprint = { ...items[idx].footprint, w: 1, h: 1 };
   }
-}
-
-export function bandFromCanvasWidth(w: number) {
-  return bandFromWidth(w);
 }

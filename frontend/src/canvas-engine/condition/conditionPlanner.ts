@@ -1,8 +1,9 @@
 // src/canvas-engine/condition/conditionPlanner.ts
+
 import type { ConditionKind, ShapeName, Size, CurveSet } from "./types.ts";
 import { CONDITIONS } from "./conditions.ts";
 import type { ConditionSpec } from "./types.ts";
-import { hash32 } from "../shared/hash32.ts";
+import { hash32 } from "../shared/utils/hash32.ts";
 
 import {
   type Quota,

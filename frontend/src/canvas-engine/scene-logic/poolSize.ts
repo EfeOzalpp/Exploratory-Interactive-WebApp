@@ -1,4 +1,5 @@
-// src/canvas/layout/scene-composition/poolSizing.ts
+// src/canvas/scene-logic/poolSizing.ts
+
 export type WidthBucket = 'sm' | 'md' | 'lg';
 
 export const POOL_SIZES = {

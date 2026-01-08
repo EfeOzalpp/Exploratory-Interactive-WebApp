@@ -1,12 +1,14 @@
-// src/canvas/layout/scene-composition/types.ts
-import type { BreakBand, GridSpec } from '../grid-layout/config.ts';
+// src/canvas/scene-logic/types.ts
+
+import type { DeviceType } from '../shared/utils/responsiveness.ts';
+import type { CanvasPaddingSpec } from '../shared/scene-schema/canvasPadding.ts';
 import type { Place } from '../grid-layout/occupancy.ts';
 import type {
   ConditionKind,
   CurveSet,
   ShapeName,
   Size,
-} from '../../condition/types.ts';
+} from '../condition/types.ts';
 
 export type FootRect = Place;
 
@@ -44,8 +46,8 @@ export type ComposeOpts = {
 };
 
 export type ComposeMeta = {
-  band: BreakBand;
-  spec: GridSpec;
+  device: DeviceType;
+  spec: CanvasPaddingSpec;
   rows: number;
   cols: number;
   cell: number;
