@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/adapter.ts
+
 import type { RGB } from "./types.ts";
 
 /**

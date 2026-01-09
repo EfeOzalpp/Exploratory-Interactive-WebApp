@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/style.ts
+
 import { clamp01 } from "./math.ts";
 import { gradientColor } from "./gradient.ts";
 import { applyExposureContrast } from "./effects.ts";

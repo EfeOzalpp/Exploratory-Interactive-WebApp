@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/stops.ts
+
 export type RGB = { r: number; g: number; b: number };
 export type Stop = { stop: number; color: RGB };
 

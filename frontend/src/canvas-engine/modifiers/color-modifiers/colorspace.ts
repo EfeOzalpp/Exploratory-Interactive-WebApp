@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/colorspace.ts
+
 import type { RGB } from "./types.ts";
 import { clamp01, lerp } from "./math.ts";
 

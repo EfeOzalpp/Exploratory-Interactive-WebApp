@@ -1,19 +1,33 @@
 // src/canvas-engine/condition/types.ts
 
-export {
-  CONDITION_KINDS,
-  SHAPES,
-} from "./specification.ts";
-
 export type {
+  // core catalog
   ConditionKind,
   ShapeName,
   ShapeKind,
+
+  // condition spec
   Size,
   Variant,
   ConditionSpec,
+
+  // quota planning
   CurveSet,
   Quota,
   Limits,
   QuotaAnchor,
-} from "./specification.ts";
+  
+} from "../adjustable-rules/quotaSpecification.ts";
+
+export {
+  // core catalog values
+  CONDITION_KINDS,
+  SHAPES,
+
+  // condition definitions
+  CONDITIONS,
+
+  // quota curves
+  QUOTA_CURVES_DEFAULT,
+  QUOTA_CURVES_OVERLAY,
+} from "../adjustable-rules/quotaSpecification.ts";

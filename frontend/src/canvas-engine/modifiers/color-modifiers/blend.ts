@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/blend.ts
+
 import type { RGB } from "./types.ts";
 import { clamp01 } from "./math.ts";
 import { mixRGB, mixRGBGamma } from "./colorspace.ts";

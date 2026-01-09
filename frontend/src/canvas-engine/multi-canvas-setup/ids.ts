@@ -1,7 +1,4 @@
 // src/canvas-engine/multi-canvas-setup/ids.ts
-export const HOST_IDS = {
-  intro: "intro",
-  city: "city",
-} as const;
+import { HOST_DEFS } from "./hostDefs.ts";
 
-export type HostId = typeof HOST_IDS[keyof typeof HOST_IDS];
+export type HostId = keyof typeof HOST_DEFS;

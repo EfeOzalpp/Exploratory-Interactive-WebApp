@@ -1,16 +1,19 @@
 // src/canvas-engine/hooks/useSceneField.ts
+import { useEffect, useRef } from "react";
 
-import { useEffect, useRef } from 'react';
-import { composeField, makeDefaultPoolItem } from '../scene-logic/composeField.ts';
-import type { PoolItem as ScenePoolItem } from '../scene-logic/types.ts';
-import { targetPoolSize } from '../scene-logic/poolSize.ts';
+import { composeField, makeDefaultPoolItem } from "../scene-logic/composeField.ts";
+import type { PoolItem as ScenePoolItem } from "../scene-logic/types.ts";
 
-import type { HostId } from '../multi-canvas-setup/ids.ts';
+import type { HostId } from "../multi-canvas-setup/ids.ts";
+import { HOST_DEFS } from "../multi-canvas-setup/hostDefs.ts";
 
-// scene-key resolver (you add this file)
-import { resolveSceneKey } from '../shared/scene-schema/resolveSceneKey.ts';
-// profiles registry (you add this file)
-import { SCENE_PROFILES } from '../shared/scene-schema/sceneProfiles.ts';
+import { resolveSceneMode } from "../adjustable-rules/resolveSceneMode.ts";
+import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
+
+import { targetPoolSize } from "../adjustable-rules/poolSizes.ts";
+
+import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
+import { CANVAS_PADDING } from "../adjustable-rules/canvasPadding.ts";
 
 type Engine = {
   ready: React.RefObject<boolean>;
@@ -18,22 +21,18 @@ type Engine = {
 };
 
 const clamp01 = (v?: number) =>
-  typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5;
+  typeof v === "number" ? Math.max(0, Math.min(1, v)) : 0.5;
 
-/**
- * Derives logical canvas size from the backing store, accounting for DPR.
- * This avoids depending on DOM rect reads while transforms/animations are active.
- */
 function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
   if (!canvas) {
-    const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const h = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const w = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const h = typeof window !== "undefined" ? window.innerHeight : 768;
     return { w: Math.round(w), h: Math.round(h) };
   }
 
   const dpr =
     (canvas as any)._dpr ||
-    (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+    (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1);
 
   const backingW = (canvas.width || 0) / dpr;
   const backingH = (canvas.height || 0) / dpr;
@@ -85,29 +84,32 @@ export type SceneSignals = {
   questionnaireOpen: boolean;
 };
 
-// keep this minimal for now; later you can pass a mode string instead of overlay boolean
-export type SceneHostOpts = {
-  baseMode?: 'start' | 'overlay';
-};
-
-
 export function useSceneField(
   engine: Engine,
   hostId: HostId,
   allocAvg: number | undefined,
   signals: SceneSignals,
-  viewportKey?: number | string,
-  opts?: SceneHostOpts
+  viewportKey?: number | string
 ) {
-
   const { questionnaireOpen } = signals;
 
-  // baseMode lets city default to overlay without sprinkling booleans everywhere
-  const sceneKey = resolveSceneKey(hostId, { questionnaireOpen }, { baseMode: opts?.baseMode });
-  const overlay = sceneKey.endsWith(':overlay');
-  
-  // get profile (even if you don't use it everywhere yet)
-  const profile = SCENE_PROFILES[sceneKey];
+  const hostDef = HOST_DEFS[hostId];
+  if (!hostDef) throw new Error(`Unknown hostId "${hostId}"`);
+
+  const ruleset = hostDef.scene?.ruleset;
+  if (!ruleset) throw new Error(`[${hostId}] missing scene.ruleset`);
+
+  const baseMode = hostDef.scene?.baseMode ?? "start";
+
+  // single source of truth: mode derived from (signals + host baseMode)
+  const mode: SceneMode = resolveSceneMode(
+    { questionnaireOpen },
+    { baseMode }
+  );
+
+  // causes validation to run if you wrapped with defineRuleSet()
+  const profile = ruleset.getProfile(mode);
+  const quotaCurves = profile.quotaCurves;
 
   const uRef = useRef(0.5);
   uRef.current = clamp01(allocAvg);
@@ -117,8 +119,6 @@ export function useSceneField(
   useEffect(() => {
     if (!engine?.ready?.current) return;
 
-    engine.controls.current?.setQuestionnaireOpen?.(questionnaireOpen);
-
     const canvas = engine.controls.current?.canvas as
       | HTMLCanvasElement
       | null
@@ -126,35 +126,33 @@ export function useSceneField(
 
     const { w, h } = getCanvasLogicalSize(canvas);
 
-    // still using old API (questionnaireOpen/overlay) for now
-    const desired = targetPoolSize({
-      questionnaireOpen,
-      overlay,
-      width: w,
-    });
-
+    // IMPORTANT: poolsize from adjustable-rules by mode
+    const desired = targetPoolSize({ mode, width: w } as any);
     ensurePoolSize(poolRef, desired);
 
     const pool = poolRef.current ?? [];
 
-    // still using old composeField API for now
-    // later: pass sceneKey or profile down and stop passing overlay/questionnaireOpen separately
     const result = composeField({
-      questionnaireOpen,
-      overlay,
+      mode,
       allocAvg: uRef.current,
       viewportKey,
       canvas: { w, h },
       pool,
-
-      // optional: pass through for future migration (composeField can ignore for now)
-      sceneKey,
-      profile,
-    } as any);
+      quotaCurves,
+    });
 
     poolRef.current = result.nextPool;
 
+    // Optional layout injection
+    try {
+      const spec = resolveCanvasPaddingSpec(w, CANVAS_PADDING, mode);
+      engine.controls.current?.setLayoutSpec?.({
+        rows: spec.rows,
+        useTopRatio: spec.useTopRatio,
+      });
+    } catch {}
+
     engine.controls.current?.setFieldItems?.(result.placed);
     engine.controls.current?.setFieldVisible?.(result.placed.length > 0);
-  }, [engine, allocAvg, questionnaireOpen, viewportKey, overlay, hostId, sceneKey, profile]);
+  }, [engine, allocAvg, questionnaireOpen, viewportKey, hostId, mode, profile]);
 }

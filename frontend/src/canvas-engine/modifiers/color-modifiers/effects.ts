@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/effects.ts
+
 import type { RGB } from "./types.ts";
 import { clamp01 } from "./math.ts";
 import { hslToRgb, linToSrgb, rgbToHsl, srgbToLin } from "./colorspace.ts";

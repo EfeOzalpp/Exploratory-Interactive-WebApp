@@ -13,7 +13,7 @@ import { usePreventPageZoomOutsideZones } from "../utils-hooks/usePreventPageZoo
 import "../static-assets/styles/global-styles.css";
 
 const CanvasEntry = React.lazy(() =>
-  import(/* webpackChunkName: "canvas-entry" */ "../canvas-engine/CanvasEntry.tsx")
+  import(/* webpackChunkName: "canvas-entry" */ "../weighted-survey/CanvasEntry.tsx")
 );
 
 const CityOverlay = React.lazy(() =>
@@ -88,7 +88,7 @@ const AppInner: React.FC = () => {
 
     const prefetch = () => {
       import(
-        /* webpackPrefetch: true, webpackChunkName: "canvas-entry" */ "../canvas-engine/CanvasEntry.tsx"
+        /* webpackPrefetch: true, webpackChunkName: "canvas-entry" */ "../weighted-survey/CanvasEntry.tsx"
       );
     };
 

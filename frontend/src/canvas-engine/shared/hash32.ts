@@ -1,4 +1,4 @@
-// src/canvas/shared/utils/hash32.ts
+// src/canvas/adjustable-rules/hash32.ts
 export function fnv1a32(s: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < s.length; i++) {

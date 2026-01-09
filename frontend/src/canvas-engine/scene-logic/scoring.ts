@@ -1,8 +1,8 @@
 // src/canvas-engine/scene-logic/scoring.ts
 
-import { rand01Keyed } from '../shared/utils/hash32.ts';
-import type { ShapeName } from '../shared/scene-schema/shapeCatalog.ts';
-import { groupOf, separationOf } from '../shared/scene-schema/shapeMeta.ts';
+import { rand01Keyed } from '../shared/hash32.ts';
+import type { ShapeName } from '../adjustable-rules/shapeCatalog.ts';
+import { groupOf, separationOf } from '../adjustable-rules/shapeMeta.ts';
 
 export type PlacedFoot = {
   r0: number; c0: number; w: number; h: number; shape?: ShapeName;

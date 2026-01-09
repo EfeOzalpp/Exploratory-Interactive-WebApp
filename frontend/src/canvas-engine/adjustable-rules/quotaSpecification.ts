@@ -1,24 +1,13 @@
 // src/canvas-engine/condition/specification.ts
 
-export const CONDITION_KINDS = ["A", "B", "C", "D"] as const;
-export type ConditionKind = (typeof CONDITION_KINDS)[number];
+import type { ConditionKind, ShapeKind, ShapeName } from './shapeCatalog.ts';
+import { CONDITION_KINDS, SHAPES } from './shapeCatalog.ts';
 
-export const SHAPES = [
-  "clouds",
-  "snow",
-  "house",
-  "power",
-  "sun",
-  "villa",
-  "car",
-  "sea",
-  "carFactory",
-  "bus",
-  "trees",
-] as const;
+export { CONDITION_KINDS };
+export type { ConditionKind };
 
-export type ShapeName = (typeof SHAPES)[number];
-export type ShapeKind = ShapeName;
+export { SHAPES };
+export type { ShapeName, ShapeKind };
 
 export type Size = { w: number; h: number };
 
@@ -28,37 +17,36 @@ export type ConditionSpec = { variants: Variant[] };
 export const CONDITIONS: Record<ConditionKind, ConditionSpec> = {
   A: {
     variants: [
-      { shape: "clouds", footprint: { w: 2, h: 3 } },
-      { shape: "sun", footprint: { w: 2, h: 2 } },
-      { shape: "bus", footprint: { w: 2, h: 1 } },
+      { shape: 'clouds', footprint: { w: 2, h: 3 } },
+      { shape: 'sun', footprint: { w: 2, h: 2 } },
+      { shape: 'bus', footprint: { w: 2, h: 1 } },
     ],
   },
   B: {
     variants: [
-      { shape: "snow", footprint: { w: 1, h: 3 } },
-      { shape: "villa", footprint: { w: 2, h: 2 } },
-      { shape: "trees", footprint: { w: 1, h: 1 } },
+      { shape: 'snow', footprint: { w: 1, h: 3 } },
+      { shape: 'villa', footprint: { w: 2, h: 2 } },
+      { shape: 'trees', footprint: { w: 1, h: 1 } },
     ],
   },
   C: {
     variants: [
-      { shape: "house", footprint: { w: 1, h: 3 } },
-      { shape: "power", footprint: { w: 1, h: 3 } },
+      { shape: 'house', footprint: { w: 1, h: 3 } },
+      { shape: 'power', footprint: { w: 1, h: 3 } },
     ],
   },
   D: {
     variants: [
-      { shape: "car", footprint: { w: 1, h: 1 } },
-      { shape: "sea", footprint: { w: 2, h: 1 } },
-      { shape: "carFactory", footprint: { w: 2, h: 2 } },
+      { shape: 'car', footprint: { w: 1, h: 1 } },
+      { shape: 'sea', footprint: { w: 2, h: 1 } },
+      { shape: 'carFactory', footprint: { w: 2, h: 2 } },
     ],
   },
 };
 
 // --- quotas (policy) ---
-export type CurveSet = "default" | "overlay";
+export type CurveSet = 'default' | 'overlay';
 
-// number = finite cap, null = unbounded fill
 export type Quota = number | null;
 export type Limits = Partial<Record<ShapeName, Quota>>;
 
@@ -85,8 +73,8 @@ export const QUOTA_CURVES_DEFAULT: Record<ConditionKind, QuotaAnchor[]> = {
 
 export const QUOTA_CURVES_OVERLAY: Record<ConditionKind, QuotaAnchor[]> = {
   A: [
-    { t: 0.0, limits: { sun: 4, clouds: null, bus: 5 } },
-    { t: 1.0, limits: { sun: 6, clouds: null, bus: 9 } },
+    { t: 0.0, limits: { sun: 4, bus: 5, clouds: null } },
+    { t: 1.0, limits: { sun: 6, bus: 9, clouds: null, } },
   ],
   B: [
     { t: 0.0, limits: { snow: 1, trees: 4, villa: null } },

@@ -3,13 +3,13 @@
 import { createOccupancy } from '../grid-layout/occupancy.ts';
 import { cellCenterToPx } from '../grid-layout/coords.ts';
 import { PlacementBands } from '../grid-layout/placementBands.ts';
-import type { DeviceType } from '../shared/utils/responsiveness.ts';
-import type { CanvasPaddingSpec } from '../shared/scene-schema/canvasPadding.ts';
+import type { DeviceType } from '../shared/responsiveness.ts';
+import type { CanvasPaddingSpec } from '../adjustable-rules/canvasPadding.ts';
 
 import type { PoolItem, PlacedItem, FootRect } from './types.ts';
 import { buildFallbackCells } from './candidates.ts';
 import { cellForbiddenFromSpec, allowedSegmentsForRow, footprintAllowed } from './constraints.ts';
-import type { ShapeName } from '../shared/scene-schema/shapeCatalog.ts';
+import type { ShapeName } from '../adjustable-rules/shapeCatalog.ts';
 import { scoreCandidateGeneric } from './scoring.ts';
 
 export function placePoolItems(opts: {

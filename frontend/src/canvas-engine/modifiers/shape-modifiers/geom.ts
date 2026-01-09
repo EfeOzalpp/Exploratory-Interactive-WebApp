@@ -1,5 +1,5 @@
 // modifiers/shape-modifiers/geom.ts
-import { phaseFromIndex } from "../../shared/utils/hash32.ts";
+import { phaseFromIndex } from "../../shared/hash32.ts";
 
 export type Lobe = { x: number; y: number; r: number; i: number };
 

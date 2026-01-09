@@ -1,11 +1,14 @@
-// canvas-engine/EngineHost.tsx
+// src/canvas-engine/EngineHost.tsx
+// View CanvasEntry to see how a canvas is imported via EngineHost API
+
 import React from "react";
 import { useCanvasEngine } from "./hooks/useCanvasEngine.ts";
 import { useViewportKey } from "./hooks/useViewportKey.ts";
 import { useSceneField } from "./hooks/useSceneField.ts";
 import { stopCanvasEngine } from "./runtime/index.ts";
+
 import type { HostId } from "./multi-canvas-setup/ids.ts";
-import { resolveHost } from "./multi-canvas-setup/resolveHost.ts";
+import { HOST_DEFS } from "./multi-canvas-setup/hostDefs.ts";
 
 export function EngineHost({
   id,
@@ -22,32 +25,39 @@ export function EngineHost({
   allocAvg?: number;
   questionnaireOpen?: boolean;
 }) {
-  const host = React.useMemo(() => resolveHost(id), [id]);
+  const hostDef = React.useMemo(() => {
+    const def = HOST_DEFS[id];
+    if (!def) throw new Error(`Unknown hostId "${id}"`);
+    return def;
+  }, [id]);
+
+  const stopOnOpenMounts = React.useMemo(() => {
+    const ids = hostDef.stopOnOpen ?? [];
+    return ids
+      .map((otherId) => HOST_DEFS[otherId]?.mount)
+      .filter(Boolean) as string[];
+  }, [hostDef]);
 
   React.useEffect(() => {
     if (!open) return;
-    for (const mount of host.stopOnOpenMounts) {
-      try { stopCanvasEngine(mount); } catch {}
+    for (const mount of stopOnOpenMounts) {
+      try {
+        stopCanvasEngine(mount);
+      } catch {}
     }
-  }, [open, host.stopOnOpenMounts]);
+  }, [open, stopOnOpenMounts]);
 
   const engine = useCanvasEngine({
     visible: open && visible,
-    dprMode: host.dprMode,
-    mount: host.mount,
-    zIndex: host.zIndex,
+    dprMode: hostDef.dprMode,
+    mount: hostDef.mount,
+    zIndex: hostDef.zIndex,
   });
 
   const viewportKey = useViewportKey(120);
 
-  useSceneField(
-    engine,
-    host.id,
-    allocAvg,
-    { questionnaireOpen },
-    viewportKey,
-    { baseMode: host.sceneBaseMode, overlay: host.sceneBaseMode === "overlay" }
-  );
+  // useSceneField should read baseMode from HOST_DEFS itself.
+  useSceneField(engine, id, allocAvg, { questionnaireOpen }, viewportKey);
 
   React.useEffect(() => {
     if (!engine.ready.current) return;

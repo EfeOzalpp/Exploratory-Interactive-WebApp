@@ -3,17 +3,16 @@
 import type { ConditionKind, ShapeName, Size, CurveSet } from "./types.ts";
 import { CONDITIONS } from "./conditions.ts";
 import type { ConditionSpec } from "./types.ts";
-import { hash32 } from "../shared/utils/hash32.ts";
+import { hash32 } from "../shared/hash32.ts";
 
 import {
   type Quota,
   type Limits,
-  type Anchor,
-  QUOTA_CURVES_DEFAULT,
-  QUOTA_CURVES_OVERLAY,
-} from "./quotaCurves.ts";
+  type QuotaAnchor,
+} from "../adjustable-rules/quotaSpecification.ts";
 
 export type PoolItem = { id: number; cond: ConditionKind };
+export type QuotaCurvesByKind = Record<ConditionKind, QuotaAnchor[]>;
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
@@ -72,16 +71,12 @@ function finalizeQuotas(kind: ConditionKind, q: ResolvedLimits): ResolvedLimits 
   return out as ResolvedLimits;
 }
 
-function curveAnchorsFor(kind: ConditionKind, curveSet: CurveSet): Anchor[] {
-  const map = curveSet === 'overlay' ? QUOTA_CURVES_OVERLAY : QUOTA_CURVES_DEFAULT;
-  return map[kind] ?? [];
+function curveAnchorsFor(kind: ConditionKind, quotaCurves: QuotaCurvesByKind): QuotaAnchor[] {
+  return quotaCurves[kind] ?? [];
 }
 
-/**
- * Produces per-shape quotas for a condition kind at u in [0..1] by interpolating the curve anchors.
- */
-function quotasFor(kind: ConditionKind, u: number, curveSet: CurveSet): ResolvedLimits {
-  const anchors = curveAnchorsFor(kind, curveSet);
+function quotasFor(kind: ConditionKind, u: number, quotaCurves: QuotaCurvesByKind): ResolvedLimits {
+  const anchors = curveAnchorsFor(kind, quotaCurves);
   if (!anchors.length) return finalizeQuotas(kind, {} as ResolvedLimits);
 
   const t = clamp01(u);
@@ -103,6 +98,7 @@ function quotasFor(kind: ConditionKind, u: number, curveSet: CurveSet): Resolved
   return finalizeQuotas(kind, blendLimits(A.limits, B.limits, kk));
 }
 
+
 type PlanEntry = { shape: ShapeName; size: Size };
 
 function stableShuffleKey(id: number, salt: number) {
@@ -118,7 +114,7 @@ export function planForBucket(
   items: PoolItem[],
   u: number,
   salt = 0,
-  curveSet: CurveSet = 'default'
+  quotaCurves: QuotaCurvesByKind
 ): Map<number, PlanEntry> {
   const m = new Map<number, PlanEntry>();
   if (!items.length) return m;
@@ -129,7 +125,7 @@ export function planForBucket(
     return ka - kb || a.id - b.id;
   });
 
-  const raw = quotasFor(kind, u, curveSet);
+  const raw = quotasFor(kind, u, quotaCurves);
 
   const finiteEntries = entries(raw).filter(([, v]) => v != null) as [
     ShapeName,

@@ -1,6 +1,7 @@
 // src/canvas-engine/scene-logic/plan.ts
 
-import type { ConditionKind, CurveSet, ShapeName, Size } from '../condition/types.ts';
+import type { QuotaCurvesByKind } from '../condition/conditionPlanner.ts';
+import type { ConditionKind, ShapeName, Size } from '../condition/types.ts';
 
 import {
   countsFromSlider,
@@ -37,7 +38,7 @@ export function assignShapesByPlanner(
   pool: PlannedPoolItem[],
   u: number,
   salt: number,
-  curveSet: CurveSet
+  quotaCurves: QuotaCurvesByKind
 ) {
   const byKind: Record<ConditionKind, PlannedPoolItem[]> = {
     A: [],
@@ -52,9 +53,8 @@ export function assignShapesByPlanner(
     const items = byKind[kind];
     if (!items.length) return;
 
-    const map = planForBucket(kind, items, u, salt, curveSet);
+    const map = planForBucket(kind, items, u, salt, quotaCurves);
 
-    // Only touch items of this kind; keep churn low.
     for (const p of items) {
       const asn = map.get(p.id);
       if (asn) {

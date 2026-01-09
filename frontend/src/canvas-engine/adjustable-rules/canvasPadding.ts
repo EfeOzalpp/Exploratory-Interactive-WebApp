@@ -1,6 +1,6 @@
-// src/canvas-engine/shared/scene-schema/canvasPadding.ts
+// src/canvas-engine/adjustable-rules/canvasPadding.ts
 
-import { makeRowForbidden } from '../../grid-layout/forbidden.ts';
+import { makeRowForbidden } from '../grid-layout/forbidden.ts';
 
 export type CanvasPaddingSpec = {
   rows: number;
@@ -14,6 +14,7 @@ export type CanvasPaddingMode = 'start' | 'questionnaire' | 'overlay';
 const CENTER_100 = { center: '100%' } as const;
 const LR_0 = { left: '0%', right: '0%' } as const;
 
+// Enter a new section for a new canvas padding rule
 export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand, CanvasPaddingSpec>> = {
   start: {
     small: {
@@ -57,7 +58,7 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
 
   questionnaire: {
     small: {
-      rows: 24,
+      rows: 20,
       useTopRatio: 1,
       forbidden: makeRowForbidden([
         CENTER_100, CENTER_100, CENTER_100, CENTER_100,
@@ -68,12 +69,12 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
         { left: '0%', right: '0%', center: '50%' },
         { left: '0%', right: '0%', center: '50%' },
         { left: '0%', right: '0%', center: '60%' },
-        { left: '0%', right: '0%', center: '60%' },
-        { left: '0%', right: '0%', center: '50%' },
-        { left: '0%', right: '0%', center: '50%' },
-        { left: '0%', right: '0%', center: '50%' },
-        { left: '0%', right: '0%', center: '50%' },
-        { left: '0%', right: '0%', center: '50%' },
+        { left: '0%', right: '0%', center: '20%' },
+        { left: '0%', right: '0%', center: '20%' },
+        { left: '0%', right: '0%', center: '20%' },
+        { left: '0%', right: '0%', center: '20%' },
+        { left: '0%', right: '0%', center: '20%' },
+        { left: '0%', right: '0%', center: '20%' },
       ]),
     },
     medium: {
@@ -95,16 +96,17 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
       ]),
     },
     large: {
-      rows: 14,
+      rows: 13,
       useTopRatio: 0.85,
       forbidden: makeRowForbidden([
-        CENTER_100, CENTER_100,
+        CENTER_100, 
         { left: '5%', right: '5%' },
         { left: '5%', right: '5%' },
         { left: '5%', right: '5%' },
         { left: '5%', right: '5%' },
         { left: '5%', right: '5%', center: '40%' },
-        { left: '5%', right: '5%', center: '50%' },
+        { left: '5%', right: '15%', center: '50%' },
+        { left: '5%', right: '15%', center: '50%' },
         { left: '5%', right: '5%', center: '60%' },
         { left: '5%', right: '5%', center: '65%' },
         { left: '5%', right: '5%', center: '65%' },

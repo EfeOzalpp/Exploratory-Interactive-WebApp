@@ -1,4 +1,4 @@
-// src/canvas-engine/shared/catalog.ts
+// src/canvas-engine/adjustable-rules/catalog.ts
 
 export const CONDITION_KINDS = ['A', 'B', 'C', 'D'] as const;
 export type ConditionKind = (typeof CONDITION_KINDS)[number];

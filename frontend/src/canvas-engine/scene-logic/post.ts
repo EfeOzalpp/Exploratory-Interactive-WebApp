@@ -1,6 +1,6 @@
 // src/canvas-engine/scene-logic/post.ts
 
-import type { DeviceType } from '../shared/utils/responsiveness.ts';
+import type { DeviceType } from '../shared/responsiveness.ts';
 import { PlacementBands } from '../grid-layout/placementBands.ts';
 import type { FootRect } from './types.ts';
 import type { ShapeName } from '../condition/types.ts';

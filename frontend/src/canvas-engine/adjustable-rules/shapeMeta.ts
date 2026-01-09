@@ -1,4 +1,4 @@
-// src/canvas-engine/shared/scene-schema/shapeMeta.ts
+// src/canvas-engine/adjustable-rules/shapeMeta.ts
 
 import type { ShapeName } from './shapeCatalog.ts';
 

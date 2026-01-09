@@ -1,10 +1,11 @@
-// src/canvas-engine/shared/scene-schema/placementRules.ts
-import type { DeviceType } from '../utils/responsiveness.ts';
+// src/canvas-engine/adjustable-rules/placementRules.ts
+import type { DeviceType } from '../shared/responsiveness.ts';
 import type { ShapeName } from './shapeCatalog.ts';
 
 export type Band = { topK: number; botK: number };
 export type PickOpts = { questionnaire?: boolean; overlay?: boolean };
 
+// the position of the shapes for the initial canvas
 export const SHAPE_BANDS: Record<DeviceType, Record<ShapeName, Band>> = {
   small: {
     sun: { topK: 0.02, botK: 0.1 },
@@ -47,6 +48,7 @@ export const SHAPE_BANDS: Record<DeviceType, Record<ShapeName, Band>> = {
   },
 };
 
+// the position of the shapes for the initial canvases questionnaire: true; state
 export const SHAPE_BANDS_Q: Partial<Record<DeviceType, Partial<Record<ShapeName, Band>>>> = {
   small: {
     sun: { topK: 0, botK: 0.8 },
@@ -76,8 +78,8 @@ export const SHAPE_BANDS_Q: Partial<Record<DeviceType, Partial<Record<ShapeName,
   },
   large: {
     sun: { topK: 0, botK: 0.2 },
-    clouds: { topK: 0.3, botK: 1 },
-    snow: { topK: 0.4, botK: 0.6 },
+    clouds: { topK: 0.2, botK: 1 },
+    snow: { topK: 0.3, botK: 0.6 },
     house: { topK: 0.4, botK: 1 },
     villa: { topK: 0.2, botK: 1 },
     power: { topK: 0.3, botK: 1 },
@@ -89,6 +91,7 @@ export const SHAPE_BANDS_Q: Partial<Record<DeviceType, Partial<Record<ShapeName,
   },
 };
 
+// the position of the shapes for the overlay canvas
 export const SHAPE_BANDS_OVERLAY: Partial<Record<DeviceType, Partial<Record<ShapeName, Band>>>> = {
   small: {
     sun: { topK: 0.0, botK: 0.2 },

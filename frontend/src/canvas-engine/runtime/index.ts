@@ -14,7 +14,11 @@ import {
   drawTrees,
 } from "../shapes/index.js";
 
-import { resolveCanvasPaddingSpec } from '../grid-layout/resolveCanvasPadding.ts';
+import { CANVAS_PADDING } from "../adjustable-rules/canvasPadding.ts";
+import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
+import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
+
+import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
 import { makeCenteredSquareGrid } from "../grid-layout/layoutCentered.ts";
 
 import { ensureMount, applyCanvasStyle, type EngineLayoutMode } from "./mount.ts";
@@ -22,6 +26,8 @@ import { getViewportSize, resolvePixelDensity, type DprMode } from "./viewport.t
 import { makeP, type PLike } from "./p/makeP.ts";
 
 import { gradientColor, BRAND_STOPS_VIVID } from "../modifiers/index.ts";
+
+import { deviceType } from "../shared/responsiveness.ts";
 
 function clamp01(t: number) {
   return t < 0 ? 0 : t > 1 ? 1 : t;
@@ -85,22 +91,65 @@ type FieldItem = {
 export type CanvasEngineControls = EngineControls;
 
 type EngineControls = {
+  // signals
   setInputs: (args?: { liveAvg?: number }) => void;
 
+  // field payload
   setFieldItems: (nextItems?: FieldItem[]) => void;
   setFieldStyle: (args?: Partial<typeof REG_STYLE_DEFAULT> & Record<string, any>) => void;
-
   setFieldVisible: (v: boolean) => void;
+
+  // mode/policy inputs to runtime (THIS is the modular part)
+  setSceneMode: (mode: SceneMode) => void;
+
+  /**
+   * Optional escape hatch: if caller already resolved padding, runtime uses it.
+   * If not set, runtime resolves from CANVAS_PADDING + sceneMode.
+   */
+  setPaddingSpec: (spec: CanvasPaddingSpec | null) => void;
+
+  // visibility
   setHeroVisible: (v: boolean) => void;
   setVisible: (v: boolean) => void;
 
   stop: () => void;
-  setQuestionnaireOpen: (v: boolean) => void;
 
   readonly canvas: HTMLCanvasElement | null;
 };
 
-const REGISTRY = new Map<string, { controls: EngineControls }>();
+// ───────────────────────────────────────────────────────────
+// key by actual mount element, not by string
+// ───────────────────────────────────────────────────────────
+
+type EngineRecord = { controls: EngineControls };
+
+// Canonical identity: the actual element returned by ensureMount
+const REGISTRY_BY_EL = new WeakMap<HTMLElement, EngineRecord>();
+
+// Index to support stop-by-selector + stopAll
+const REGISTRY_BY_KEY = new Map<string, HTMLElement>();
+
+function mountKey(mount: string) {
+  return String(mount ?? "").trim();
+}
+
+function tryResolveMountEl(mount: string): HTMLElement | null {
+  try {
+    return document.querySelector(mount) as HTMLElement | null;
+  } catch {
+    return null;
+  }
+}
+
+function stopByEl(el: HTMLElement) {
+  try {
+    const rec = REGISTRY_BY_EL.get(el);
+    if (rec?.controls?.stop) rec.controls.stop();
+  } catch {}
+  try {
+    REGISTRY_BY_EL.delete(el);
+  } catch {}
+}
 
 export function startCanvasEngine({
   mount = "#canvas-root",
@@ -115,15 +164,34 @@ export function startCanvasEngine({
   zIndex?: number;
   layout?: EngineLayoutMode;
 } = {}): EngineControls {
-  // Guard against double inits on the same mount
-  if (REGISTRY.has(mount)) {
+  const key = mountKey(mount);
+
+  // Resolve/create the mount element first (canonical identity)
+  const parentEl = ensureMount(mount, zIndex, layout);
+
+  // Guard against double inits on the same *element*
+  {
+    const existing = REGISTRY_BY_EL.get(parentEl);
+    if (existing?.controls?.stop) {
+      try {
+        existing.controls.stop();
+      } catch {}
+    }
     try {
-      REGISTRY.get(mount)!.controls?.stop?.();
+      REGISTRY_BY_EL.delete(parentEl);
     } catch {}
-    REGISTRY.delete(mount);
   }
 
-  const parentEl = ensureMount(mount, zIndex, layout);
+  // If the same selector string was previously associated with a different element, stop that too.
+  {
+    const prevEl = REGISTRY_BY_KEY.get(key);
+    if (prevEl && prevEl !== parentEl) {
+      stopByEl(prevEl);
+    }
+  }
+
+  // Update index
+  REGISTRY_BY_KEY.set(key, parentEl);
 
   // style knobs/config (NOT signals)
   const style = { ...REG_STYLE_DEFAULT };
@@ -137,7 +205,9 @@ export function startCanvasEngine({
   let canvasEl: HTMLCanvasElement | null = null;
   let p: PLike | null = null;
 
-  let questionnaireOpen = false;
+  // runtime policy inputs
+  let sceneMode: SceneMode = "start";
+  let paddingSpecOverride: CanvasPaddingSpec | null = null;
 
   const liveStates = new Map<
     string,
@@ -160,22 +230,47 @@ export function startCanvasEngine({
   }
 
   // grid cache (includes usedRows)
-  let cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, usedRows: 0, q: null as null | boolean };
+  let cachedGrid = {
+    w: 0,
+    h: 0,
+    cell: 0,
+    rows: 0,
+    cols: 0,
+    usedRows: 0,
+    // cache keys
+    mode: null as null | SceneMode,
+    specKey: null as null | string,
+  };
+
+  function specKeyOf(spec: CanvasPaddingSpec) {
+    // stable-ish cache key. Enough to avoid recompute when same spec reused.
+    return `${spec.rows}|${spec.useTopRatio ?? 1}`;
+  }
+
+  function getPaddingSpecForCurrentState(width: number): CanvasPaddingSpec {
+    if (paddingSpecOverride) return paddingSpecOverride;
+
+    // Resolve from CANVAS_PADDING by mode + band. This requires your resolveCanvasPaddingSpec
+    // to be the "pure" signature: (width, CANVAS_PADDING, mode).
+    return resolveCanvasPaddingSpec(width, CANVAS_PADDING, sceneMode);
+  }
 
   const computeGrid = () => {
+    if (!p) return cachedGrid;
+
+    const spec = getPaddingSpecForCurrentState(p.width);
+    const key2 = specKeyOf(spec);
+
     if (
-      p &&
       p.width === cachedGrid.w &&
       p.height === cachedGrid.h &&
-      cachedGrid.q === questionnaireOpen &&
+      cachedGrid.mode === sceneMode &&
+      cachedGrid.specKey === key2 &&
       cachedGrid.cell > 0
     ) {
       return cachedGrid;
     }
 
-    if (!p) return cachedGrid;
-
-    const spec = resolveCanvasPaddingSpec(p.width, questionnaireOpen);
     const { cell, rows, cols } = makeCenteredSquareGrid({
       w: p.width,
       h: p.height,
@@ -186,7 +281,16 @@ export function startCanvasEngine({
     const useTop = Math.max(0.01, Math.min(1, spec.useTopRatio ?? 1));
     const usedRows = Math.max(1, Math.round(rows * useTop));
 
-    cachedGrid = { w: p.width, h: p.height, cell, rows, cols, usedRows, q: questionnaireOpen };
+    cachedGrid = {
+      w: p.width,
+      h: p.height,
+      cell,
+      rows,
+      cols,
+      usedRows,
+      mode: sceneMode,
+      specKey: key2,
+    };
     return cachedGrid;
   };
 
@@ -213,7 +317,11 @@ export function startCanvasEngine({
     canvasEl.style.width = w + "px";
     canvasEl.style.height = h + "px";
 
+    // bust grid cache
     cachedGrid.w = cachedGrid.h = cachedGrid.cell = 0;
+    cachedGrid.mode = null;
+    cachedGrid.specKey = null;
+
     applyCanvasStyle(canvasEl);
 
     if (hero.x == null) hero.x = Math.round(p.width * 0.5);
@@ -239,9 +347,10 @@ export function startCanvasEngine({
     const opts = { ...sharedOpts, rootAppearK };
     switch (it.shape) {
       case "snow": {
-        // Responsive hideGroundAboveFrac by viewport width
+        // Responsive hideGroundAboveFrac by viewport width using helper
         const vw = p2.width;
-        const hideFrac = vw < 768 ? 0.32 : vw < 1024 ? 0.4 : 0.2;
+        const dt = deviceType(vw);
+        const hideFrac = dt === "small" ? 0.32 : dt === "medium" ? 0.4 : 0.2;
 
         drawSnow(p2 as any, it.x, it.y, rEff, {
           ...opts,
@@ -282,11 +391,11 @@ export function startCanvasEngine({
       case "clouds":
         drawClouds(p2 as any, it.x, it.y, rEff, opts);
         break;
-        
+
       default:
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Unknown shape:", it.shape, it);
-      }
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Unknown shape:", it.shape, it);
+        }
     }
   }
 
@@ -344,8 +453,9 @@ export function startCanvasEngine({
 
     // palette and shape mods are both derived in render loop
     const uq = Math.round(signal1 * 1000) / 1000;
-    if (uq !== lastU) { lastU = uq; 
-      cachedGradient = gradientColor(BRAND_STOPS_VIVID, uq).rgb; 
+    if (uq !== lastU) {
+      lastU = uq;
+      cachedGradient = gradientColor(BRAND_STOPS_VIVID, uq).rgb;
     }
     const gradientRGB = style.gradientRGBOverride ?? cachedGradient;
 
@@ -460,11 +570,11 @@ export function startCanvasEngine({
     for (const s of liveStates.values()) s._willDie = true;
 
     for (const it of Array.isArray(nextItems) ? nextItems : []) {
-      const key = shapeKeyOfItem(it);
+      const key3 = shapeKeyOfItem(it);
       const prev = liveStates.get(it.id);
       if (!prev) {
         liveStates.set(it.id, {
-          shapeKey: key,
+          shapeKey: key3,
           bornAtMs: now,
           x: it.x,
           y: it.y,
@@ -473,9 +583,9 @@ export function startCanvasEngine({
           _willDie: false,
         });
       } else {
-        if (prev.shapeKey !== key) {
+        if (prev.shapeKey !== key3) {
           ghosts.push({ dieAtMs: now, x: prev.x, y: prev.y, shape: prev.shape, footprint: prev.footprint });
-          prev.shapeKey = key;
+          prev.shapeKey = key3;
           prev.bornAtMs = now;
         }
         prev.x = it.x;
@@ -497,22 +607,13 @@ export function startCanvasEngine({
   }
 
   function setFieldStyle(args: any = {}) {
-    // Style layer (NO liveAvg here)
-    const {
-      r,
-      // allow override but not required anymore
-      gradientRGBOverride,
-      blend,
-      perShapeScale,
-      exposure,
-      contrast,
-      appearMs,
-      exitMs,
-    } = args;
+    const { r, gradientRGBOverride, blend, perShapeScale, exposure, contrast, appearMs, exitMs } = args;
 
     if (Number.isFinite(r) && r > 0) style.r = r;
 
-    if ("gradientRGBOverride" in args) style.gradientRGBOverride = gradientRGBOverride ?? { r: 255, g: 255, b: 255 };
+    if ("gradientRGBOverride" in args) {
+      style.gradientRGBOverride = gradientRGBOverride ?? { r: 255, g: 255, b: 255 };
+    }
 
     if (typeof blend === "number") style.blend = Math.max(0, Math.min(1, blend));
     if (typeof exposure === "number") style.exposure = Math.max(0.1, Math.min(3, exposure));
@@ -536,6 +637,22 @@ export function startCanvasEngine({
     if (canvasEl?.style) canvasEl.style.opacity = v ? "1" : "0";
   }
 
+  function setSceneMode(next: SceneMode) {
+    sceneMode = next;
+    // bust grid cache (mode changes affect padding + usedRows)
+    cachedGrid.w = cachedGrid.h = cachedGrid.cell = 0;
+    cachedGrid.mode = null;
+    cachedGrid.specKey = null;
+  }
+
+  function setPaddingSpec(spec: CanvasPaddingSpec | null) {
+    paddingSpecOverride = spec ?? null;
+    // bust grid cache
+    cachedGrid.w = cachedGrid.h = cachedGrid.cell = 0;
+    cachedGrid.mode = null;
+    cachedGrid.specKey = null;
+  }
+
   function stop() {
     try {
       running = false;
@@ -550,12 +667,16 @@ export function startCanvasEngine({
     try {
       canvasEl?.remove?.();
     } catch {}
-    REGISTRY.delete(mount);
-  }
 
-  function setQuestionnaireOpen(v: boolean) {
-    questionnaireOpen = !!v;
-    cachedGrid = { w: 0, h: 0, cell: 0, rows: 0, cols: 0, usedRows: 0, q: null };
+    // ✅ remove registry entries by element identity and selector key
+    try {
+      REGISTRY_BY_EL.delete(parentEl);
+    } catch {}
+    try {
+      // Only delete the key if it still points at our element
+      const cur = REGISTRY_BY_KEY.get(key);
+      if (cur === parentEl) REGISTRY_BY_KEY.delete(key);
+    } catch {}
   }
 
   const controls: EngineControls = {
@@ -565,14 +686,17 @@ export function startCanvasEngine({
     setFieldVisible,
     setHeroVisible,
     setVisible: setVisibleCanvas,
+    setSceneMode,
+    setPaddingSpec,
     stop,
-    setQuestionnaireOpen,
     get canvas() {
       return canvasEl;
     },
   };
 
-  REGISTRY.set(mount, { controls });
+  // Register this engine
+  REGISTRY_BY_EL.set(parentEl, { controls });
+
   onReady?.(controls);
   return controls;
 }
@@ -590,27 +714,57 @@ export function makePFromCanvas(canvas: HTMLCanvasElement, { dpr = 1 } = {}) {
 }
 
 export function stopCanvasEngine(mount = "#canvas-root") {
-  try {
-    const rec = REGISTRY.get(mount);
-    if (rec?.controls?.stop) rec.controls.stop();
-  } catch {}
-  REGISTRY.delete(mount);
+  const key = mountKey(mount);
 
+  // First try: stop by the indexed element for this selector key
+  try {
+    const el = REGISTRY_BY_KEY.get(key);
+    if (el) {
+      stopByEl(el);
+      REGISTRY_BY_KEY.delete(key);
+    }
+  } catch {}
+
+  // Second try: resolve selector to an element and stop by element identity
+  try {
+    const el2 = tryResolveMountEl(mount);
+    if (el2) stopByEl(el2);
+  } catch {}
+
+  // Preserve your existing behavior: remove the mount layer div if it's the engine-created layer
   try {
     const el = document.querySelector(mount);
-    if (el && el.classList?.contains("be-canvas-layer")) {
-      el.remove();
+    if (el && (el as any).classList?.contains("be-canvas-layer")) {
+      (el as any).remove();
     }
   } catch {}
 }
 
 export function isCanvasRunning(mount = "#canvas-root") {
-  return REGISTRY.has(mount);
+  // Prefer the index map
+  try {
+    const el = REGISTRY_BY_KEY.get(mountKey(mount));
+    if (el) return !!REGISTRY_BY_EL.get(el);
+  } catch {}
+
+  // Fallback: resolve selector and check element identity
+  try {
+    const el2 = tryResolveMountEl(mount);
+    if (el2) return !!REGISTRY_BY_EL.get(el2);
+  } catch {}
+
+  return false;
 }
 
 export function stopAllCanvasEngines() {
-  for (const key of [...REGISTRY.keys()]) {
-    stopCanvasEngine(key);
+  // Iterate the index map (WeakMap isn't iterable)
+  for (const [key, el] of [...REGISTRY_BY_KEY.entries()]) {
+    try {
+      stopByEl(el);
+    } catch {}
+    try {
+      REGISTRY_BY_KEY.delete(key);
+    } catch {}
   }
 }
 

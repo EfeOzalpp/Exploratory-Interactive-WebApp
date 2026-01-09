@@ -1,4 +1,5 @@
 // canvas-engine/modifiers/color-modifiers/gradient.ts
+
 import type { RGB, Stop } from "./types.ts";
 import { clamp01 } from "./math.ts";
 import { mixRGB } from "./colorspace.ts";

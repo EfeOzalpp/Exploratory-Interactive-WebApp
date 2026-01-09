@@ -1,8 +1,8 @@
 // src/canvas-engine/condition/conditions.ts
 
-import { hash32 } from "../shared/utils/hash32.ts";
+import { hash32 } from "../shared/hash32.ts";
 import type { ConditionKind, Variant } from "./types.ts";
-import { CONDITIONS } from "./specification.ts";
+import { CONDITIONS } from "../adjustable-rules/quotaSpecification.ts";
 
 export { CONDITIONS };
 

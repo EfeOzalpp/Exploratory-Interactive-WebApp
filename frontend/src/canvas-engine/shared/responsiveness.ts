@@ -1,4 +1,4 @@
-// src/canvas-engine/shared/utils/responsiveness.ts
+// src/canvas-engine/adjustable-rules/responsiveness.ts
 
 export type DeviceType = 'small' | 'medium' | 'large';
 
