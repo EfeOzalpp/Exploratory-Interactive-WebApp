@@ -1,4 +1,5 @@
 // src/canvas/layout/grid-layout/occupancy.ts
+
 export type Place = { r0: number; c0: number; w: number; h: number };
 
 export type CellForbidden = (r: number, c: number) => boolean;

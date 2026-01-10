@@ -9,5 +9,5 @@ export type {
   ComposeResult,
 } from './types.ts';
 
-export { composeField, makeDefaultPoolItem } from './composeField.ts';
-export { targetPoolSize, ensurePoolSize } from './poolSize.ts';
+export { composeField } from './composeField.ts';
+export { targetPoolSize  } from '../adjustable-rules/poolSizes.ts';

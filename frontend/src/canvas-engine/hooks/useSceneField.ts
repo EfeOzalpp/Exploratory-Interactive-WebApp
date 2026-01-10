@@ -1,10 +1,11 @@
 // src/canvas-engine/hooks/useSceneField.ts
+
 import { useEffect, useRef } from "react";
 
-import { composeField, makeDefaultPoolItem } from "../scene-logic/composeField.ts";
+import { composeField } from "../scene-logic/composeField.ts";
 import type { PoolItem as ScenePoolItem } from "../scene-logic/types.ts";
 
-import type { HostId } from "../multi-canvas-setup/ids.ts";
+import type { HostId } from "../multi-canvas-setup/hostDefs.ts";
 import { HOST_DEFS } from "../multi-canvas-setup/hostDefs.ts";
 
 import { resolveSceneMode } from "../adjustable-rules/resolveSceneMode.ts";
@@ -44,6 +45,14 @@ function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
   const h = Number.isFinite(cssH) ? cssH : backingH;
 
   return { w: Math.round(w), h: Math.round(h) };
+}
+
+/**
+ * Pool items are runtime state, not engine policy.
+ * Keep default item creation in the hook layer.
+ */
+function makeDefaultPoolItem(id: number): ScenePoolItem {
+  return { id, cond: "A" as ScenePoolItem["cond"] };
 }
 
 function ensurePoolSize(
@@ -102,14 +111,10 @@ export function useSceneField(
   const baseMode = hostDef.scene?.baseMode ?? "start";
 
   // single source of truth: mode derived from (signals + host baseMode)
-  const mode: SceneMode = resolveSceneMode(
-    { questionnaireOpen },
-    { baseMode }
-  );
+  const mode: SceneMode = resolveSceneMode({ questionnaireOpen }, { baseMode });
 
-  // causes validation to run if you wrapped with defineRuleSet()
+  // resolved policy bundle
   const profile = ruleset.getProfile(mode);
-  const quotaCurves = profile.quotaCurves;
 
   const uRef = useRef(0.5);
   uRef.current = clamp01(allocAvg);
@@ -126,7 +131,7 @@ export function useSceneField(
 
     const { w, h } = getCanvasLogicalSize(canvas);
 
-    // IMPORTANT: poolsize from adjustable-rules by mode
+    // poolsize from adjustable-rules by mode
     const desired = targetPoolSize({ mode, width: w } as any);
     ensurePoolSize(poolRef, desired);
 
@@ -134,16 +139,18 @@ export function useSceneField(
 
     const result = composeField({
       mode,
-      allocAvg: uRef.current,
+      bands: profile.bands,
+      shapeMeta: profile.shapeMeta,
+      quotaCurves: profile.quotaCurves,
+      allocAvg,
       viewportKey,
       canvas: { w, h },
       pool,
-      quotaCurves,
     });
 
     poolRef.current = result.nextPool;
 
-    // Optional layout injection
+    // Optional layout injection (engine can use this)
     try {
       const spec = resolveCanvasPaddingSpec(w, CANVAS_PADDING, mode);
       engine.controls.current?.setLayoutSpec?.({

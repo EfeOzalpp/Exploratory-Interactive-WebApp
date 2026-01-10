@@ -7,8 +7,7 @@ import { useViewportKey } from "./hooks/useViewportKey.ts";
 import { useSceneField } from "./hooks/useSceneField.ts";
 import { stopCanvasEngine } from "./runtime/index.ts";
 
-import type { HostId } from "./multi-canvas-setup/ids.ts";
-import { HOST_DEFS } from "./multi-canvas-setup/hostDefs.ts";
+import { HOST_DEFS, type HostId, type HostDef } from "./multi-canvas-setup/hostDefs.ts";
 
 export function EngineHost({
   id,
@@ -28,15 +27,15 @@ export function EngineHost({
   const hostDef = React.useMemo(() => {
     const def = HOST_DEFS[id];
     if (!def) throw new Error(`Unknown hostId "${id}"`);
-    return def;
+    return def as HostDef; 
   }, [id]);
 
   const stopOnOpenMounts = React.useMemo(() => {
     const ids = hostDef.stopOnOpen ?? [];
-    return ids
-      .map((otherId) => HOST_DEFS[otherId]?.mount)
-      .filter(Boolean) as string[];
+    return ids.map((otherId) => HOST_DEFS[otherId].mount);
   }, [hostDef]);
+
+
 
   React.useEffect(() => {
     if (!open) return;

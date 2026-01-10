@@ -1,4 +1,5 @@
 // src/canvas/layout/grid-layout/layoutCentered.ts
+
 export type Pt = { x: number; y: number };
 
 export type MakeCenteredGridOpts = {

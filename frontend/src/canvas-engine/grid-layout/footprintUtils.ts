@@ -1,4 +1,5 @@
 // src/canvas/layout/grid-layout/footprintUtils.ts
+
 export type Anchor =
   | 'center'
   | 'top-left' | 'top' | 'top-right'

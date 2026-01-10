@@ -2,7 +2,7 @@
 import type { SceneMode, SceneProfile } from "../multi-canvas-setup/sceneProfile.ts";
 
 import { CANVAS_PADDING } from "./canvasPadding.ts";
-import { SHAPE_BANDS, SHAPE_BANDS_Q, SHAPE_BANDS_OVERLAY } from "./placementRules.ts";
+import { SHAPE_BANDS } from "./placementRules.ts";
 import { SHAPE_META } from "./shapeMeta.ts";
 
 import { POOL_SIZES } from "./poolSizes.ts";
@@ -14,7 +14,7 @@ import { defineRuleSet } from "../validation/index.ts";
 
 const introStart = (): SceneProfile => ({
   padding: CANVAS_PADDING.start,
-  bands: SHAPE_BANDS,
+  bands: SHAPE_BANDS.start,
   shapeMeta: SHAPE_META,
 
   poolSizes: POOL_SIZES,
@@ -23,7 +23,7 @@ const introStart = (): SceneProfile => ({
 
 const introQuestionnaire = (): SceneProfile => ({
   padding: CANVAS_PADDING.questionnaire,
-  bands: SHAPE_BANDS_Q,
+  bands: SHAPE_BANDS.questionnaire,
   shapeMeta: SHAPE_META,
 
   poolSizes: POOL_SIZES,
@@ -34,7 +34,7 @@ const introQuestionnaire = (): SceneProfile => ({
 
 const cityOverlay = (): SceneProfile => ({
   padding: CANVAS_PADDING.overlay,
-  bands: SHAPE_BANDS_OVERLAY,
+  bands: SHAPE_BANDS.overlay,
   shapeMeta: SHAPE_META,
 
   poolSizes: POOL_SIZES,

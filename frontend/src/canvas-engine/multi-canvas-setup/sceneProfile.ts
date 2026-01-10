@@ -2,6 +2,7 @@ import type { DeviceType } from "../shared/responsiveness.ts";
 import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
 import type { ConditionKind } from "../condition/types.ts";
 import type { QuotaAnchor } from "../adjustable-rules/quotaSpecification.ts";
+import type { ShapeBands } from "../adjustable-rules/placementRules.ts";
 
 export type SceneMode = "start" | "questionnaire" | "overlay";
 
@@ -13,7 +14,7 @@ export type ShapeMeta = {
 
 export type PaddingPolicyByDevice = Record<DeviceType, CanvasPaddingSpec>;
 
-export type BandsByDevice = Record<string, Record<string, unknown>>;
+export type BandsByDevice = ShapeBands;
 
 export type PoolSizesByMode = Record<SceneMode, Record<DeviceType, number>>;
 

@@ -8,7 +8,7 @@ export type CanvasPaddingSpec = {
   forbidden?: (r: number, c: number, rows: number, cols: number) => boolean;
 };
 
-export type CanvasPaddingBand = 'small' | 'medium' | 'large';
+export type CanvasPaddingBand = 'mobile' | 'tablet' | 'laptop';
 export type CanvasPaddingMode = 'start' | 'questionnaire' | 'overlay';
 
 const CENTER_100 = { center: '100%' } as const;
@@ -17,7 +17,7 @@ const LR_0 = { left: '0%', right: '0%' } as const;
 // Enter a new section for a new canvas padding rule
 export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand, CanvasPaddingSpec>> = {
   start: {
-    small: {
+    mobile: {
       rows: 18,
       useTopRatio: 0.9,
       forbidden: makeRowForbidden([
@@ -26,7 +26,7 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
         CENTER_100, CENTER_100, CENTER_100, CENTER_100,
       ]),
     },
-    medium: {
+    tablet: {
       rows: 17,
       useTopRatio: 0.8,
       forbidden: makeRowForbidden([
@@ -39,7 +39,7 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
         CENTER_100, CENTER_100, CENTER_100, CENTER_100, CENTER_100,
       ]),
     },
-    large: {
+    laptop: {
       rows: 12,
       useTopRatio: 0.8,
       forbidden: makeRowForbidden([
@@ -57,7 +57,7 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
   },
 
   questionnaire: {
-    small: {
+    mobile: {
       rows: 20,
       useTopRatio: 1,
       forbidden: makeRowForbidden([
@@ -77,7 +77,7 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
         { left: '0%', right: '0%', center: '20%' },
       ]),
     },
-    medium: {
+    tablet: {
       rows: 22,
       useTopRatio: 1,
       forbidden: makeRowForbidden([
@@ -95,7 +95,7 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
         { left: '0%', right: '0%', center: '40%' },
       ]),
     },
-    large: {
+    laptop: {
       rows: 13,
       useTopRatio: 0.85,
       forbidden: makeRowForbidden([
@@ -117,18 +117,18 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<CanvasPaddingBand,
   },
 
   overlay: {
-    small: {
+    mobile: {
       rows: 24,
       useTopRatio: 1,
       forbidden: makeRowForbidden(Array.from({ length: 21 }, () => LR_0)),
     },
-    medium: {
+    tablet: {
       rows: 22,
       useTopRatio: 1,
       forbidden: makeRowForbidden(Array.from({ length: 21 }, () => LR_0)),
     },
-    large: {
-      rows: 18,
+    laptop: {
+      rows: 16,
       useTopRatio: 0.9,
       forbidden: makeRowForbidden(Array.from({ length: 21 }, () => LR_0)),
     },

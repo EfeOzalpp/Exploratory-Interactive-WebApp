@@ -91,7 +91,7 @@ type FieldItem = {
 export type CanvasEngineControls = EngineControls;
 
 type EngineControls = {
-  // signals
+  // inbound signals (values provided by outside of engine to drive movement on shapes)
   setInputs: (args?: { liveAvg?: number }) => void;
 
   // field payload
@@ -350,7 +350,7 @@ export function startCanvasEngine({
         // Responsive hideGroundAboveFrac by viewport width using helper
         const vw = p2.width;
         const dt = deviceType(vw);
-        const hideFrac = dt === "small" ? 0.32 : dt === "medium" ? 0.4 : 0.2;
+        const hideFrac = dt === "mobile" ? 0.32 : dt === "tablet" ? 0.4 : 0.2;
 
         drawSnow(p2 as any, it.x, it.y, rEff, {
           ...opts,

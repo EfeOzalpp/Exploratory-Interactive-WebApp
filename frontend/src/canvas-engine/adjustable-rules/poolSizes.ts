@@ -8,14 +8,14 @@ import { deviceType, type DeviceType } from "../shared/responsiveness.ts";
  * Scene logic / hooks should call targetPoolSize({ mode, width }).
  */
 export const POOL_SIZES: Record<SceneMode, Record<DeviceType, number>> = {
-  start:         { small: 18, medium: 26, large: 28 },
-  questionnaire: { small: 24, medium: 32, large: 28 },
-  overlay:       { small: 60, medium: 80, large: 100 },
+  start:         { mobile: 18, tablet: 26, laptop: 28 },
+  questionnaire: { mobile: 24, tablet: 32, laptop: 28 },
+  overlay:       { mobile: 60, tablet: 80, laptop: 100 },
 };
 
 function deviceTypeOrDefault(width?: number): DeviceType {
   // Keep behavior consistent with your old widthBucket(undefined) => "lg"
-  if (width == null) return "large";
+  if (width == null) return "laptop";
   return deviceType(width);
 }
 

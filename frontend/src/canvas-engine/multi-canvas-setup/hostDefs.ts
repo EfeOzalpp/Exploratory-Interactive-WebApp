@@ -1,33 +1,30 @@
-// src/canvas-engine/multi-canvas-setup/hostDefs.ts
-
-import type { SceneRuleSet } from "../multi-canvas-setup/types.ts";
+// multi-canvas-setup/hostDefs.ts
 import { SCENE_RULESETS } from "../adjustable-rules/sceneRuleSets.ts";
+import type { SceneRuleSet } from "./types.ts";
 
 export type DprMode = "auto" | "cap2" | "cap1_5" | "fixed1";
 export type BaseSceneMode = "start" | "overlay";
 
-export type HostDef = {
+// Base shape must NOT reference HostId (no circular types)
+type HostDefBase = {
   mount: string;
   zIndex: number;
   dprMode: DprMode;
-  stopOnOpen?: string[];
+  stopOnOpen?: readonly string[]; 
   scene?: {
     baseMode?: BaseSceneMode;
-    ruleset: SceneRuleSet; // <— single value
+    ruleset: SceneRuleSet;
   };
 };
-// 1: add the string value of the scene rule sets export as an object, 
-// 2: pass the props needed to mount a canvas instance
-// 3: use canvas-engine/EngineHost API to create canvas instances anywhere  
-export const HOST_DEFS = {
+
+const defineHosts = <T extends Record<string, HostDefBase>>(t: T) => t;
+
+export const HOST_DEFS = defineHosts({
   intro: {
     mount: "#canvas-root",
     zIndex: 2,
     dprMode: "auto",
-    scene: {
-      baseMode: "start",
-      ruleset: SCENE_RULESETS.intro,
-    },
+    scene: { baseMode: "start", ruleset: SCENE_RULESETS.intro },
   },
 
   city: {
@@ -35,9 +32,14 @@ export const HOST_DEFS = {
     zIndex: 60,
     dprMode: "auto",
     stopOnOpen: ["intro"],
-    scene: {
-      baseMode: "overlay",
-      ruleset: SCENE_RULESETS.city,
-    },
+    scene: { baseMode: "overlay", ruleset: SCENE_RULESETS.city },
   },
-} as const satisfies Record<string, HostDef>;
+} as const);
+
+// Now it's safe to derive HostId
+export type HostId = keyof typeof HOST_DEFS;
+
+// Public type: tighten stopOnOpen for consumers
+export type HostDef = Omit<HostDefBase, "stopOnOpen"> & {
+  stopOnOpen?: readonly HostId[];
+};

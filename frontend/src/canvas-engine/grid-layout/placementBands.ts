@@ -1,13 +1,8 @@
 // src/canvas-engine/grid-layout/placementBands.ts
-import type { DeviceType } from '../shared/responsiveness.ts';
-import type { ShapeName } from '../adjustable-rules/shapeCatalog.ts';
-import {
-  SHAPE_BANDS,
-  SHAPE_BANDS_OVERLAY,
-  SHAPE_BANDS_Q,
-  type Band,
-  type PickOpts,
-} from '../adjustable-rules/placementRules.ts';
+
+import type { DeviceType } from "../shared/responsiveness.ts";
+import type { ShapeName } from "../adjustable-rules/shapeCatalog.ts";
+import type { Band, ShapeBands } from "../adjustable-rules/placementRules.ts";
 
 function clampBandToRows(topK: number, botK: number, usedRows: number, hCell = 1) {
   topK = Math.max(0, Math.min(1, topK));
@@ -22,26 +17,28 @@ function clampBandToRows(topK: number, botK: number, usedRows: number, hCell = 1
   return { top, bot };
 }
 
-function pickBand(shape: ShapeName | undefined, band: DeviceType, opts?: PickOpts): Band {
-  const s = (shape ?? 'clouds') as ShapeName;
-  const base = SHAPE_BANDS[band];
-
-  if (opts?.overlay) {
-    const o = SHAPE_BANDS_OVERLAY[band]?.[s];
-    if (o) return o;
+function getBand(bands: ShapeBands | undefined, device: DeviceType, shape: ShapeName): Band {
+  if (!bands) {
+    throw new Error(`[PlacementBands] bands table is undefined. Did you pass profile.bands into placePoolItems?`);
   }
 
-  if (opts?.questionnaire) {
-    const q = SHAPE_BANDS_Q[band]?.[s];
-    if (q) return q;
+  const byDevice = bands[device];
+  if (!byDevice) {
+    throw new Error(`[PlacementBands] bands table missing device="${device}". Keys: ${Object.keys(bands).join(", ")}`);
   }
 
-  return base[s] ?? (s === 'clouds' || s === 'snow' || s === 'sun' ? base['clouds'] : base['house']);
+  const band = byDevice[shape];
+  if (!band) {
+    throw new Error(`[PlacementBands] bands table missing shape="${shape}" for device="${device}".`);
+  }
+
+  return band;
 }
 
+
 export const PlacementBands = {
-  band(shape: ShapeName | undefined, usedRows: number, band: DeviceType, hCell = 1, opts?: PickOpts) {
-    const { topK, botK } = pickBand(shape, band, opts);
-    return clampBandToRows(topK, botK, usedRows, hCell); // returns { top, bot }
+  band(bands: ShapeBands, shape: ShapeName, usedRows: number, device: DeviceType, hCell = 1) {
+    const { topK, botK } = getBand(bands, device, shape);
+    return clampBandToRows(topK, botK, usedRows, hCell);
   },
 };
