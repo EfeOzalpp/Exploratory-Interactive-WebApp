@@ -15,7 +15,7 @@ import { useAppState } from '../../app-context/appStateContext.tsx';
 
 import { useRealMobileViewport } from '../../utils-hooks/real-mobile.ts';
 import { sampleStops, rgbString } from '../../utils-hooks/hooks.ts';
-import { useRelativePercentiles, avgWeightOf } from '../../utils-hooks/useRelativePercentiles.ts';
+import { useRelativeScores, avgWeightOf } from '../../utils-hooks/useRelativeScore.ts';
 import { useAbsoluteScore } from '../../utils-hooks/useAbsoluteScore.ts';
 
 // DotGraph internals (feature-owned) — use public surface
@@ -232,7 +232,7 @@ export default function DotGraph({ isDragging = false, data = [] }: DotGraphProp
     (effectiveMyEntry ? { position: [0, 0, 0], color: fallbackColor } : null);
 
   // ---- Metrics (relative vs absolute) ----
-  const { getForId: getRelForId, getForValue: getRelForValue } = useRelativePercentiles(safeData);
+  const { getForId: getRelForId, getForValue: getRelForValue } = useRelativeScores(safeData);
   const { getForId: getAbsForId, getForValue: getAbsForValue } = useAbsoluteScore(safeData, {
     decimals: 0,
   } as any);

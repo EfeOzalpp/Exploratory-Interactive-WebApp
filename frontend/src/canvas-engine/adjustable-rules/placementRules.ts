@@ -135,4 +135,4 @@ export const SHAPE_BANDS: Record<ShapeBandsMode, ShapeBands> = {
       carFactory: { topK: 0.3, botK: 0.9 },
     },
   },
-} as const;
+};

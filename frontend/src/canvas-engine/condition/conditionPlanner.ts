@@ -1,18 +1,19 @@
 // src/canvas-engine/condition/conditionPlanner.ts
 
-import type { ConditionKind, ShapeName, Size, CurveSet } from "./types.ts";
-import { CONDITIONS } from "./conditions.ts";
-import type { ConditionSpec } from "./types.ts";
 import { hash32 } from "../shared/hash32.ts";
+import type {
+  ConditionKind,
+  ShapeName,
+  Size,
+  ConditionSpec,
+  Quota,
+  Limits,
+  QuotaAnchor,
+  QuotaCurvesByKind
+} from "./domain.ts";
+import type { PoolItem, PlanEntry } from "./types.ts";
+import { CONDITIONS } from "./domain.ts";
 
-import {
-  type Quota,
-  type Limits,
-  type QuotaAnchor,
-} from "../adjustable-rules/quotaSpecification.ts";
-
-export type PoolItem = { id: number; cond: ConditionKind };
-export type QuotaCurvesByKind = Record<ConditionKind, QuotaAnchor[]>;
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
@@ -97,9 +98,6 @@ function quotasFor(kind: ConditionKind, u: number, quotaCurves: QuotaCurvesByKin
   const kk = (t - A.t) / Math.max(1e-6, B.t - A.t);
   return finalizeQuotas(kind, blendLimits(A.limits, B.limits, kk));
 }
-
-
-type PlanEntry = { shape: ShapeName; size: Size };
 
 function stableShuffleKey(id: number, salt: number) {
   return hash32('planForBucket', id, salt) >>> 0;

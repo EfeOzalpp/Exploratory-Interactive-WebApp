@@ -51,6 +51,7 @@ export function EngineHost({
     dprMode: hostDef.dprMode,
     mount: hostDef.mount,
     zIndex: hostDef.zIndex,
+    bounds: hostDef.canvasDimensions,
   });
 
   const viewportKey = useViewportKey(120);

@@ -2,9 +2,7 @@
 
 import { deviceType } from "../shared/responsiveness.ts";
 
-import { CANVAS_PADDING } from "../adjustable-rules/canvasPadding.ts";
 import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
-
 import { makeCenteredSquareGrid } from "../grid-layout/layoutCentered.ts";
 
 import type { ComposeOpts, ComposeResult, PoolItem } from "./types.ts";
@@ -18,13 +16,13 @@ export function composeField(opts: ComposeOpts): ComposeResult {
 
   const u = clamp01(opts.allocAvg);
 
-  // mode is data (meta/debug + padding selection). No mode branching here.
+  // mode is data (meta/debug). No branching here.
   const mode = opts.mode;
 
   const device = deviceType(w);
 
-  // padding selection stays here for now (can be moved into rule layer later)
-  const spec = resolveCanvasPaddingSpec(w, CANVAS_PADDING, mode);
+  // padding selection uses the already-mode-resolved table passed in opts
+  const spec = resolveCanvasPaddingSpec(w, opts.padding);
 
   const { cell, rows, cols } = makeCenteredSquareGrid({
     w,

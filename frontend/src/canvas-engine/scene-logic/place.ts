@@ -24,7 +24,6 @@ import { scoreCandidateGeneric } from "./scoring.ts";
 export function placePoolItems(opts: {
   pool: PoolItem[];
   spec: CanvasPaddingSpec;
-
   device: DeviceType;
   rows: number;
   cols: number;

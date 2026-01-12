@@ -1,33 +1,9 @@
 // src/canvas-engine/condition/types.ts
+// Condition-module-specific types live here
 
-export type {
-  // core catalog
-  ConditionKind,
-  ShapeName,
-  ShapeKind,
+// condition/types.ts
+import type { ConditionKind, ShapeName, Size } from "./domain.ts";
 
-  // condition spec
-  Size,
-  Variant,
-  ConditionSpec,
-
-  // quota planning
-  CurveSet,
-  Quota,
-  Limits,
-  QuotaAnchor,
-  
-} from "../adjustable-rules/quotaSpecification.ts";
-
-export {
-  // core catalog values
-  CONDITION_KINDS,
-  SHAPES,
-
-  // condition definitions
-  CONDITIONS,
-
-  // quota curves
-  QUOTA_CURVES_DEFAULT,
-  QUOTA_CURVES_OVERLAY,
-} from "../adjustable-rules/quotaSpecification.ts";
+export type PoolItem = { id: number; cond: ConditionKind };
+export type PlanEntry = { shape: ShapeName; size: Size };
+export type PlanMap = Map<number, PlanEntry>;

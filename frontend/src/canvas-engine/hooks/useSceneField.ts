@@ -12,9 +12,9 @@ import { resolveSceneMode } from "../adjustable-rules/resolveSceneMode.ts";
 import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
 
 import { targetPoolSize } from "../adjustable-rules/poolSizes.ts";
-
 import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
-import { CANVAS_PADDING } from "../adjustable-rules/canvasPadding.ts";
+
+import { getViewportSize } from "../shared/responsiveness.ts"; 
 
 type Engine = {
   ready: React.RefObject<boolean>;
@@ -26,9 +26,9 @@ const clamp01 = (v?: number) =>
 
 function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
   if (!canvas) {
-    const w = typeof window !== "undefined" ? window.innerWidth : 1024;
-    const h = typeof window !== "undefined" ? window.innerHeight : 768;
-    return { w: Math.round(w), h: Math.round(h) };
+    // centralize window usage
+    const { w, h } = getViewportSize();
+    return { w, h };
   }
 
   const dpr =
@@ -47,10 +47,6 @@ function getCanvasLogicalSize(canvas: HTMLCanvasElement | undefined | null) {
   return { w: Math.round(w), h: Math.round(h) };
 }
 
-/**
- * Pool items are runtime state, not engine policy.
- * Keep default item creation in the hook layer.
- */
 function makeDefaultPoolItem(id: number): ScenePoolItem {
   return { id, cond: "A" as ScenePoolItem["cond"] };
 }
@@ -100,8 +96,6 @@ export function useSceneField(
   signals: SceneSignals,
   viewportKey?: number | string
 ) {
-  const { questionnaireOpen } = signals;
-
   const hostDef = HOST_DEFS[hostId];
   if (!hostDef) throw new Error(`Unknown hostId "${hostId}"`);
 
@@ -109,11 +103,9 @@ export function useSceneField(
   if (!ruleset) throw new Error(`[${hostId}] missing scene.ruleset`);
 
   const baseMode = hostDef.scene?.baseMode ?? "start";
-
-  // single source of truth: mode derived from (signals + host baseMode)
+  const { questionnaireOpen } = signals;
   const mode: SceneMode = resolveSceneMode({ questionnaireOpen }, { baseMode });
 
-  // resolved policy bundle
   const profile = ruleset.getProfile(mode);
 
   const uRef = useRef(0.5);
@@ -131,14 +123,14 @@ export function useSceneField(
 
     const { w, h } = getCanvasLogicalSize(canvas);
 
-    // poolsize from adjustable-rules by mode
-    const desired = targetPoolSize({ mode, width: w } as any);
+    const desired = targetPoolSize({ mode, width: w });
     ensurePoolSize(poolRef, desired);
 
     const pool = poolRef.current ?? [];
 
     const result = composeField({
       mode,
+      padding: profile.padding,
       bands: profile.bands,
       shapeMeta: profile.shapeMeta,
       quotaCurves: profile.quotaCurves,
@@ -150,14 +142,13 @@ export function useSceneField(
 
     poolRef.current = result.nextPool;
 
-    // Optional layout injection (engine can use this)
-    try {
-      const spec = resolveCanvasPaddingSpec(w, CANVAS_PADDING, mode);
-      engine.controls.current?.setLayoutSpec?.({
-        rows: spec.rows,
-        useTopRatio: spec.useTopRatio,
-      });
-    } catch {}
+    // resolve padding by device band from the profile’s already-mode-resolved table
+    const spec = resolveCanvasPaddingSpec(w, profile.padding);
+
+    engine.controls.current?.setLayoutSpec?.({
+      rows: spec.rows,
+      useTopRatio: spec.useTopRatio,
+    });
 
     engine.controls.current?.setFieldItems?.(result.placed);
     engine.controls.current?.setFieldVisible?.(result.placed.length > 0);

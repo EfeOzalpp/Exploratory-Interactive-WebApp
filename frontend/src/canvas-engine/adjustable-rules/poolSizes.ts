@@ -21,7 +21,6 @@ function deviceTypeOrDefault(width?: number): DeviceType {
 
 /**
  * API: mode is the single authority.
- * (No extra booleans: overlay/questionnaireOpen should be derived from mode.)
  */
 export function targetPoolSize(opts: { mode: SceneMode; width?: number }): number {
   const dt = deviceTypeOrDefault(opts.width);

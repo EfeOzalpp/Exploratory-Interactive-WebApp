@@ -1,15 +1,10 @@
-// src/canvas-engine/condition/conditions.ts
+// src/canvas-engine/condition/pickConditionVariants.ts
 
 import { hash32 } from "../shared/hash32.ts";
-import type { ConditionKind, Variant } from "./types.ts";
-import { CONDITIONS } from "../adjustable-rules/quotaSpecification.ts";
 
-export { CONDITIONS };
+import type { ConditionKind, Variant } from "./domain.ts";
+import { CONDITIONS } from "./domain.ts";
 
-/**
- * Deterministic variant picker by (kind, id, salt).
- * If a kind has exactly two variants, a single hash bit is used for stable 50/50 behavior.
- */
 export function pickVariant(kind: ConditionKind, id: number, salt = 0): Variant {
   const spec = CONDITIONS[kind];
   const n = spec.variants.length;

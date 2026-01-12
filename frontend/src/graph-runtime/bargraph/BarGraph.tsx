@@ -6,7 +6,7 @@
 import React, { useEffect, useMemo, useRef, useState, useLayoutEffect, Suspense } from 'react';
 
 import { useAppState } from '../../app-context/appStateContext.tsx';
-import { useRelativePercentiles, avgWeightOf } from '../../utils-hooks/useRelativePercentiles.ts';
+import { useRelativeScores, avgWeightOf } from '../../utils-hooks/useRelativeScore.ts';
 
 import EmptyStateArt from './EmptyArt.tsx';
 
@@ -67,7 +67,7 @@ export default function BarGraph() {
   const { data, loading, section, hasCompletedSurvey, myEntryId, darkMode } = useAppState() as any;
 
   const safeData: any[] = Array.isArray(data) ? data : [];
-  const { getForId } = useRelativePercentiles(safeData);
+  const { getForId } = useRelativeScores(safeData);
 
   const [animationState, setAnimationState] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);

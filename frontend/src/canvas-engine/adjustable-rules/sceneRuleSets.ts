@@ -6,7 +6,7 @@ import { SHAPE_BANDS } from "./placementRules.ts";
 import { SHAPE_META } from "./shapeMeta.ts";
 
 import { POOL_SIZES } from "./poolSizes.ts";
-import { QUOTA_CURVES_DEFAULT, QUOTA_CURVES_OVERLAY } from "./quotaSpecification.ts";
+import { QUOTA_CURVES } from "./quotaSpecification.ts";
 
 import { defineRuleSet } from "../validation/index.ts";
 
@@ -16,18 +16,16 @@ const introStart = (): SceneProfile => ({
   padding: CANVAS_PADDING.start,
   bands: SHAPE_BANDS.start,
   shapeMeta: SHAPE_META,
-
   poolSizes: POOL_SIZES,
-  quotaCurves: QUOTA_CURVES_DEFAULT,
+  quotaCurves: QUOTA_CURVES.default,
 });
 
 const introQuestionnaire = (): SceneProfile => ({
   padding: CANVAS_PADDING.questionnaire,
   bands: SHAPE_BANDS.questionnaire,
   shapeMeta: SHAPE_META,
-
   poolSizes: POOL_SIZES,
-  quotaCurves: QUOTA_CURVES_DEFAULT,
+  quotaCurves: QUOTA_CURVES.default,
 });
 
 /** ---------- CITY ---------- */
@@ -36,9 +34,8 @@ const cityOverlay = (): SceneProfile => ({
   padding: CANVAS_PADDING.overlay,
   bands: SHAPE_BANDS.overlay,
   shapeMeta: SHAPE_META,
-
   poolSizes: POOL_SIZES,
-  quotaCurves: QUOTA_CURVES_OVERLAY,
+  quotaCurves: QUOTA_CURVES.overlay,
 });
 
 /** ---------- EXPORT ---------- */

@@ -17,7 +17,7 @@ const CanvasEntry = React.lazy(() =>
 );
 
 const CityOverlay = React.lazy(() =>
-  import(/* webpackChunkName: "city-overlay" */ "../navigation/CityOverlay.jsx")
+  import(/* webpackChunkName: "city-overlay" */ "../navigation/CityOverlay.tsx")
 );
 
 const EdgeCue = React.lazy(() => import("../navigation/DarkMode.jsx"));
@@ -50,7 +50,6 @@ const AppInner: React.FC = () => {
 
   const [animationVisible, setAnimationVisible] = useState<boolean>(false);
   const [surveyWrapperClass, setSurveyWrapperClass] = useState<string>("");
-  const [answers, setAnswers] = useState<Record<string, number | null>>({});
   const [cityPanelOpen, setCityPanelOpen] = useState<boolean>(false);
 
   const {
@@ -105,15 +104,6 @@ const AppInner: React.FC = () => {
     allowWithin: [".graph-container", ".dot-graph-container", "#canvas-root", "#city-canvas-root"],
   });
 
-  // Reset transient UI state when the overlay animation plays
-  useEffect(() => {
-    if (animationVisible) {
-      setAnswers({});
-      setLiveAvg(DEFAULT_AVG);
-      commitAllocAvg(DEFAULT_AVG);
-    }
-  }, [animationVisible, setLiveAvg, commitAllocAvg]);
-
   // Keep city overlay closed if questionnaire closes
   useEffect(() => {
     if (!questionnaireOpen && cityPanelOpen) setCityPanelOpen(false);
@@ -142,7 +132,6 @@ const AppInner: React.FC = () => {
       {!readyForViz && !animationVisible && !cityPanelOpen && (
         <Suspense fallback={null}>
         <CanvasEntry
-          answers={answers as any}
           liveAvg={liveAvg}
           allocAvg={allocAvg}
           questionnaireOpen={questionnaireOpen}
@@ -170,7 +159,6 @@ const AppInner: React.FC = () => {
           setAnimationVisible={setAnimationVisible}
           setGraphVisible={setGraphVisible}
           setSurveyWrapperClass={setSurveyWrapperClass}
-          onAnswersUpdate={setAnswers as any}
         />
       </div>
 

@@ -1,5 +1,7 @@
 // src/canvas-engine/hooks/useCanvasEngine.ts
+
 import { useEffect, useRef, useState } from 'react';
+import type { CanvasBounds } from "../multi-canvas-setup/hostDefs.ts";
 import {
   startCanvasEngine,
   stopCanvasEngine,
@@ -11,6 +13,7 @@ type EngineOpts = {
   dprMode?: 'fixed1' | 'cap2' | 'cap1_5' | 'auto';
   mount?: string;
   zIndex?: number;
+  bounds?: CanvasBounds;
 };
 
 function safeCall(fn: unknown) {
@@ -46,6 +49,7 @@ export function useCanvasEngine(opts: EngineOpts = {}) {
     dprMode = 'cap2',
     mount = '#canvas-root',
     zIndex = 2,
+    bounds
   } = opts;
 
   const controlsRef = useRef<CanvasEngineControls | null>(null);
@@ -59,6 +63,7 @@ export function useCanvasEngine(opts: EngineOpts = {}) {
       mount,
       dprMode,
       zIndex,
+      bounds, 
       onReady: () => {
         readyRef.current = true;
         setReadyTick((t) => t + 1);

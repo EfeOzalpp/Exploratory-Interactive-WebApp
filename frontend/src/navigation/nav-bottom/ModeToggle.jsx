@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 
 import { useAppState } from '../../app-context/appStateContext.tsx';
-import { avgWeightOf } from '../../utils-hooks/useRelativePercentiles.ts';
+import { avgWeightOf } from '../../utils-hooks/useRelativeScore.ts';
 import { useAbsoluteScore } from '../../utils-hooks/useAbsoluteScore.ts';
 import '../../static-assets/styles/nav-bottom.css';
 

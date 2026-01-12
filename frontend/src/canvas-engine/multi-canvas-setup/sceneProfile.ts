@@ -1,6 +1,6 @@
 import type { DeviceType } from "../shared/responsiveness.ts";
 import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
-import type { ConditionKind } from "../condition/types.ts";
+import type { ConditionKind } from "../condition/domain.ts";
 import type { QuotaAnchor } from "../adjustable-rules/quotaSpecification.ts";
 import type { ShapeBands } from "../adjustable-rules/placementRules.ts";
 
@@ -24,8 +24,6 @@ export type SceneProfile = {
   padding: PaddingPolicyByDevice; 
   bands: BandsByDevice;
   shapeMeta: Record<string, ShapeMeta>;
-
-  // policy
   poolSizes: PoolSizesByMode;
   quotaCurves: QuotaCurvesByKind;
 };

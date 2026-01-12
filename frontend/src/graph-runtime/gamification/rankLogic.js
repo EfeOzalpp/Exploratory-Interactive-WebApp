@@ -1,6 +1,6 @@
 // src/components/dotGraph/utils/rankLogic.js
 
-import { avgWeightOf } from '../../utils-hooks/useRelativePercentiles.ts';
+import { avgWeightOf } from '../../utils-hooks/useRelativeScore.ts';
 
 
 /**

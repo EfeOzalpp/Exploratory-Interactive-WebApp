@@ -1,21 +1,15 @@
 // src/canvas-engine/adjustable-rules/resolveCanvasPadding.ts
 
-import { deviceType } from "../shared/responsiveness.ts";
-import type {
-  CanvasPaddingBand,
-  CanvasPaddingMode,
-  CanvasPaddingSpec,
-} from "./canvasPadding.ts";
+import { deviceType, type DeviceType } from "../shared/responsiveness.ts";
+import type { CanvasPaddingSpec } from "./canvasPadding.ts";
 
 export function resolveCanvasPaddingSpec(
-  width: number,
-  paddingByMode: Record<CanvasPaddingMode, Record<CanvasPaddingBand, CanvasPaddingSpec>>,
-  mode: CanvasPaddingMode
+  w: number,
+  paddingByDevice: Record<DeviceType, CanvasPaddingSpec>
 ): CanvasPaddingSpec {
-  const band = deviceType(width);
-  const table = paddingByMode[mode];
-  if (!table) throw new Error(`Unknown padding mode: ${String(mode)}`);
-  const spec = table[band];
-  if (!spec) throw new Error(`Missing padding spec for band: ${String(band)} (mode: ${String(mode)})`);
+  const band = deviceType(w);
+  const spec = paddingByDevice[band];
+  if (!spec) throw new Error(`Missing padding spec for band: ${band}. Keys: ${Object.keys(paddingByDevice).join(", ")}`);
   return spec;
 }
+

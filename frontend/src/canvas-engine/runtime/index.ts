@@ -1,4 +1,4 @@
-// canvas-engine/runtime/index.ts
+// src/canvas-engine/runtime/index.ts
 
 import {
   drawClouds,
@@ -21,13 +21,21 @@ import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
 import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
 import { makeCenteredSquareGrid } from "../grid-layout/layoutCentered.ts";
 
-import { ensureMount, applyCanvasStyle, type EngineLayoutMode } from "./mount.ts";
-import { getViewportSize, resolvePixelDensity, type DprMode } from "./viewport.ts";
+import { ensureMount, applyCanvasStyle } from "./mount.ts";
+import { getViewportSize, resolvePixelDensity } from "./viewport.ts";
 import { makeP, type PLike } from "./p/makeP.ts";
 
 import { gradientColor, BRAND_STOPS_VIVID } from "../modifiers/index.ts";
 
 import { deviceType } from "../shared/responsiveness.ts";
+
+import type {
+  EngineControls,
+  EngineFieldItem,
+  StartCanvasEngineOpts,
+} from "./types.ts";
+
+export type { EngineControls as CanvasEngineControls } from "./types.ts";
 
 function clamp01(t: number) {
   return t < 0 ? 0 : t > 1 ? 1 : t;
@@ -78,43 +86,9 @@ const REG_STYLE_DEFAULT = {
   contrast: 1.0,
   appearMs: 300,
   exitMs: 300,
-};
-
-type FieldItem = {
-  id: string;
-  x: number;
-  y: number;
-  shape: string;
-  footprint?: any;
-};
-
-export type CanvasEngineControls = EngineControls;
-
-type EngineControls = {
-  // inbound signals (values provided by outside of engine to drive movement on shapes)
-  setInputs: (args?: { liveAvg?: number }) => void;
-
-  // field payload
-  setFieldItems: (nextItems?: FieldItem[]) => void;
-  setFieldStyle: (args?: Partial<typeof REG_STYLE_DEFAULT> & Record<string, any>) => void;
-  setFieldVisible: (v: boolean) => void;
-
-  // mode/policy inputs to runtime (THIS is the modular part)
-  setSceneMode: (mode: SceneMode) => void;
-
-  /**
-   * Optional escape hatch: if caller already resolved padding, runtime uses it.
-   * If not set, runtime resolves from CANVAS_PADDING + sceneMode.
-   */
-  setPaddingSpec: (spec: CanvasPaddingSpec | null) => void;
-
-  // visibility
-  setHeroVisible: (v: boolean) => void;
-  setVisible: (v: boolean) => void;
-
-  stop: () => void;
-
-  readonly canvas: HTMLCanvasElement | null;
+  debugGrid: true,
+  debugGridAlpha: 0.35,
+  debugForbiddenAlpha: 0.25,
 };
 
 // ───────────────────────────────────────────────────────────
@@ -151,19 +125,17 @@ function stopByEl(el: HTMLElement) {
   } catch {}
 }
 
-export function startCanvasEngine({
-  mount = "#canvas-root",
-  onReady,
-  dprMode = "fixed1" as DprMode,
-  zIndex = 2,
-  layout = "fixed" as EngineLayoutMode,
-}: {
-  mount?: string;
-  onReady?: (controls: EngineControls) => void;
-  dprMode?: DprMode;
-  zIndex?: number;
-  layout?: EngineLayoutMode;
-} = {}): EngineControls {
+export function startCanvasEngine(
+  opts: StartCanvasEngineOpts = {}
+): EngineControls {
+  const {
+    mount = "#canvas-root",
+    onReady,
+    dprMode = "fixed1",
+    zIndex = 2,
+    layout = "fixed",
+  } = opts;
+
   const key = mountKey(mount);
 
   // Resolve/create the mount element first (canonical identity)
@@ -199,7 +171,7 @@ export function startCanvasEngine({
   // inputs/signals (things like liveAvg that drive many systems)
   const inputs = { liveAvg: 0.5 };
 
-  const field = { items: [] as FieldItem[], visible: false, epoch: 0 };
+  const field = { items: [] as EngineFieldItem[], visible: false, epoch: 0 };
   const hero = { x: null as number | null, y: null as number | null, visible: false };
 
   let canvasEl: HTMLCanvasElement | null = null;
@@ -224,9 +196,23 @@ export function startCanvasEngine({
 
   let ghosts: Array<{ dieAtMs: number; x: number; y: number; shape: string; footprint?: any }> = [];
 
-  function shapeKeyOfItem(it: FieldItem) {
+  function shapeKeyOfItem(it: EngineFieldItem) {
     const f = it.footprint || { w: 0, h: 0, r0: 0, c0: 0 };
     return `${it.shape}|w${f.w}h${f.h}|r${f.r0}c${f.c0}`;
+  }
+
+  function resolveBounds(): { w: number; h: number } {
+    const b = opts.bounds ?? { kind: "viewport" as const };
+
+    if (b.kind === "fixed") return { w: b.w, h: b.h };
+
+    if (b.kind === "parent") {
+      const r = parentEl.getBoundingClientRect();
+      return { w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)) };
+    }
+
+    // viewport
+    return getViewportSize();
   }
 
   // grid cache (includes usedRows)
@@ -248,11 +234,82 @@ export function startCanvasEngine({
   }
 
   function getPaddingSpecForCurrentState(width: number): CanvasPaddingSpec {
+    // Caller can override with a fully resolved spec (preferred path)
     if (paddingSpecOverride) return paddingSpecOverride;
 
-    // Resolve from CANVAS_PADDING by mode + band. This requires your resolveCanvasPaddingSpec
-    // to be the "pure" signature: (width, CANVAS_PADDING, mode).
-    return resolveCanvasPaddingSpec(width, CANVAS_PADDING, sceneMode);
+    // Fallback: resolve from table (mode -> device -> spec)
+    // sceneMode is the actual runtime state.
+    const byDevice = CANVAS_PADDING[sceneMode as keyof typeof CANVAS_PADDING];
+    if (!byDevice) {
+      // Defensive: if SceneMode ever expands beyond padding modes
+      // fall back to "start" instead of crashing.
+      return resolveCanvasPaddingSpec(width, CANVAS_PADDING.start);
+    }
+
+    return resolveCanvasPaddingSpec(width, byDevice);
+  }
+  
+  // Grid overlay for debugging
+  function drawGridOverlay(p2: PLike, grid: { cell: number; rows: number; cols: number; usedRows: number }, spec: CanvasPaddingSpec) {
+    const { cell, rows, cols, usedRows } = grid;
+    if (!cell || !rows || !cols) return;
+
+    const ctx = p2.drawingContext;
+    const gridAlpha = (style as any).debugGridAlpha ?? 0.35;
+    const forbAlpha = (style as any).debugForbiddenAlpha ?? 0.25;
+
+    // --- grid lines ---
+    ctx.save();
+    ctx.globalAlpha = gridAlpha;
+    ctx.lineWidth = 1;
+
+    // verticals
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    for (let c = 0; c <= cols; c++) {
+      const x = Math.round(c * cell) + 0.5;
+      if (x < 0 || x > p2.width) continue;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, p2.height);
+      ctx.stroke();
+    }
+
+    // horizontals
+    for (let r = 0; r <= rows; r++) {
+      const y = Math.round(r * cell) + 0.5;
+      if (y < 0 || y > p2.height) continue;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(p2.width, y);
+      ctx.stroke();
+    }
+
+    // --- usedRows boundary (visualize useTopRatio cutoff) ---
+    {
+      const y = Math.round(usedRows * cell) + 0.5;
+      ctx.strokeStyle = "rgba(255,0,0,0.55)";
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(p2.width, y);
+      ctx.stroke();
+    }
+
+    // --- forbidden mask (if any) ---
+    if (spec.forbidden) {
+      ctx.globalAlpha = forbAlpha;
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          // IMPORTANT: forbidden signature is (r,c,rows,cols)
+          if (spec.forbidden(r, c, rows, cols)) {
+            ctx.fillRect(c * cell, r * cell, cell, cell);
+          }
+        }
+      }
+    }
+
+    ctx.restore();
   }
 
   const computeGrid = () => {
@@ -309,11 +366,12 @@ export function startCanvasEngine({
 
   function resizeToViewport() {
     if (!p || !canvasEl) return;
-    const { w, h } = getViewportSize();
+
+    const { w, h } = resolveBounds();
+
     p.pixelDensity(resolvePixelDensity(dprMode));
     p.resizeCanvas(w, h);
 
-    // Ensure CSS box == logical size so grid math centers correctly
     canvasEl.style.width = w + "px";
     canvasEl.style.height = h + "px";
 
@@ -326,6 +384,16 @@ export function startCanvasEngine({
 
     if (hero.x == null) hero.x = Math.round(p.width * 0.5);
     if (hero.y == null) hero.y = Math.round(p.height * 0.3);
+  }
+
+  let ro: ResizeObserver | null = null;
+
+  if (typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(() => {
+      // parent box changed → remeasure and resize canvas
+      resizeThrottled();
+    });
+    ro.observe(parentEl);
   }
 
   const resizeThrottled = () => {
@@ -343,7 +411,13 @@ export function startCanvasEngine({
   document.addEventListener("visibilitychange", visHandler);
 
   // draw registry
-  function renderOne(p2: PLike, it: FieldItem, rEff: number, sharedOpts: any, rootAppearK: number) {
+  function renderOne(
+    p2: PLike,
+    it: EngineFieldItem,
+    rEff: number,
+    sharedOpts: any,
+    rootAppearK: number
+  ) {
     const opts = { ...sharedOpts, rootAppearK };
     switch (it.shape) {
       case "snow": {
@@ -399,7 +473,13 @@ export function startCanvasEngine({
     }
   }
 
-  function renderOneSandboxed(p2: PLike, it: FieldItem, rEff: number, sharedOpts: any, rootAppearK: number) {
+  function renderOneSandboxed(
+    p2: PLike,
+    it: EngineFieldItem,
+    rEff: number,
+    sharedOpts: any,
+    rootAppearK: number
+  ) {
     p2.push();
     try {
       renderOne(p2, it, rEff, sharedOpts, rootAppearK);
@@ -409,7 +489,14 @@ export function startCanvasEngine({
       const ctx2 = p2.drawingContext;
       const dpr = (p2.canvas as any)?._dpr || 1;
       const T = ctx2.getTransform();
-      if (T.a !== dpr || T.d !== dpr || T.b !== 0 || T.c !== 0 || T.e !== 0 || T.f !== 0) {
+      if (
+        T.a !== dpr ||
+        T.d !== dpr ||
+        T.b !== 0 ||
+        T.c !== 0 ||
+        T.e !== 0 ||
+        T.f !== 0
+      ) {
         ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
     }
@@ -440,7 +527,15 @@ export function startCanvasEngine({
 
     drawBackground(p);
 
-    const { cell } = computeGrid();
+    const grid = computeGrid();
+    const spec = getPaddingSpecForCurrentState(p.width);
+
+    if ((style as any).debugGrid) {
+      drawGridOverlay(p, grid, spec);
+    }
+
+    const { cell } = grid;
+
 
     const tMs = p.millis();
     const tSec = tMs / 1000;
@@ -494,7 +589,13 @@ export function startCanvasEngine({
         const dt = tMs - g.dieAtMs;
         if (dt >= style.exitMs) continue;
         const k = 1 - easeOutCubic(clamp01(dt / style.exitMs));
-        const it: FieldItem = { id: "__ghost__", x: g.x, y: g.y, shape: g.shape, footprint: g.footprint };
+        const it: EngineFieldItem = {
+          id: "__ghost__",
+          x: g.x,
+          y: g.y,
+          shape: g.shape,
+          footprint: g.footprint,
+        };
         const scale = style.perShapeScale?.[it.shape] ?? 1;
         const rEff = style.r * scale;
         const shared = { ...baseShared, footprint: g.footprint, alpha: Math.round(235 * k) };
@@ -544,7 +645,7 @@ export function startCanvasEngine({
     if (typeof args.liveAvg === "number") inputs.liveAvg = clamp01(args.liveAvg);
   }
 
-  function setFieldItems(nextItems: FieldItem[] = []) {
+  function setFieldItems(nextItems: EngineFieldItem[] = []) {
     const now = nowMs();
     field.epoch++;
 
@@ -625,6 +726,13 @@ export function startCanvasEngine({
 
     if (Number.isFinite(appearMs) && appearMs >= 0) style.appearMs = appearMs | 0;
     if (Number.isFinite(exitMs) && exitMs >= 0) style.exitMs = exitMs | 0;
+
+    const { debugGrid, debugGridAlpha, debugForbiddenAlpha } = args;
+
+     if (typeof debugGrid === "boolean") (style as any).debugGrid = debugGrid;
+     if (typeof debugGridAlpha === "number") (style as any).debugGridAlpha = Math.max(0, Math.min(1, debugGridAlpha));
+     if (typeof debugForbiddenAlpha === "number") (style as any).debugForbiddenAlpha = Math.max(0, Math.min(1, debugForbiddenAlpha));
+
   }
 
   function setFieldVisible(v: boolean) {
@@ -654,6 +762,10 @@ export function startCanvasEngine({
   }
 
   function stop() {
+    
+    try { ro?.disconnect(); } catch {}
+    ro = null;
+
     try {
       running = false;
     } catch {}
@@ -668,7 +780,7 @@ export function startCanvasEngine({
       canvasEl?.remove?.();
     } catch {}
 
-    // ✅ remove registry entries by element identity and selector key
+    // remove registry entries by element identity and selector key
     try {
       REGISTRY_BY_EL.delete(parentEl);
     } catch {}

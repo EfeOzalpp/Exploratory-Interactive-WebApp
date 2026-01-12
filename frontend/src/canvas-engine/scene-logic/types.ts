@@ -1,10 +1,10 @@
-// src/canvas/scene-logic/types.ts
+// src/canvas-engine/scene-logic/types.ts
 
 import type { DeviceType } from "../shared/responsiveness.ts";
 import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
 import type { Place } from "../grid-layout/occupancy.ts";
-import type { QuotaCurvesByKind } from "../condition/conditionPlanner.ts";
-import type { ConditionKind, ShapeName, Size } from "../condition/types.ts";
+import type { QuotaCurvesByKind } from "../adjustable-rules/quotaSpecification.ts";
+import type { ConditionKind, ShapeName, Size } from "../condition/domain.ts";
 import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
 import type { ShapeBands } from "../adjustable-rules/placementRules.ts";
 import type { ShapeMeta } from "../adjustable-rules/shapeMeta.ts"; 
@@ -32,6 +32,7 @@ export type PlacedItem = {
 export type ComposeOpts = {
   // keep mode for debugging/meta + padding selection
   mode: SceneMode;
+  padding: Record<DeviceType, CanvasPaddingSpec>;
 
   // resolved rule data (NO mode branching needed in compose/placement)
   bands: ShapeBands;

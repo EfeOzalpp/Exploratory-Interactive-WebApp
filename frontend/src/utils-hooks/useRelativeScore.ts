@@ -12,7 +12,7 @@ export const avgWeightOf = (item: WithWeights): number => {
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0.5;
 };
 
-export function useRelativePercentiles<T extends { _id?: string }>(
+export function useRelativeScores<T extends { _id?: string }>(
   items: T[],
   opts?: {
     accessor?: (x: T) => number;            // default avgWeightOf
