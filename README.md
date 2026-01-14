@@ -1,5 +1,5 @@
 ### Butterfly Effect
-Procedural web application built with React, Canvas, and Three.js.
+Web application built with React, Canvas, and Three.js.
 
 <p>
   <img src="./screenshots+gifs/survey.gif" width="49%" />
