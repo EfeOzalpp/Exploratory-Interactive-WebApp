@@ -1,11 +1,11 @@
 // src/graph-runtime/dotgraph/event-handlers/usePixelOffsets.ts
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 import type { Camera, Group } from 'three';
 
 export type UsePixelOffsetsParams = {
-  groupRef: MutableRefObject<Group | null>;
+  groupRef: RefObject<Group | null>;
   camera: Camera;
   radius: number;
   xOffset: number;

@@ -1,34 +1,31 @@
 // pages/Frontpage.tsx
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
-import RadialBackground from "../static-assets/static/radialBackground.jsx";
+
+import { AppProvider, useAppState } from "../app-context/appStateContext.tsx";
+
 import Survey from "../weighted-survey/Survey.tsx";
+
 import Navigation from "../navigation/Navigation.jsx";
 import CityButton from "../navigation/CityButton.tsx";
-import DataVisualization from "../graph-runtime/index.tsx";
+
+import DataVisualization from "../graph-runtime/index.tsx"; // Contains the graph visualizations
+
 import { useDynamicMargin } from "../utils-hooks/dynamicMargin.ts";
-import { AppProvider, useAppState, DEFAULT_AVG } from "../app-context/appStateContext.tsx";
+
 import GamificationCopyPreloader from "../utils-hooks/gamificationCopyPreloader.tsx";
+
 import { usePreventPageZoomOutsideZones } from "../utils-hooks/usePreventPageZoom.ts";
+import RadialBackground from "../static-assets/static/radialBackground.jsx";
 import "../static-assets/styles/global-styles.css";
 
-const CanvasEntry = React.lazy(() =>
-  import(/* webpackChunkName: "canvas-entry" */ "../weighted-survey/CanvasEntry.tsx")
-);
+const CanvasEntry = React.lazy(() => import("../weighted-survey/CanvasEntry.tsx"));
 
-const CityOverlay = React.lazy(() =>
-  import(/* webpackChunkName: "city-overlay" */ "../navigation/CityOverlay.tsx")
-);
+const CityOverlay = React.lazy(() => import("../navigation/CityOverlay.tsx"));
 
 const EdgeCue = React.lazy(() => import("../navigation/DarkMode.jsx"));
 
-const ModeToggle = React.lazy(() =>
-  import(/* webpackChunkName: "mode-toggle" */ "../navigation/nav-bottom/ModeToggle.jsx")
-);
-
-type LiveAvgMeta = {
-  committed?: boolean;
-};
+const ModeToggle = React.lazy(() => import("../navigation/nav-bottom/ModeToggle.jsx"));
 
 function DeferredGamificationPreloader() {
   const [start, setStart] = useState<boolean>(false);
@@ -44,7 +41,6 @@ function DeferredGamificationPreloader() {
 
   return start ? <GamificationCopyPreloader /> : null;
 }
-
 const AppInner: React.FC = () => {
   useDynamicMargin();
 
@@ -54,31 +50,23 @@ const AppInner: React.FC = () => {
 
   const {
     vizVisible,
-    openGraph,
-    closeGraph,
     observerMode,
     hasCompletedSurvey,
     questionnaireOpen,
-
-    // avg state/actions from context
     liveAvg,
     allocAvg,
-    setLiveAvg,
-    commitAllocAvg,
   } = useAppState();
 
-  const setGraphVisible = (v: boolean) => (v ? openGraph() : closeGraph());
-
+  // Extracted global zoom prevention policy
+  usePreventPageZoomOutsideZones({
+    allowWithin: [".graph-container", ".dot-graph-container", "#canvas-root", "#city-canvas-root"],
+  });
+  
   // Heavy viz allowed when visible AND (observer or completed survey)
   const readyForViz = useMemo<boolean>(
     () => vizVisible && (observerMode || hasCompletedSurvey),
     [vizVisible, observerMode, hasCompletedSurvey]
   );
-
-  // Auto-open once allowed
-  useEffect(() => {
-    if (observerMode || hasCompletedSurvey) openGraph();
-  }, [observerMode, hasCompletedSurvey, openGraph]);
 
   // Idle prefetch of the canvas chunk if we aren't ready for viz yet
   useEffect(() => {
@@ -86,10 +74,7 @@ const AppInner: React.FC = () => {
     if (readyForViz) return;
 
     const prefetch = () => {
-      import(
-        /* webpackPrefetch: true, webpackChunkName: "canvas-entry" */ "../weighted-survey/CanvasEntry.tsx"
-      );
-    };
+      import("../weighted-survey/CanvasEntry.tsx");};
 
     if ("requestIdleCallback" in window) {
       window.requestIdleCallback(prefetch, { timeout: 1500 });
@@ -98,11 +83,6 @@ const AppInner: React.FC = () => {
       return () => clearTimeout(t);
     }
   }, [readyForViz]);
-
-  // Extracted global zoom prevention policy
-  usePreventPageZoomOutsideZones({
-    allowWithin: [".graph-container", ".dot-graph-container", "#canvas-root", "#city-canvas-root"],
-  });
 
   // Keep city overlay closed if questionnaire closes
   useEffect(() => {
@@ -157,7 +137,6 @@ const AppInner: React.FC = () => {
       <div className={`survey-section-wrapper3 ${surveyWrapperClass}`}>
         <Survey
           setAnimationVisible={setAnimationVisible}
-          setGraphVisible={setGraphVisible}
           setSurveyWrapperClass={setSurveyWrapperClass}
         />
       </div>

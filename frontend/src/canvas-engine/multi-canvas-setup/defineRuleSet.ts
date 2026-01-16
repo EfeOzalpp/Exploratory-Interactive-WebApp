@@ -1,6 +1,7 @@
 // src/canvas-engine/adjustable-rules/defineRuleSet.ts
-import type { SceneMode, SceneProfile } from "./sceneProfile.ts";
+import type { SceneProfile } from "./sceneProfile.ts";
 import type { SceneRuleSet } from "./types.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 import { validateSceneProfile } from "../validation/validateSceneProfile.ts";
 
 export function defineRuleSet(

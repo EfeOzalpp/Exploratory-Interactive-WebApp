@@ -32,12 +32,10 @@ const DoneOverlayR3F = React.lazy(() => import('./R3F-button/DoneOverlayR3F.jsx'
 
 export default function Survey({
   setAnimationVisible,
-  setGraphVisible,
   setSurveyWrapperClass,
   onAnswersUpdate,
 }: {
   setAnimationVisible: (v: boolean) => void;
-  setGraphVisible: (v: boolean) => void;
   setSurveyWrapperClass: (cls: string) => void;
   onAnswersUpdate?: (answers: Record<string, number | null>) => void;
 }) {
@@ -203,8 +201,6 @@ export default function Survey({
     setMySection(surveySection);
     setHasCompletedSurvey(true);
     setSurveyActive(false);
-
-    setGraphVisible(true);
     setAnimationVisible(true);
     setSurveyWrapperClass('complete-active');
 

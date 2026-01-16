@@ -1,11 +1,13 @@
 // multi-canvas-setup/hostDefs.ts
 import { SCENE_RULESETS } from "../adjustable-rules/sceneRuleSets.ts";
 import type { SceneRuleSet } from "./types.ts";
-import type { SceneMode } from "./sceneProfile.ts"
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts"
 
 export type DprMode = "auto" | "cap2" | "cap1_5" | "fixed1";
 
-// questionnaire exists as a state change withn start canvas, therefore it is excluded from Scene Mode (start, overlay)
+// questionnaire exists as a state change withn start canvas, 
+// therefore it is excluded from Scene Mode (start, overlay).
+// If you have state changes within one canvas instance add them here.
 export type BaseSceneMode = Exclude<SceneMode, "questionnaire">; 
 
 // give the canvas the size you want
@@ -14,7 +16,7 @@ export type CanvasBounds =
   | { kind: "parent" }                           // allow canvas to fit parents dimensions
   | { kind: "fixed"; w: number; h: number }      // exact pixels
 
-// Base shape must NOT reference HostId (no circular types)
+// Base shape 
 type HostDefBase = {
   mount: string;
   zIndex: number;
@@ -33,8 +35,8 @@ export const HOST_DEFS = defineHosts({
   start: {
     mount: "#canvas-root",
     zIndex: 2,
-    dprMode: "auto",
-    canvasDimensions: { kind: "parent" },
+    dprMode: "cap2",
+    canvasDimensions: { kind: "viewport" },
     scene: { baseMode: "start", ruleset: SCENE_RULESETS.intro },
   },
 
@@ -43,7 +45,7 @@ export const HOST_DEFS = defineHosts({
     zIndex: 60,
     dprMode: "auto",
     stopOnOpen: ["start"],
-    canvasDimensions: { kind: "parent" },
+    canvasDimensions: { kind: "viewport" },
     scene: { baseMode: "overlay", ruleset: SCENE_RULESETS.city },
   },
 } as const);

@@ -1,7 +1,7 @@
 // src/graph-runtime/dotgraph/event-handlers/useRotation.ts
 import { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 import type { Group } from 'three';
 
 export type GestureState = {
@@ -13,7 +13,7 @@ export type GestureState = {
 export type EdgeDrive = { active: boolean; nx: number; ny: number; strength: number };
 
 export type UseRotationParams = {
-  groupRef: MutableRefObject<Group | null>;
+  groupRef: RefObject<Group | null>;
   useDesktopLayout: boolean;
   isTabletLike: boolean;
   minRadius: number;
@@ -21,21 +21,21 @@ export type UseRotationParams = {
   radius: number;
   markActivity?: () => void;
   isDragging?: boolean;
-  gestureRef?: MutableRefObject<GestureState>;
-  edgeDriveRef?: MutableRefObject<EdgeDrive>;
+  gestureRef?: RefObject<GestureState>;
+  edgeDriveRef?: RefObject<EdgeDrive>;
 
-  // ✅ add: info panel gate
-  menuOpenRef?: MutableRefObject<boolean>;
+  // add: info panel gate
+  menuOpenRef?: RefObject<boolean>;
 };
 
 export type UseRotationReturn = {
-  isPinchingRef: MutableRefObject<boolean>;
-  isTouchRotatingRef: MutableRefObject<boolean>;
-  effectiveDraggingRef: MutableRefObject<boolean>;
+  isPinchingRef: RefObject<boolean>;
+  isTouchRotatingRef: RefObject<boolean>;
+  effectiveDraggingRef: RefObject<boolean>;
   getDesktopCursorTarget: () => { x: number; y: number };
   applyRotationFrame: (args: { idleActive: boolean; delta: number }) => void;
   notePossibleIdleExit: (idleActive: boolean) => void;
-  lastMouseMoveTsRef: MutableRefObject<number>;
+  lastMouseMoveTsRef: RefObject<number>;
 };
 
 export default function useRotation({

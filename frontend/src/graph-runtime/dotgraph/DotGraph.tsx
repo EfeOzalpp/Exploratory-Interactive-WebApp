@@ -6,7 +6,7 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { Html, Line } from '@react-three/drei';
 
-import CompleteButton from '../../weighted-survey/CompleteButton.jsx';
+import CompleteButton from '../../weighted-survey/R3F-button/CompleteButton.jsx';
 
 import GamificationPersonalized from '../gamification/GamificationPersonalized.jsx';
 import GamificationGeneral from '../gamification/GamificationGeneral.jsx';

@@ -1,5 +1,6 @@
 // src/canvas-engine/validation/validateSceneProfile.ts
-import type { SceneMode, SceneProfile } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneProfile } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 import { invariant } from "./invariant.ts";
 
 const KINDS = ["A", "B", "C", "D"] as const;
@@ -58,9 +59,14 @@ export function validateSceneProfile(id: string, mode: SceneMode, profile: Scene
     validateCurvesByKind(id, qc);
   }
 
-  // Optional: validate poolSizes contains the requested mode
+  // Validate poolSizes is device-resolved
+  const ps: any = (profile as any).poolSizes;
+
   invariant(
-    (profile as any).poolSizes?.[mode],
-    `[${id}] poolSizes missing mode "${mode}". Available: ${Object.keys((profile as any).poolSizes ?? {}).join(", ")}`
+    ps &&
+      typeof ps.mobile === "number" &&
+      typeof ps.tablet === "number" &&
+      typeof ps.laptop === "number",
+    `[${id}] poolSizes must define numeric values for mobile/tablet/laptop`
   );
 }

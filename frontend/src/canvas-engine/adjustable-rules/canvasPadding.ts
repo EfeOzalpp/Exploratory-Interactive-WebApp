@@ -11,6 +11,8 @@ export type CanvasPaddingSpec = {
 
 export type CanvasPaddingMode = 'start' | 'questionnaire' | 'overlay';
 
+// Shortcut all row occupied: CENTER_100
+// All row available: LR_0
 const CENTER_100 = { center: '100%' } as const;
 const LR_0 = { left: '0%', right: '0%' } as const;
 
@@ -40,8 +42,8 @@ export const CANVAS_PADDING: Record<CanvasPaddingMode, Record<DeviceType, Canvas
       ]),
     },
     laptop: {
-      rows: 14,
-      useTopRatio: 0.8,
+      rows: 12,
+      useTopRatio: 1,
       forbidden: makeRowForbidden([
         CENTER_100,
         { left: '28%', right: '30%' },

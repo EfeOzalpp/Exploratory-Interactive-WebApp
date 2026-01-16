@@ -1,10 +1,10 @@
 // src/graph-runtime/dotgraph/event-handlers/useIdleDrift.ts
 import { useFrame } from '@react-three/fiber';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 import type { Group } from 'three';
 
 export type UseIdleDriftParams = {
-  groupRef: MutableRefObject<Group | null>;
+  groupRef: RefObject<Group | null>;
   speed?: number;
   horizontalOnly?: boolean;
   isIdle: (args: { userInteracting: boolean }) => boolean;

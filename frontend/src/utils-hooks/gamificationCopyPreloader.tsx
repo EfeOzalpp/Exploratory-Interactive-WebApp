@@ -1,5 +1,4 @@
 // src/utils/GamificationCopyPreloader.tsx
-import { useEffect } from 'react';
 import { useGeneralPools, usePersonalizedPools } from './useGamificationPools.ts';
 
 export default function GamificationCopyPreloader() {

@@ -16,7 +16,7 @@ import {
 
 import { CANVAS_PADDING } from "../adjustable-rules/canvasPadding.ts";
 import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
-import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 
 import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
 import { makeCenteredSquareGrid } from "../grid-layout/layoutCentered.ts";
@@ -220,10 +220,13 @@ export function startCanvasEngine(
     w: 0,
     h: 0,
     cell: 0,
+    cellW: 0,
+    cellH: 0,
+    ox: 0,
+    oy: 0,
     rows: 0,
     cols: 0,
     usedRows: 0,
-    // cache keys
     mode: null as null | SceneMode,
     specKey: null as null | string,
   };
@@ -250,23 +253,26 @@ export function startCanvasEngine(
   }
   
   // Grid overlay for debugging
-  function drawGridOverlay(p2: PLike, grid: { cell: number; rows: number; cols: number; usedRows: number }, spec: CanvasPaddingSpec) {
-    const { cell, rows, cols, usedRows } = grid;
-    if (!cell || !rows || !cols) return;
+  function drawGridOverlay(
+    p2: PLike,
+    grid: { cellW: number; cellH: number; ox: number; oy: number; rows: number; cols: number; usedRows: number },
+    spec: CanvasPaddingSpec
+  ) {
+    const { cellW, cellH, ox, oy, rows, cols, usedRows } = grid;
+    if (!cellW || !cellH || !rows || !cols) return;
 
     const ctx = p2.drawingContext;
     const gridAlpha = (style as any).debugGridAlpha ?? 0.35;
     const forbAlpha = (style as any).debugForbiddenAlpha ?? 0.25;
 
-    // --- grid lines ---
     ctx.save();
     ctx.globalAlpha = gridAlpha;
     ctx.lineWidth = 1;
-
-    // verticals
     ctx.strokeStyle = "rgba(0,0,0,0.35)";
+
+    // verticals (RECTANGULAR GRID)
     for (let c = 0; c <= cols; c++) {
-      const x = Math.round(c * cell) + 0.5;
+      const x = Math.round(ox + c * cellW) + 0.5;
       if (x < 0 || x > p2.width) continue;
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -276,7 +282,7 @@ export function startCanvasEngine(
 
     // horizontals
     for (let r = 0; r <= rows; r++) {
-      const y = Math.round(r * cell) + 0.5;
+      const y = Math.round(oy + r * cellH) + 0.5;
       if (y < 0 || y > p2.height) continue;
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -284,26 +290,26 @@ export function startCanvasEngine(
       ctx.stroke();
     }
 
-    // --- usedRows boundary (visualize useTopRatio cutoff) ---
+    // usedRows boundary
     {
-      const y = Math.round(usedRows * cell) + 0.5;
+      const y = Math.round(oy + usedRows * cellH) + 0.5;
       ctx.strokeStyle = "rgba(255,0,0,0.55)";
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(p2.width, y);
       ctx.stroke();
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
     }
 
-    // --- forbidden mask (if any) ---
+    // forbidden mask (still index-based, but rects now use cellW/cellH)
     if (spec.forbidden) {
       ctx.globalAlpha = forbAlpha;
       ctx.fillStyle = "rgba(0,0,0,0.35)";
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          // IMPORTANT: forbidden signature is (r,c,rows,cols)
           if (spec.forbidden(r, c, rows, cols)) {
-            ctx.fillRect(c * cell, r * cell, cell, cell);
+            ctx.fillRect(ox + c * cellW, oy + r * cellH, cellW, cellH);
           }
         }
       }
@@ -328,11 +334,15 @@ export function startCanvasEngine(
       return cachedGrid;
     }
 
-    const { cell, rows, cols } = makeCenteredSquareGrid({
+    const { cell, cellW, cellH, ox, oy, rows, cols } = makeCenteredSquareGrid({
       w: p.width,
       h: p.height,
       rows: spec.rows,
       useTopRatio: spec.useTopRatio ?? 1,
+      // for testing, force cols:
+      cols: 12,
+      // or test unsync by pixel target:
+      // colPx: 90,
     });
 
     const useTop = Math.max(0.01, Math.min(1, spec.useTopRatio ?? 1));
@@ -342,6 +352,10 @@ export function startCanvasEngine(
       w: p.width,
       h: p.height,
       cell,
+      cellW,
+      cellH,
+      ox,
+      oy,
       rows,
       cols,
       usedRows,

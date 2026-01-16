@@ -1,4 +1,4 @@
-import type { Vec3, GeneratePositionsOptions } from './positions';
+import type { Vec3, GeneratePositionsOptions } from './positions.ts';
 import { generatePositions } from './positions.ts';
 import { sampleStops, rgbString } from '../../../utils-hooks/hooks.ts';
 
@@ -92,16 +92,18 @@ export function computeDotPoints(
   );
 
   const pts: DotPoint[] = safe.map((response, i) => {
-    let avg: number | undefined = Number.isFinite(response?.avgWeight)
-      ? Number(response!.avgWeight)
-      : undefined;
+    const rawAvg =
+      typeof response?.avgWeight === 'number' && Number.isFinite(response.avgWeight)
+        ? response.avgWeight
+        : computeLocalAvg(response);
 
-    if (!Number.isFinite(avg)) {
-      const local = computeLocalAvg(response);
-      avg = Number.isFinite(local) ? local : 0.5;
-    }
+    // Guarantee a real number no matter what:
+    const avg: number =
+      typeof rawAvg === 'number' && Number.isFinite(rawAvg) ? rawAvg : 0.5;
 
-    const pos = base[i];
+    // Guarantee a Vec3 (TS can't prove base[i] exists)
+    const pos: Vec3 = base[i] ?? [0, 0, 0];
+
     return {
       position: pos,
       originalPosition: pos,

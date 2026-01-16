@@ -313,7 +313,7 @@ export default function VisualizationPage() {
           >
             <Suspense fallback={barLoadingFallback}>
               {/* Preserve existing prop even if unused */}
-              <BarGraph isVisible />
+              <BarGraph/>
             </Suspense>
           </div>
         )}

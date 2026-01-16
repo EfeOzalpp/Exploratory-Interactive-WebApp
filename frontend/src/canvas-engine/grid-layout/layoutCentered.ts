@@ -7,17 +7,24 @@ export type MakeCenteredGridOpts = {
   h: number;
   rows: number;
   useTopRatio?: number;
+  cols: number;
 };
+// w: available horizontal space
+// h: total vertical space
+// rows: authoritative vertical density
+// useTopRatio: vertical cropping (top portion only)
 
 export function makeCenteredSquareGrid(opts: MakeCenteredGridOpts) {
   const { w, h, rows, useTopRatio = 1 } = opts;
 
   const usableH = Math.max(1, Math.round(h * Math.max(0.01, Math.min(1, useTopRatio))));
+
+  // row
   const cellH = usableH / Math.max(1, rows);
 
-  // bounded: NEVER exceed width
-  const cols = Math.max(1, Math.round(w / cellH)); // or floor(), depending on taste
-  const cellW = w / cols;
+  // controversial 
+const cols = 18;              // try 12 / 24 / 40
+const cellW = w / cols;
 
   // no need for ox centering because we fill width exactly
   const ox = 0;

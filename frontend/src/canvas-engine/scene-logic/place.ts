@@ -1,7 +1,7 @@
 // src/canvas-engine/scene-logic/place.ts
 
 import { createOccupancy } from "../grid-layout/occupancy.ts";
-import { cellCenterToPx } from "../grid-layout/coords.ts";
+import { cellCenterToPx2 } from "../grid-layout/coords.ts";
 import { PlacementBands } from "../grid-layout/placementBands.ts";
 
 import type { DeviceType } from "../shared/responsiveness.ts";
@@ -27,16 +27,38 @@ export function placePoolItems(opts: {
   device: DeviceType;
   rows: number;
   cols: number;
+
+  // legacy scalar (still used by some systems as a "size knob")
   cell: number;
+
+  // NEW: rectangular grid metrics used for x/y placement
+  cellW: number;
+  cellH: number;
+  ox?: number;
+  oy?: number;
+
   usedRows: number;
   salt: number;
 
-  // resolved rule data (no globals)
   bands: ShapeBands;
   shapeMeta: Record<ShapeName, ShapeMeta>;
 }): { placed: PlacedItem[]; nextPool: PoolItem[] } {
-  const { pool, spec, device, rows, cols, cell, usedRows, salt, bands, shapeMeta } =
-    opts;
+  const {
+    pool,
+    spec,
+    device,
+    rows,
+    cols,
+    cell,
+    cellW,
+    cellH,
+    ox,
+    oy,
+    usedRows,
+    salt,
+    bands,
+    shapeMeta,
+  } = opts;
 
   const isForbidden = cellForbiddenFromSpec(spec, rows, cols);
   const occ = createOccupancy(rows, cols, (r, c) => isForbidden(r, c));
@@ -75,7 +97,6 @@ export function placePoolItems(opts: {
     const shape = item.shape as ShapeName | undefined;
     if (!shape) continue;
 
-    // Height-aware clamping of row band
     const { top: rMin, bot: rMax } = PlacementBands.band(
       bands,
       shape,
@@ -84,7 +105,6 @@ export function placePoolItems(opts: {
       hCell
     );
 
-    // Already-placed footprints (used by scoring)
     const placedForScore = placedAccum.map((p) => ({
       r0: p.footprint.r0,
       c0: p.footprint.c0,
@@ -129,8 +149,7 @@ export function placePoolItems(opts: {
         const { r, c } = fallbackCells[k];
 
         if (r < rMin || r > rMax) continue;
-        if (!footprintAllowed(r, c, wCell, hCell, rows, cols, isForbidden))
-          continue;
+        if (!footprintAllowed(r, c, wCell, hCell, rows, cols, isForbidden)) continue;
 
         const hit = occ.tryPlaceAt(r, c, wCell, hCell);
         if (hit) {
@@ -150,33 +169,21 @@ export function placePoolItems(opts: {
       }
     }
 
-    // If nothing fits, skip safely
     if (!rectHit) continue;
 
     const cr = rectHit.r0 + Math.floor(rectHit.h / 2);
     const cc = rectHit.c0 + Math.floor(rectHit.w / 2);
 
-    const { x, y } = cellCenterToPx(cell, cr, cc);
+    // ✅ RC -> px using rectangular grid metrics
+    const { x, y } = cellCenterToPx2({ cellW, cellH, ox, oy }, cr, cc);
 
     item.footprint = rectHit;
     item.x = x;
     item.y = y;
 
-    placedAccum.push({
-      id: item.id,
-      x,
-      y,
-      shape: item.shape,
-      footprint: rectHit,
-    });
+    placedAccum.push({ id: item.id, x, y, shape: item.shape, footprint: rectHit });
 
-    outPlaced.push({
-      id: item.id,
-      x,
-      y,
-      shape: item.shape,
-      footprint: rectHit,
-    });
+    outPlaced.push({ id: item.id, x, y, shape: item.shape, footprint: rectHit });
   }
 
   return { placed: outPlaced, nextPool };

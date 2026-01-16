@@ -1,5 +1,6 @@
 // src/canvas-engine/multi-canvas-setup/types.ts
-import type { SceneMode, SceneProfile } from "./sceneProfile.ts";
+import type { SceneProfile } from "./sceneProfile.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 
 export type SceneRuleSet = {
   id: string;

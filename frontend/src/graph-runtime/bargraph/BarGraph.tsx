@@ -190,7 +190,7 @@ export default function BarGraph() {
     return (
       <div className="empty-center">
         <div className={`empty-card ${darkMode ? 'is-dark' : 'is-light'}`}>
-          <EmptyStateArt kind="bars" className="empty-icon floaty" />
+          <EmptyStateArt className="empty-icon floaty" />
           <h3>Nothing Here...</h3>
         </div>
       </div>

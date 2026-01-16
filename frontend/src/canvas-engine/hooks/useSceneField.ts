@@ -9,7 +9,7 @@ import type { HostId } from "../multi-canvas-setup/hostDefs.ts";
 import { HOST_DEFS } from "../multi-canvas-setup/hostDefs.ts";
 
 import { resolveSceneMode } from "../adjustable-rules/resolveSceneMode.ts";
-import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 
 import { targetPoolSize } from "../adjustable-rules/poolSizes.ts";
 import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
@@ -123,7 +123,7 @@ export function useSceneField(
 
     const { w, h } = getCanvasLogicalSize(canvas);
 
-    const desired = targetPoolSize({ mode, width: w });
+    const desired = targetPoolSize(profile.poolSizes, w);
     ensurePoolSize(poolRef, desired);
 
     const pool = poolRef.current ?? [];

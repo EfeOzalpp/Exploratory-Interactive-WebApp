@@ -1,6 +1,6 @@
 // src/canvas-engine/runtime/types.ts
 
-import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
 import type { EngineLayoutMode } from "./mount.ts";
 import type { DprMode } from "./viewport.ts";

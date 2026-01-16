@@ -1,6 +1,7 @@
 // src/canvas-engine/validation/defineRuleSet.ts
 
-import type { SceneMode, SceneProfile } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneProfile } from "../multi-canvas-setup/sceneProfile.ts";
+import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 import { validateSceneProfile } from "./validateSceneProfile.ts";
 import type { SceneRuleSet } from "../multi-canvas-setup/types.ts";
 

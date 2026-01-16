@@ -1,6 +1,6 @@
 // src/graph-runtime/dotgraph/event-handlers/useActivity.ts
 import { useRef, useCallback } from 'react';
-import type { MutableRefObject } from 'react';
+import type { RefObject } from 'react';
 
 export type UseActivityParams = {
   startOnLoad?: boolean;
@@ -9,13 +9,13 @@ export type UseActivityParams = {
 
 export type IsIdleArgs = {
   userInteracting: boolean;
-  hasInteractedRef?: MutableRefObject<boolean>;
-  lastActivityRef?: MutableRefObject<number>;
+  hasInteractedRef?: RefObject<boolean>;
+  lastActivityRef?: RefObject<number>;
 };
 
 export type UseActivityReturn = {
-  hasInteractedRef: MutableRefObject<boolean>;
-  lastActivityRef: MutableRefObject<number>;
+  hasInteractedRef: RefObject<boolean>;
+  lastActivityRef: RefObject<number>;
   markActivity: () => void;
   isIdle: (args: IsIdleArgs) => boolean;
 };
