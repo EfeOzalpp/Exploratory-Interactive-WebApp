@@ -23,8 +23,8 @@ export function makeCenteredSquareGrid(opts: MakeCenteredGridOpts) {
   const cellH = usableH / Math.max(1, rows);
 
   // controversial 
-const cols = 18;              // try 12 / 24 / 40
-const cellW = w / cols;
+  const cols = Math.max(1, Math.round(opts.cols || 12));
+  const cellW = w / cols;
 
   // no need for ox centering because we fill width exactly
   const ox = 0;

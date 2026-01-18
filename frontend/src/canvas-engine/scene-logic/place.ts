@@ -174,7 +174,7 @@ export function placePoolItems(opts: {
     const cr = rectHit.r0 + Math.floor(rectHit.h / 2);
     const cc = rectHit.c0 + Math.floor(rectHit.w / 2);
 
-    // ✅ RC -> px using rectangular grid metrics
+    // RC -> px using rectangular grid metrics
     const { x, y } = cellCenterToPx2({ cellW, cellH, ox, oy }, cr, cc);
 
     item.footprint = rectHit;

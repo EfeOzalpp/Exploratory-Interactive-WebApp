@@ -2,9 +2,11 @@
 
 import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
-import type { EngineLayoutMode } from "./mount.ts";
+import type { EngineLayoutMode } from "./platform/mount.ts";
 import type { DprMode } from "./viewport.ts";
 import type { CanvasBounds } from "../multi-canvas-setup/hostDefs.ts";
+import type { ShapeRegistry } from "./shapes/registry.ts";
+import type { DebugFlags } from "./debug/flags.ts";
 
 /**
  * Payload item consumed by the runtime renderer.
@@ -48,6 +50,9 @@ export type EngineControls = {
 
   stop: () => void;
 
+  // debug API
+  setDebug: (next: Partial<DebugFlags>) => void;
+
   readonly canvas: HTMLCanvasElement | null;
 };
 
@@ -58,4 +63,5 @@ export type StartCanvasEngineOpts = {
   zIndex?: number;
   layout?: EngineLayoutMode;
   bounds?: CanvasBounds; 
+  shapeRegistry?: ShapeRegistry;
 };

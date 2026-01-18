@@ -123,7 +123,7 @@ C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\i
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:19:import type { SceneMode } from "../adjustable-rules/sceneRuleSets.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:21:import { resolveCanvasPaddingSpec } from "../adjustable-rules/resolveCanvasPadding.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:22:import { makeCenteredSquareGrid } from "../grid-layout/layoutCentered.ts";
-C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:24:import { ensureMount, applyCanvasStyle } from "./mount.ts";
+C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:24:import { ensureMount, applyCanvasStyle } from "./platform/mount.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:25:import { getViewportSize, resolvePixelDensity } from "./viewport.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:26:import { makeP, type PLike } from "./p/makeP.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:28:import { gradientColor, BRAND_STOPS_VIVID } from "../modifiers/index.ts";
@@ -131,7 +131,7 @@ C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\i
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\index.ts:38:export type { EngineControls as CanvasEngineControls } from "./types.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\types.ts:3:import type { SceneMode } from "../multi-canvas-setup/sceneProfile.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\types.ts:4:import type { CanvasPaddingSpec } from "../adjustable-rules/canvasPadding.ts";
-C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\types.ts:5:import type { EngineLayoutMode } from "./mount.ts";
+C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\types.ts:5:import type { EngineLayoutMode } from "./platform/mount.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\types.ts:6:import type { DprMode } from "./viewport.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\runtime\types.ts:7:import type { CanvasBounds } from "../multi-canvas-setup/hostDefs.ts";
 C:\Users\Efe Ozalp\Desktop\butterfly-habits\frontend\src\canvas-engine\scene-logic\candidates.ts:3:import type { CanvasPaddingSpec } from '../adjustable-rules/canvasPadding.ts';

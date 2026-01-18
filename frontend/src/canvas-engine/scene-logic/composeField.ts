@@ -24,11 +24,20 @@ export function composeField(opts: ComposeOpts): ComposeResult {
   // padding selection uses the already-mode-resolved table passed in opts
   const spec = resolveCanvasPaddingSpec(w, opts.padding);
 
-  const { cell, rows, cols } = makeCenteredSquareGrid({
+  const {
+    cell,
+    cellW,
+    cellH,
+    ox,
+    oy,
+    rows,
+    cols
+  } = makeCenteredSquareGrid({
     w,
     h,
     rows: spec.rows,
     useTopRatio: spec.useTopRatio ?? 1,
+    cols: 0
   });
 
   const usedRows = usedRowsFromSpec(rows, spec.useTopRatio);
@@ -60,18 +69,23 @@ export function composeField(opts: ComposeOpts): ComposeResult {
   assignShapesByPlanner(pool, u, salt, opts.quotaCurves);
 
   // placement consumes resolved rule data (bands) + derived layout info
-  const { placed, nextPool } = placePoolItems({
-    device,
+    const { placed, nextPool } = placePoolItems({
     pool,
     spec,
+    device,
     rows,
     cols,
     cell,
+    cellW,
+    cellH,
+    ox,
+    oy,
     usedRows,
     salt,
     bands: opts.bands,
     shapeMeta: opts.shapeMeta,
   });
+
 
   return { placed, nextPool, meta };
 }
